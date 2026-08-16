@@ -5,7 +5,10 @@ class StorageService {
   static const String _keyUsername = 'username';
   static const String _keyUserId = 'user_id';
 
-  static Future<void> saveAuthData({required String token, required String username, required int userId}) async {
+  static Future<void> saveAuthData(
+      {required String token,
+      required String username,
+      required int userId}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyToken, token);
     await prefs.setString(_keyUsername, username);

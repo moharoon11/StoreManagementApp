@@ -95,12 +95,15 @@ class _CategoriesViewState extends State<CategoriesView> {
                     children: [
                       CircleAvatar(
                         radius: 20,
-                        backgroundColor: const Color(0xFFEFF6FF),
-                        backgroundImage: category['imageUrl'] != null && (category['imageUrl'] as String).isNotEmpty
+                        backgroundColor: const Color(0xFFEEF0FF),
+                        backgroundImage: category['imageUrl'] != null &&
+                                (category['imageUrl'] as String).isNotEmpty
                             ? NetworkImage(category['imageUrl'])
                             : null,
-                        child: category['imageUrl'] == null || (category['imageUrl'] as String).isEmpty
-                            ? const Icon(Icons.category, color: Color(0xFF2563EB), size: 20)
+                        child: category['imageUrl'] == null ||
+                                (category['imageUrl'] as String).isEmpty
+                            ? const Icon(Icons.category,
+                                color: Color(0xFF365FF4), size: 20)
                             : null,
                       ),
                       const SizedBox(width: 12),
@@ -110,43 +113,53 @@ class _CategoriesViewState extends State<CategoriesView> {
                           children: [
                             Text(
                               category['name'] ?? 'Category Products',
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                              style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF172033)),
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               '${catProducts.length} items in this category',
-                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                              style: const TextStyle(
+                                  color: Color(0xFF6C7486), fontSize: 12),
                             ),
                           ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close, color: Color(0xFF64748B)),
+                        icon: const Icon(Icons.close, color: Color(0xFF6C7486)),
                         onPressed: () => Navigator.pop(ctx),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   TextField(
-                    style: const TextStyle(color: Color(0xFF0F172A)),
+                    style: const TextStyle(color: Color(0xFF172033)),
                     onChanged: (val) => setModalState(() => search = val),
                     decoration: const InputDecoration(
                       hintText: 'Search products in category...',
-                      prefixIcon: Icon(Icons.search, color: Color(0xFF2563EB)),
+                      prefixIcon: Icon(Icons.search, color: Color(0xFF365FF4)),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Expanded(
                     child: loadingProducts
-                        ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                                color: Color(0xFF365FF4)))
                         : filtered.isEmpty
                             ? Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: const [
-                                    Icon(Icons.inventory_2_outlined, size: 48, color: Color(0xFF94A3B8)),
+                                    Icon(Icons.inventory_2_outlined,
+                                        size: 48, color: Color(0xFFA1A8B7)),
                                     SizedBox(height: 12),
-                                    Text('No products in this category yet', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+                                    Text('No products in this category yet',
+                                        style: TextStyle(
+                                            color: Color(0xFF6C7486),
+                                            fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                               )
@@ -159,24 +172,49 @@ class _CategoriesViewState extends State<CategoriesView> {
 
                                   return Card(
                                     margin: const EdgeInsets.only(bottom: 10),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
                                     elevation: 0,
-                                    color: const Color(0xFFF8FAFC),
+                                    color: const Color(0xFFF6F7FB),
                                     child: ListTile(
                                       leading: Container(
                                         width: 44,
                                         height: 44,
                                         decoration: BoxDecoration(
                                           color: Colors.white,
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                                          image: img != null && img.isNotEmpty ? DecorationImage(image: NetworkImage(img), fit: BoxFit.cover) : null,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                              color: const Color(0xFFE6E8EF)),
+                                          image: img != null && img.isNotEmpty
+                                              ? DecorationImage(
+                                                  image: NetworkImage(img),
+                                                  fit: BoxFit.cover)
+                                              : null,
                                         ),
-                                        child: img == null || img.isEmpty ? const Icon(Icons.inventory_2, color: Color(0xFF2563EB), size: 20) : null,
+                                        child: img == null || img.isEmpty
+                                            ? const Icon(Icons.inventory_2,
+                                                color: Color(0xFF365FF4),
+                                                size: 20)
+                                            : null,
                                       ),
-                                      title: Text(p['name'] ?? '', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14)),
-                                      subtitle: Text('Stock: $stock', style: TextStyle(color: stock > 0 ? const Color(0xFF64748B) : const Color(0xFFEF4444), fontSize: 12)),
-                                      trailing: Text('₹${p['sellingPrice']}', style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 15)),
+                                      title: Text(p['name'] ?? '',
+                                          style: const TextStyle(
+                                              color: Color(0xFF172033),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14)),
+                                      subtitle: Text('Stock: $stock',
+                                          style: TextStyle(
+                                              color: stock > 0
+                                                  ? const Color(0xFF6C7486)
+                                                  : const Color(0xFFE75C5C),
+                                              fontSize: 12)),
+                                      trailing: Text('₹${p['sellingPrice']}',
+                                          style: const TextStyle(
+                                              color: Color(0xFF12A594),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15)),
                                     ),
                                   );
                                 },
@@ -205,7 +243,8 @@ class _CategoriesViewState extends State<CategoriesView> {
             Future<void> pickImage(ImageSource source) async {
               try {
                 final picker = ImagePicker();
-                final XFile? image = await picker.pickImage(source: source, imageQuality: 80);
+                final XFile? image =
+                    await picker.pickImage(source: source, imageQuality: 80);
                 if (image != null) {
                   setModalState(() {
                     pickedImageFile = File(image.path);
@@ -224,7 +263,9 @@ class _CategoriesViewState extends State<CategoriesView> {
                 setModalState(() => isUploading = false);
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Upload failed: ${e.toString().replaceAll("Exception: ", "")}')),
+                    SnackBar(
+                        content: Text(
+                            'Upload failed: ${e.toString().replaceAll("Exception: ", "")}')),
                   );
                 }
               }
@@ -232,10 +273,12 @@ class _CategoriesViewState extends State<CategoriesView> {
 
             return AlertDialog(
               backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               title: Text(
                 category == null ? 'Add Category' : 'Edit Category',
-                style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Color(0xFF172033), fontWeight: FontWeight.bold),
               ),
               content: SingleChildScrollView(
                 child: Column(
@@ -251,7 +294,8 @@ class _CategoriesViewState extends State<CategoriesView> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 ListTile(
-                                  leading: const Icon(Icons.photo_library, color: Color(0xFF2563EB)),
+                                  leading: const Icon(Icons.photo_library,
+                                      color: Color(0xFF365FF4)),
                                   title: const Text('Choose from Gallery'),
                                   onTap: () {
                                     Navigator.pop(context);
@@ -259,7 +303,8 @@ class _CategoriesViewState extends State<CategoriesView> {
                                   },
                                 ),
                                 ListTile(
-                                  leading: const Icon(Icons.camera_alt, color: Color(0xFF2563EB)),
+                                  leading: const Icon(Icons.camera_alt,
+                                      color: Color(0xFF365FF4)),
                                   title: const Text('Take a Photo'),
                                   onTap: () {
                                     Navigator.pop(context);
@@ -275,24 +320,35 @@ class _CategoriesViewState extends State<CategoriesView> {
                         width: 100,
                         height: 100,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
+                          color: const Color(0xFFF2F3F8),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFCBD5E1)),
+                          border: Border.all(color: const Color(0xFFD2D6E0)),
                           image: pickedImageFile != null
-                              ? DecorationImage(image: FileImage(pickedImageFile!), fit: BoxFit.cover)
+                              ? DecorationImage(
+                                  image: FileImage(pickedImageFile!),
+                                  fit: BoxFit.cover)
                               : (currentImageUrl.isNotEmpty
-                                  ? DecorationImage(image: NetworkImage(currentImageUrl), fit: BoxFit.cover)
+                                  ? DecorationImage(
+                                      image: NetworkImage(currentImageUrl),
+                                      fit: BoxFit.cover)
                                   : null),
                         ),
                         child: isUploading
-                            ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
-                            : (pickedImageFile == null && currentImageUrl.isEmpty
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                    color: Color(0xFF365FF4)))
+                            : (pickedImageFile == null &&
+                                    currentImageUrl.isEmpty
                                 ? Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: const [
-                                      Icon(Icons.add_a_photo, color: Color(0xFF2563EB), size: 28),
+                                      Icon(Icons.add_a_photo,
+                                          color: Color(0xFF365FF4), size: 28),
                                       SizedBox(height: 4),
-                                      Text('Pick Image', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
+                                      Text('Pick Image',
+                                          style: TextStyle(
+                                              color: Color(0xFF6C7486),
+                                              fontSize: 11)),
                                     ],
                                   )
                                 : null),
@@ -301,7 +357,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                     const SizedBox(height: 16),
                     TextField(
                       controller: nameController,
-                      style: const TextStyle(color: Color(0xFF0F172A)),
+                      style: const TextStyle(color: Color(0xFF172033)),
                       decoration: const InputDecoration(
                         labelText: 'Category Name',
                       ),
@@ -312,7 +368,8 @@ class _CategoriesViewState extends State<CategoriesView> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+                  child: const Text('Cancel',
+                      style: TextStyle(color: Color(0xFF6C7486))),
                 ),
                 ElevatedButton(
                   onPressed: isUploading
@@ -328,14 +385,17 @@ class _CategoriesViewState extends State<CategoriesView> {
                               'imageUrl': currentImageUrl,
                             });
                           } else {
-                            await ApiService.put('${ApiConfig.categories}/${category['id']}', {
+                            await ApiService.put(
+                                '${ApiConfig.categories}/${category['id']}', {
                               'name': name,
                               'imageUrl': currentImageUrl,
                             });
                           }
                           _fetchCategories();
                         },
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF365FF4),
+                      foregroundColor: Colors.white),
                   child: const Text('Save'),
                 ),
               ],
@@ -362,7 +422,8 @@ class _CategoriesViewState extends State<CategoriesView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)));
+      return const Center(
+          child: CircularProgressIndicator(color: Color(0xFF365FF4)));
     }
 
     return Padding(
@@ -375,7 +436,11 @@ class _CategoriesViewState extends State<CategoriesView> {
               const Expanded(
                 child: Text(
                   'Product Categories',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A), letterSpacing: -0.5),
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF172033),
+                      letterSpacing: -0.5),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -384,10 +449,11 @@ class _CategoriesViewState extends State<CategoriesView> {
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Add Category'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor: const Color(0xFF365FF4),
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ],
@@ -395,9 +461,12 @@ class _CategoriesViewState extends State<CategoriesView> {
           const SizedBox(height: 20),
           Expanded(
             child: _categories.isEmpty
-                ? const Center(child: Text('No categories added yet.', style: TextStyle(color: Color(0xFF64748B))))
+                ? const Center(
+                    child: Text('No categories added yet.',
+                        style: TextStyle(color: Color(0xFF6C7486))))
                 : GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 220,
                       mainAxisExtent: 225,
                       crossAxisSpacing: 14,
@@ -412,10 +481,10 @@ class _CategoriesViewState extends State<CategoriesView> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          border: Border.all(color: const Color(0xFFE6E8EF)),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF0F172A).withOpacity(0.04),
+                              color: const Color(0xFF172033).withOpacity(0.04),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -438,45 +507,71 @@ class _CategoriesViewState extends State<CategoriesView> {
                                         width: 44,
                                         height: 44,
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFEFF6FF),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: const Color(0xFFDBEAFE)),
-                                          image: imageUrl != null && imageUrl.isNotEmpty
-                                              ? DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover)
+                                          color: const Color(0xFFEEF0FF),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: const Color(0xFFE6EDFF)),
+                                          image: imageUrl != null &&
+                                                  imageUrl.isNotEmpty
+                                              ? DecorationImage(
+                                                  image: NetworkImage(imageUrl),
+                                                  fit: BoxFit.cover)
                                               : null,
                                         ),
-                                        child: imageUrl == null || imageUrl.isEmpty
-                                            ? const Icon(Icons.category_rounded, color: Color(0xFF2563EB), size: 22)
+                                        child: imageUrl == null ||
+                                                imageUrl.isEmpty
+                                            ? const Icon(Icons.category_rounded,
+                                                color: Color(0xFF365FF4),
+                                                size: 22)
                                             : null,
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.end,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
                                           children: [
                                             InkWell(
-                                              onTap: () => _showCategoryDialog(category: cat),
-                                              borderRadius: BorderRadius.circular(8),
+                                              onTap: () => _showCategoryDialog(
+                                                  category: cat),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                               child: Container(
-                                                padding: const EdgeInsets.all(6),
+                                                padding:
+                                                    const EdgeInsets.all(6),
                                                 decoration: BoxDecoration(
-                                                  color: const Color(0xFFEFF6FF),
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  color:
+                                                      const Color(0xFFEEF0FF),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
                                                 ),
-                                                child: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF2563EB)),
+                                                child: const Icon(
+                                                    Icons.edit_outlined,
+                                                    size: 16,
+                                                    color: Color(0xFF365FF4)),
                                               ),
                                             ),
                                             const SizedBox(width: 6),
                                             InkWell(
-                                              onTap: () => _deleteCategory(cat['id']),
-                                              borderRadius: BorderRadius.circular(8),
+                                              onTap: () =>
+                                                  _deleteCategory(cat['id']),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                               child: Container(
-                                                padding: const EdgeInsets.all(6),
+                                                padding:
+                                                    const EdgeInsets.all(6),
                                                 decoration: BoxDecoration(
-                                                  color: const Color(0xFFFEF2F2),
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  color:
+                                                      const Color(0xFFFFF0F0),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
                                                 ),
-                                                child: const Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFEF4444)),
+                                                child: const Icon(
+                                                    Icons
+                                                        .delete_outline_rounded,
+                                                    size: 16,
+                                                    color: Color(0xFFE75C5C)),
                                               ),
                                             ),
                                           ],
@@ -490,7 +585,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                      color: Color(0xFF0F172A),
+                                      color: Color(0xFF172033),
                                       fontWeight: FontWeight.bold,
                                       fontSize: 15,
                                     ),
@@ -501,13 +596,14 @@ class _CategoriesViewState extends State<CategoriesView> {
                                       Text(
                                         'View products',
                                         style: TextStyle(
-                                          color: Color(0xFF2563EB),
+                                          color: Color(0xFF365FF4),
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                       SizedBox(width: 4),
-                                      Icon(Icons.arrow_forward_rounded, size: 12, color: Color(0xFF2563EB)),
+                                      Icon(Icons.arrow_forward_rounded,
+                                          size: 12, color: Color(0xFF365FF4)),
                                     ],
                                   ),
                                   const SizedBox(height: 4),

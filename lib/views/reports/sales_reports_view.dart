@@ -57,7 +57,13 @@ class _SalesReportsViewState extends State<SalesReportsView> {
           Row(
             children: [
               const Expanded(
-                child: Text('Sales Reports', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A), letterSpacing: -0.5), overflow: TextOverflow.ellipsis),
+                child: Text('Sales Reports',
+                    style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF172033),
+                        letterSpacing: -0.5),
+                    overflow: TextOverflow.ellipsis),
               ),
               Row(
                 children: ['today', 'week', 'month'].map((period) {
@@ -65,10 +71,15 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                   return Padding(
                     padding: const EdgeInsets.only(left: 6.0),
                     child: ChoiceChip(
-                      label: Text(period.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      label: Text(period.toUpperCase(),
+                          style: const TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.bold)),
                       selected: isSelected,
-                      selectedColor: const Color(0xFF2563EB),
-                      labelStyle: TextStyle(color: isSelected ? Colors.white : const Color(0xFF64748B)),
+                      selectedColor: const Color(0xFF365FF4),
+                      labelStyle: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF6C7486)),
                       onSelected: (selected) {
                         if (selected) {
                           setState(() => _selectedPeriod = period);
@@ -83,46 +94,97 @@ class _SalesReportsViewState extends State<SalesReportsView> {
           ),
           const SizedBox(height: 20),
           if (_isLoading)
-            const Expanded(child: Center(child: CircularProgressIndicator(color: Color(0xFF2563EB))))
+            const Expanded(
+                child: Center(
+                    child: CircularProgressIndicator(color: Color(0xFF365FF4))))
           else
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   children: [
                     if (isMobile) ...[
-                      _buildReportMetric('Total Revenue', '₹$totalSales', Icons.payments, const Color(0xFF10B981), const Color(0xFFECFDF5)),
+                      _buildReportMetric(
+                          'Total Revenue',
+                          '₹$totalSales',
+                          Icons.payments,
+                          const Color(0xFF12A594),
+                          const Color(0xFFEAF9F6)),
                       const SizedBox(height: 12),
-                      _buildReportMetric('Total Invoices', '$totalInvoices', Icons.receipt_long, const Color(0xFF2563EB), const Color(0xFFEFF6FF)),
+                      _buildReportMetric(
+                          'Total Invoices',
+                          '$totalInvoices',
+                          Icons.receipt_long,
+                          const Color(0xFF365FF4),
+                          const Color(0xFFEEF0FF)),
                       const SizedBox(height: 12),
-                      _buildReportMetric('Products Sold', '$totalProductsSold', Icons.shopping_bag, const Color(0xFF8B5CF6), const Color(0xFFF5F3FF)),
+                      _buildReportMetric(
+                          'Products Sold',
+                          '$totalProductsSold',
+                          Icons.shopping_bag,
+                          const Color(0xFF8D63D8),
+                          const Color(0xFFF4F0FF)),
                     ] else ...[
                       Row(
                         children: [
-                          Expanded(child: _buildReportMetric('Total Revenue', '₹$totalSales', Icons.payments, const Color(0xFF10B981), const Color(0xFFECFDF5))),
+                          Expanded(
+                              child: _buildReportMetric(
+                                  'Total Revenue',
+                                  '₹$totalSales',
+                                  Icons.payments,
+                                  const Color(0xFF12A594),
+                                  const Color(0xFFEAF9F6))),
                           const SizedBox(width: 16),
-                          Expanded(child: _buildReportMetric('Total Invoices', '$totalInvoices', Icons.receipt_long, const Color(0xFF2563EB), const Color(0xFFEFF6FF))),
+                          Expanded(
+                              child: _buildReportMetric(
+                                  'Total Invoices',
+                                  '$totalInvoices',
+                                  Icons.receipt_long,
+                                  const Color(0xFF365FF4),
+                                  const Color(0xFFEEF0FF))),
                           const SizedBox(width: 16),
-                          Expanded(child: _buildReportMetric('Products Sold', '$totalProductsSold', Icons.shopping_bag, const Color(0xFF8B5CF6), const Color(0xFFF5F3FF))),
+                          Expanded(
+                              child: _buildReportMetric(
+                                  'Products Sold',
+                                  '$totalProductsSold',
+                                  Icons.shopping_bag,
+                                  const Color(0xFF8D63D8),
+                                  const Color(0xFFF4F0FF))),
                         ],
                       ),
                     ],
                     const SizedBox(height: 24),
                     if (isMobile) ...[
-                      _buildTableCard('Top Sold Products', topSoldProducts, (p) {
+                      _buildTableCard('Top Sold Products', topSoldProducts,
+                          (p) {
                         return ListTile(
                           dense: true,
-                          title: Text(p['productName'] ?? '', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w600)),
-                          subtitle: Text('${p['totalQuantitySold']} units sold', style: const TextStyle(color: Color(0xFF64748B))),
-                          trailing: Text('₹${p['totalRevenue']}', style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                          title: Text(p['productName'] ?? '',
+                              style: const TextStyle(
+                                  color: Color(0xFF172033),
+                                  fontWeight: FontWeight.w600)),
+                          subtitle: Text('${p['totalQuantitySold']} units sold',
+                              style: const TextStyle(color: Color(0xFF6C7486))),
+                          trailing: Text('₹${p['totalRevenue']}',
+                              style: const TextStyle(
+                                  color: Color(0xFF12A594),
+                                  fontWeight: FontWeight.bold)),
                         );
                       }),
                       const SizedBox(height: 16),
-                      _buildTableCard('Sales by Category', salesByCategory, (c) {
+                      _buildTableCard('Sales by Category', salesByCategory,
+                          (c) {
                         return ListTile(
                           dense: true,
-                          title: Text(c['categoryName'] ?? '', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w600)),
-                          subtitle: Text('${c['totalQuantitySold']} units sold', style: const TextStyle(color: Color(0xFF64748B))),
-                          trailing: Text('₹${c['totalRevenue']}', style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+                          title: Text(c['categoryName'] ?? '',
+                              style: const TextStyle(
+                                  color: Color(0xFF172033),
+                                  fontWeight: FontWeight.w600)),
+                          subtitle: Text('${c['totalQuantitySold']} units sold',
+                              style: const TextStyle(color: Color(0xFF6C7486))),
+                          trailing: Text('₹${c['totalRevenue']}',
+                              style: const TextStyle(
+                                  color: Color(0xFF365FF4),
+                                  fontWeight: FontWeight.bold)),
                         );
                       }),
                     ] else ...[
@@ -130,23 +192,43 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: _buildTableCard('Top Sold Products', topSoldProducts, (p) {
+                            child: _buildTableCard(
+                                'Top Sold Products', topSoldProducts, (p) {
                               return ListTile(
                                 dense: true,
-                                title: Text(p['productName'] ?? '', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w600)),
-                                subtitle: Text('${p['totalQuantitySold']} units sold', style: const TextStyle(color: Color(0xFF64748B))),
-                                trailing: Text('₹${p['totalRevenue']}', style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                                title: Text(p['productName'] ?? '',
+                                    style: const TextStyle(
+                                        color: Color(0xFF172033),
+                                        fontWeight: FontWeight.w600)),
+                                subtitle: Text(
+                                    '${p['totalQuantitySold']} units sold',
+                                    style: const TextStyle(
+                                        color: Color(0xFF6C7486))),
+                                trailing: Text('₹${p['totalRevenue']}',
+                                    style: const TextStyle(
+                                        color: Color(0xFF12A594),
+                                        fontWeight: FontWeight.bold)),
                               );
                             }),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: _buildTableCard('Sales by Category', salesByCategory, (c) {
+                            child: _buildTableCard(
+                                'Sales by Category', salesByCategory, (c) {
                               return ListTile(
                                 dense: true,
-                                title: Text(c['categoryName'] ?? '', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w600)),
-                                subtitle: Text('${c['totalQuantitySold']} units sold', style: const TextStyle(color: Color(0xFF64748B))),
-                                trailing: Text('₹${c['totalRevenue']}', style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+                                title: Text(c['categoryName'] ?? '',
+                                    style: const TextStyle(
+                                        color: Color(0xFF172033),
+                                        fontWeight: FontWeight.w600)),
+                                subtitle: Text(
+                                    '${c['totalQuantitySold']} units sold',
+                                    style: const TextStyle(
+                                        color: Color(0xFF6C7486))),
+                                trailing: Text('₹${c['totalRevenue']}',
+                                    style: const TextStyle(
+                                        color: Color(0xFF365FF4),
+                                        fontWeight: FontWeight.bold)),
                               );
                             }),
                           ),
@@ -162,13 +244,14 @@ class _SalesReportsViewState extends State<SalesReportsView> {
     );
   }
 
-  Widget _buildReportMetric(String title, String value, IconData icon, Color color, Color bgColor) {
+  Widget _buildReportMetric(
+      String title, String value, IconData icon, Color color, Color bgColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE6E8EF)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
@@ -191,9 +274,17 @@ class _SalesReportsViewState extends State<SalesReportsView> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w500)),
+              Text(title,
+                  style: const TextStyle(
+                      color: Color(0xFF6C7486),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500)),
               const SizedBox(height: 2),
-              Text(value, style: const TextStyle(color: Color(0xFF0F172A), fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(value,
+                  style: const TextStyle(
+                      color: Color(0xFF172033),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
             ],
           ),
         ],
@@ -201,12 +292,13 @@ class _SalesReportsViewState extends State<SalesReportsView> {
     );
   }
 
-  Widget _buildTableCard(String title, List<dynamic> items, Widget Function(dynamic) itemBuilder) {
+  Widget _buildTableCard(
+      String title, List<dynamic> items, Widget Function(dynamic) itemBuilder) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE6E8EF)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
@@ -220,12 +312,20 @@ class _SalesReportsViewState extends State<SalesReportsView> {
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Text(title, style: const TextStyle(color: Color(0xFF0F172A), fontSize: 15, fontWeight: FontWeight.bold)),
+            child: Text(title,
+                style: const TextStyle(
+                    color: Color(0xFF172033),
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold)),
           ),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          const Divider(height: 1, color: Color(0xFFE6E8EF)),
           items.isEmpty
-              ? const Padding(padding: EdgeInsets.all(16), child: Text('No data recorded for this period.', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)))
-              : Column(children: items.map((item) => itemBuilder(item)).toList()),
+              ? const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('No data recorded for this period.',
+                      style: TextStyle(color: Color(0xFF6C7486), fontSize: 13)))
+              : Column(
+                  children: items.map((item) => itemBuilder(item)).toList()),
         ],
       ),
     );

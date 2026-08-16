@@ -4,6 +4,9 @@ import '../services/storage_service.dart';
 import '../config/api_config.dart';
 
 class AppProvider extends ChangeNotifier {
+  bool _isBootstrapping = true;
+  bool get isBootstrapping => _isBootstrapping;
+
   bool _isAuthenticated = false;
   bool get isAuthenticated => _isAuthenticated;
 
@@ -20,7 +23,8 @@ class AppProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   // Cart State for Billing / POS
-  final Map<int, Map<String, dynamic>> _cartItems = {}; // productId -> {product, quantity}
+  final Map<int, Map<String, dynamic>> _cartItems =
+      {}; // productId -> {product, quantity}
   Map<int, Map<String, dynamic>> get cartItems => _cartItems;
 
   double get cartTotal {
@@ -46,14 +50,23 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> checkAuth() async {
-    final token = await StorageService.getToken();
-    if (token != null && token.isNotEmpty) {
-      _isAuthenticated = true;
-      _username = (await StorageService.getUsername()) ?? '';
-    } else {
+    final minimumSplash =
+        Future<void>.delayed(const Duration(milliseconds: 1300));
+    try {
+      final token = await StorageService.getToken();
+      if (token != null && token.isNotEmpty) {
+        _isAuthenticated = true;
+        _username = (await StorageService.getUsername()) ?? '';
+      } else {
+        _isAuthenticated = false;
+      }
+    } catch (_) {
       _isAuthenticated = false;
+    } finally {
+      await minimumSplash;
+      _isBootstrapping = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   void setNavIndex(int index) {

@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
-import '../views/dashboard/dashboard_view.dart';
-import '../views/products/products_view.dart';
+import '../theme/app_theme.dart';
 import '../views/billing/pos_checkout_view.dart';
 import '../views/categories/categories_view.dart';
+import '../views/dashboard/dashboard_view.dart';
 import '../views/invoices/invoice_history_view.dart';
-import '../views/stock/stock_management_view.dart';
+import '../views/products/products_view.dart';
 import '../views/reports/sales_reports_view.dart';
+import '../views/stock/stock_management_view.dart';
 import '../views/store/store_profile_view.dart';
 
-class ResponsiveLayout extends StatelessWidget {
-  const ResponsiveLayout({Key? key}) : super(key: key);
+class ResponsiveLayout extends StatefulWidget {
+  const ResponsiveLayout({super.key});
+  @override
+  State<ResponsiveLayout> createState() => _ResponsiveLayoutState();
+}
 
-  final List<Widget> _views = const [
+class _ResponsiveLayoutState extends State<ResponsiveLayout> {
+  static const _views = <Widget>[
     DashboardView(),
     PosCheckoutView(),
     ProductsView(),
@@ -21,386 +26,219 @@ class ResponsiveLayout extends StatelessWidget {
     InvoiceHistoryView(),
     StockManagementView(),
     SalesReportsView(),
-    StoreProfileView(),
+    StoreProfileView()
   ];
-
-  static const List<_NavItemData> _navItems = [
-    _NavItemData('Dashboard', Icons.dashboard_outlined, Icons.dashboard),
-    _NavItemData('POS Billing', Icons.point_of_sale_outlined, Icons.point_of_sale, isHighlight: true),
-    _NavItemData('Products Catalog', Icons.inventory_2_outlined, Icons.inventory_2),
-    _NavItemData('Categories', Icons.category_outlined, Icons.category),
-    _NavItemData('Invoices History', Icons.receipt_long_outlined, Icons.receipt_long),
-    _NavItemData('Stock Audit', Icons.inventory_outlined, Icons.inventory),
-    _NavItemData('Sales Analytics', Icons.analytics_outlined, Icons.analytics),
-    _NavItemData('Store Settings', Icons.store_outlined, Icons.store),
+  static const _items = <_Destination>[
+    _Destination('Home', 'Your daily command centre', Icons.home_outlined,
+        Icons.home_rounded),
+    _Destination('Sell', 'Create a new sale', Icons.point_of_sale_outlined,
+        Icons.point_of_sale_rounded),
+    _Destination('Products', 'Browse and manage items',
+        Icons.inventory_2_outlined, Icons.inventory_2_rounded),
+    _Destination('Categories', 'Organise your catalogue',
+        Icons.account_tree_outlined, Icons.account_tree_rounded),
+    _Destination('Invoices', 'Sales history and documents',
+        Icons.receipt_long_outlined, Icons.receipt_long_rounded),
+    _Destination('Stock', 'Inventory movement', Icons.warehouse_outlined,
+        Icons.warehouse_rounded),
+    _Destination('Insights', 'Business performance', Icons.auto_graph_outlined,
+        Icons.auto_graph_rounded),
+    _Destination('Business', 'Your company profile', Icons.storefront_outlined,
+        Icons.storefront_rounded),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<AppProvider>(context);
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
-    final isWideDesktop = MediaQuery.of(context).size.width >= 1150;
-
-    if (isDesktop) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
-        body: Row(
-          children: [
-            // SaaS Desktop Sidebar
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: isWideDesktop ? 240 : 80,
-              decoration: const BoxDecoration(
-                color: Color(0xFF0F172A), // Deep Slate SaaS Theme
-                boxShadow: [
-                  BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(2, 0)),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // App Branding Header
-                  Container(
-                    height: 70,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisAlignment: isWideDesktop ? MainAxisAlignment.start : MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2563EB),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.storefront, color: Colors.white, size: 22),
-                        ),
-                        if (isWideDesktop) ...[
-                          const SizedBox(width: 12),
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Text(
-                                'StorePOS',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: -0.3),
-                              ),
-                              Text(
-                                'SaaS Edition v1.0',
-                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w500),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const Divider(color: Color(0xFF1E293B), height: 1),
-                  const SizedBox(height: 12),
-
-                  // Navigation Links
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      itemCount: _navItems.length,
-                      itemBuilder: (context, index) {
-                        final item = _navItems[index];
-                        final isSelected = provider.selectedNavIndex == index;
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
-                          child: InkWell(
-                            onTap: () => provider.setNavIndex(index),
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              height: 44,
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFF2563EB)
-                                    : (item.isHighlight ? const Color(0xFF1E293B) : Colors.transparent),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: isWideDesktop ? MainAxisAlignment.start : MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    isSelected ? item.selectedIcon : item.icon,
-                                    color: isSelected ? Colors.white : (item.isHighlight ? const Color(0xFF10B981) : const Color(0xFF94A3B8)),
-                                    size: 20,
-                                  ),
-                                  if (isWideDesktop) ...[
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        item.title,
-                                        style: TextStyle(
-                                          color: isSelected ? Colors.white : const Color(0xFFCBD5E1),
-                                          fontSize: 13,
-                                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (item.isHighlight && !isSelected)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF10B981).withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: const Text('POS', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.bold)),
-                                      ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                  // Bottom Profile & Logout Box
-                  const Divider(color: Color(0xFF1E293B), height: 1),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      mainAxisAlignment: isWideDesktop ? MainAxisAlignment.start : MainAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 16,
-                          backgroundColor: const Color(0xFF2563EB),
-                          child: Text(
-                            provider.username.isNotEmpty ? provider.username[0].toUpperCase() : 'U',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                        ),
-                        if (isWideDesktop) ...[
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  provider.username,
-                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const Text(
-                                  'Store Owner',
-                                  style: TextStyle(color: Color(0xFF64748B), fontSize: 11),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.logout, color: Color(0xFFEF4444), size: 18),
-                            onPressed: provider.logout,
-                            tooltip: 'Logout',
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Main Content Area with Header
-            Expanded(
-              child: Column(
-                children: [
-                  // Top SaaS Header Bar
-                  Container(
-                    height: 60,
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _navItems[provider.selectedNavIndex].title,
-                          style: const TextStyle(color: Color(0xFF0F172A), fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.3),
-                        ),
-                        Row(
-                          children: [
-                            if (provider.selectedNavIndex != 1)
-                              ElevatedButton.icon(
-                                onPressed: () => provider.setNavIndex(1),
-                                icon: const Icon(Icons.point_of_sale, size: 16),
-                                label: const Text('Open POS', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF10B981),
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                ),
-                              ),
-                            const SizedBox(width: 14),
-                            IconButton(
-                              icon: const Icon(Icons.store, color: Color(0xFF64748B)),
-                              onPressed: () => provider.setNavIndex(7),
-                              tooltip: 'Store Settings',
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Active View Body
-                  Expanded(
-                    child: _views[provider.selectedNavIndex],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      // Modern SaaS Mobile Layout
-      return Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          bottom: const PreferredSize(
-            preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, color: Color(0xFFE2E8F0)),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.storefront, color: Colors.white, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  _navItems[provider.selectedNavIndex].title,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            if (provider.selectedNavIndex != 1)
-              IconButton(
-                icon: const Icon(Icons.point_of_sale, color: Color(0xFF10B981)),
-                onPressed: () => provider.setNavIndex(1),
-                tooltip: 'New Bill (POS)',
-              ),
-            IconButton(
-              icon: const Icon(Icons.logout, color: Color(0xFFEF4444)),
-              onPressed: provider.logout,
-              tooltip: 'Logout',
-            ),
-          ],
-        ),
-        drawer: Drawer(
-          backgroundColor: Colors.white,
-          child: Column(
-            children: [
-              UserAccountsDrawerHeader(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF0F172A),
-                ),
-                accountName: Text(
-                  provider.username,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                accountEmail: const Text('Store Owner SaaS Portal', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
-                currentAccountPicture: CircleAvatar(
-                  backgroundColor: const Color(0xFF2563EB),
-                  child: Text(
-                    provider.username.isNotEmpty ? provider.username[0].toUpperCase() : 'U',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: _navItems.length,
-                  itemBuilder: (context, index) {
-                    final item = _navItems[index];
-                    final isSelected = provider.selectedNavIndex == index;
-
-                    return ListTile(
-                      leading: Icon(
-                        isSelected ? item.selectedIcon : item.icon,
-                        color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF64748B),
-                      ),
-                      title: Text(
-                        item.title,
-                        style: TextStyle(
-                          color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        ),
-                      ),
-                      selected: isSelected,
-                      selectedTileColor: const Color(0xFFEFF6FF),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                      onTap: () {
-                        provider.setNavIndex(index);
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
-              ),
-              const Divider(color: Color(0xFFE2E8F0)),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Color(0xFFEF4444)),
-                title: const Text('Logout', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
-                onTap: provider.logout,
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        ),
-        body: _views[provider.selectedNavIndex],
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: provider.selectedNavIndex > 3 ? 0 : provider.selectedNavIndex,
-          onDestinationSelected: (int index) {
-            if (index == 3) {
-              // Open Drawer for all options if clicking "More"
-              Scaffold.of(context).openDrawer();
+    final provider = context.watch<AppProvider>();
+    final active = _items[provider.selectedNavIndex];
+    final width = MediaQuery.sizeOf(context).width;
+    return Scaffold(
+      body: Column(children: [
+        SafeArea(
+            bottom: false,
+            child: _TopBar(
+                title: active.title,
+                subtitle: active.subtitle,
+                onBusiness: () => provider.setNavIndex(7))),
+        Expanded(
+            child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 240),
+                switchInCurve: Curves.easeOutCubic,
+                child: KeyedSubtree(
+                    key: ValueKey(provider.selectedNavIndex),
+                    child: _views[provider.selectedNavIndex]))),
+      ]),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: NavigationBar(
+          height: width >= 760 ? 76 : 70,
+          selectedIndex: _bottomIndex(provider.selectedNavIndex),
+          indicatorColor: AppColors.brandSoft,
+          onDestinationSelected: (index) {
+            if (index == 4) {
+              _showMore(context);
             } else {
-              provider.setNavIndex(index);
+              provider.setNavIndex([0, 1, 2, 6][index]);
             }
           },
-          backgroundColor: Colors.white,
-          elevation: 8,
-          indicatorColor: const Color(0xFFEFF6FF),
           destinations: const [
-            NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard, color: Color(0xFF2563EB)), label: 'Dashboard'),
-            NavigationDestination(icon: Icon(Icons.point_of_sale_outlined, color: Color(0xFF10B981)), selectedIcon: Icon(Icons.point_of_sale, color: Color(0xFF10B981)), label: 'POS'),
-            NavigationDestination(icon: Icon(Icons.inventory_2_outlined), selectedIcon: Icon(Icons.inventory_2, color: Color(0xFF2563EB)), label: 'Products'),
-            NavigationDestination(icon: Icon(Icons.menu), label: 'More'),
+            NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home_rounded),
+                label: 'Home'),
+            NavigationDestination(
+                icon: Icon(Icons.point_of_sale_outlined),
+                selectedIcon: Icon(Icons.point_of_sale_rounded),
+                label: 'Sell'),
+            NavigationDestination(
+                icon: Icon(Icons.inventory_2_outlined),
+                selectedIcon: Icon(Icons.inventory_2_rounded),
+                label: 'Products'),
+            NavigationDestination(
+                icon: Icon(Icons.auto_graph_outlined),
+                selectedIcon: Icon(Icons.auto_graph_rounded),
+                label: 'Insights'),
+            NavigationDestination(
+                icon: Icon(Icons.apps_rounded), label: 'More'),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
+
+  int _bottomIndex(int index) =>
+      switch (index) { 0 => 0, 1 => 1, 2 => 2, 6 => 3, _ => 4 };
+
+  void _showMore(BuildContext context) {
+    final provider = context.read<AppProvider>();
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 2, 20, 20),
+          child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('More tools',
+                    style: TextStyle(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 20)),
+                const SizedBox(height: 5),
+                const Text('Everything else for your business.',
+                    style: TextStyle(color: AppColors.muted, fontSize: 12)),
+                const SizedBox(height: 16),
+                GridView.count(
+                    shrinkWrap: true,
+                    crossAxisCount: 2,
+                    childAspectRatio: 2.75,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    children: [
+                      for (final index in [3, 4, 5, 7])
+                        _MoreTool(
+                            item: _items[index],
+                            onTap: () {
+                              provider.setNavIndex(index);
+                              Navigator.pop(sheetContext);
+                            })
+                    ]),
+                const SizedBox(height: 10),
+                TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      provider.logout();
+                    },
+                    icon: const Icon(Icons.logout_rounded,
+                        color: Color(0xFFE75C5C)),
+                    label: const Text('Sign out',
+                        style: TextStyle(
+                            color: Color(0xFFE75C5C),
+                            fontWeight: FontWeight.w800))),
+              ]),
+        ),
+      ),
+    );
   }
 }
 
-class _NavItemData {
-  final String title;
-  final IconData icon;
-  final IconData selectedIcon;
-  final bool isHighlight;
+class _TopBar extends StatelessWidget {
+  const _TopBar(
+      {required this.title, required this.subtitle, required this.onBusiness});
+  final String title, subtitle;
+  final VoidCallback onBusiness;
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 76,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: const BoxDecoration(
+            color: Color(0xFFFCFCFE),
+            border: Border(bottom: BorderSide(color: AppColors.line))),
+        child: Row(children: [
+          Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                  color: AppColors.brand,
+                  borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.auto_graph_rounded,
+                  color: Colors.white, size: 20)),
+          const SizedBox(width: 11),
+          Expanded(
+              child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(title,
+                    style: const TextStyle(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 17)),
+                Text(subtitle,
+                    style:
+                        const TextStyle(color: AppColors.muted, fontSize: 10))
+              ])),
+          IconButton(
+              onPressed: onBusiness,
+              tooltip: 'Business profile',
+              icon: const Icon(Icons.storefront_outlined,
+                  color: AppColors.muted)),
+        ]),
+      );
+}
 
-  const _NavItemData(this.title, this.icon, this.selectedIcon, {this.isHighlight = false});
+class _MoreTool extends StatelessWidget {
+  const _MoreTool({required this.item, required this.onTap});
+  final _Destination item;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Material(
+      color: AppColors.canvas,
+      borderRadius: BorderRadius.circular(15),
+      child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(15),
+          child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(children: [
+                Icon(item.selectedIcon, color: AppColors.brand, size: 19),
+                const SizedBox(width: 9),
+                Expanded(
+                    child: Text(item.title,
+                        style: const TextStyle(
+                            color: AppColors.ink,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12)))
+              ]))));
+}
+
+class _Destination {
+  const _Destination(this.title, this.subtitle, this.icon, this.selectedIcon);
+  final String title, subtitle;
+  final IconData icon, selectedIcon;
 }

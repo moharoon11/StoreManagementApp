@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
+import '../../widgets/workspace_ui.dart';
+import 'package:provider/provider.dart';
+import '../../providers/app_provider.dart';
 
 class DashboardView extends StatefulWidget {
   const DashboardView({Key? key}) : super(key: key);
@@ -50,7 +53,8 @@ class _DashboardViewState extends State<DashboardView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)));
+      return const Center(
+          child: CircularProgressIndicator(color: Color(0xFF365FF4)));
     }
 
     if (_error != null) {
@@ -60,15 +64,20 @@ class _DashboardViewState extends State<DashboardView> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Color(0xFFEF4444)),
+              const Icon(Icons.error_outline,
+                  size: 48, color: Color(0xFFE75C5C)),
               const SizedBox(height: 12),
-              Text('Error: $_error', textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFEF4444))),
+              Text('Error: $_error',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFFE75C5C))),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: _loadDashboard,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF365FF4),
+                    foregroundColor: Colors.white),
               ),
             ],
           ),
@@ -80,189 +89,241 @@ class _DashboardViewState extends State<DashboardView> {
     final todayInvoices = _dashboardData?['todayInvoiceCount'] ?? 0;
     final totalProducts = _dashboardData?['totalProducts'] ?? 0;
     final totalCategories = _dashboardData?['totalCategories'] ?? 0;
-    final lowStockProducts = (_dashboardData?['lowStockProducts'] as List?) ?? [];
-    final mostSoldProducts = (_dashboardData?['mostSoldProducts'] as List?) ?? [];
+    final lowStockProducts =
+        (_dashboardData?['lowStockProducts'] as List?) ?? [];
+    final mostSoldProducts =
+        (_dashboardData?['mostSoldProducts'] as List?) ?? [];
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 700;
-
-    return RefreshIndicator(
-      onRefresh: _loadDashboard,
-      color: const Color(0xFF2563EB),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'Store Overview',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A), letterSpacing: -0.5),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Real-time overview of sales, stock & activity',
-                        style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: Color(0xFF2563EB)),
+    final width = MediaQuery.sizeOf(context).width;
+    final columns = width >= 1120
+        ? 4
+        : width >= 650
+            ? 2
+            : 1;
+    return WorkspacePage(
+      child: RefreshIndicator(
+        onRefresh: _loadDashboard,
+        child: ListView(children: [
+          PageIntro(
+              eyebrow: 'Workspace home',
+              title: 'Everything, in one place.',
+              description: 'Choose a part of your business to work on.',
+              action: OutlinedButton.icon(
                   onPressed: _loadDashboard,
-                  tooltip: 'Refresh',
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            // Metric Cards Grid
-            GridView.count(
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Refresh'))),
+          const SizedBox(height: 24),
+          _buildLauncher(context, width),
+          const SizedBox(height: 24),
+          Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                      colors: [Color(0xFF1D2B5C), Color(0xFF365FF4)]),
+                  borderRadius: BorderRadius.circular(22)),
+              child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  runSpacing: 18,
+                  children: [
+                    Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Today's revenue",
+                              style: TextStyle(
+                                  color: Colors.white.withOpacity(.72),
+                                  fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 7),
+                          Text('₹$todaySales',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 34,
+                                  letterSpacing: -1.5,
+                                  fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 6),
+                          Text('$todayInvoices invoices created today',
+                              style: TextStyle(
+                                  color: Colors.white.withOpacity(.8),
+                                  fontSize: 12))
+                        ]),
+                    Container(
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(.13),
+                            borderRadius: BorderRadius.circular(17)),
+                        child: const Icon(Icons.trending_up_rounded,
+                            color: Color(0xFF82E9DE), size: 35))
+                  ])),
+          const SizedBox(height: 18),
+          GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: screenWidth > 900 ? 4 : (screenWidth > 600 ? 2 : 1),
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: screenWidth > 600 ? 2.3 : 3.0,
+              crossAxisCount: columns,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              childAspectRatio: columns == 1 ? 3.4 : 1.55,
               children: [
-                _buildMetricCard("Today's Sales", '₹${todaySales.toString()}', Icons.payments_outlined, const Color(0xFF10B981), const Color(0xFFECFDF5)),
-                _buildMetricCard("Today's Invoices", todayInvoices.toString(), Icons.receipt_long_outlined, const Color(0xFF2563EB), const Color(0xFFEFF6FF)),
-                _buildMetricCard("Total Products", totalProducts.toString(), Icons.inventory_2_outlined, const Color(0xFF8B5CF6), const Color(0xFFF5F3FF)),
-                _buildMetricCard("Total Categories", totalCategories.toString(), Icons.category_outlined, const Color(0xFFF59E0B), const Color(0xFFFFFBEB)),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // Content Sections: Low Stock & Top Products stacked on mobile
-            if (isMobile) ...[
-              _buildSectionCard(
-                'Low Stock Alerts',
-                Icons.warning_amber_rounded,
-                const Color(0xFFF59E0B),
-                _buildLowStockContent(lowStockProducts),
-              ),
-              const SizedBox(height: 16),
-              _buildSectionCard(
-                'Most Sold Items',
-                Icons.star_outline_rounded,
-                const Color(0xFF2563EB),
-                _buildMostSoldContent(mostSoldProducts),
-              ),
-            ] else ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _buildSectionCard(
-                      'Low Stock Alerts',
-                      Icons.warning_amber_rounded,
-                      const Color(0xFFF59E0B),
-                      _buildLowStockContent(lowStockProducts),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildSectionCard(
-                      'Most Sold Items',
-                      Icons.star_outline_rounded,
-                      const Color(0xFF2563EB),
-                      _buildMostSoldContent(mostSoldProducts),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
+                StatTile(
+                    label: 'Invoices today',
+                    value: '$todayInvoices',
+                    note: 'Transactions created',
+                    icon: Icons.receipt_long_outlined,
+                    color: const Color(0xFF365FF4)),
+                StatTile(
+                    label: 'Products',
+                    value: '$totalProducts',
+                    note: 'In your catalogue',
+                    icon: Icons.inventory_2_outlined,
+                    color: const Color(0xFF8D63D8)),
+                StatTile(
+                    label: 'Categories',
+                    value: '$totalCategories',
+                    note: 'Ways customers browse',
+                    icon: Icons.account_tree_outlined,
+                    color: const Color(0xFFE4A331)),
+                StatTile(
+                    label: 'Stock alerts',
+                    value: '${lowStockProducts.length}',
+                    note: 'Items need a check',
+                    icon: Icons.priority_high_rounded,
+                    color: const Color(0xFFE75C5C))
+              ]),
+          const SizedBox(height: 24),
+          if (width < 780) ...[
+            _buildActivityPanel(
+                'Stock to review',
+                'Keep your shelves ready',
+                Icons.inventory_rounded,
+                const Color(0xFFE4A331),
+                _buildLowStockContent(lowStockProducts)),
+            const SizedBox(height: 16),
+            _buildActivityPanel(
+                'Customer favourites',
+                'What is selling best',
+                Icons.workspace_premium_outlined,
+                const Color(0xFF365FF4),
+                _buildMostSoldContent(mostSoldProducts))
+          ] else
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(
+                  child: _buildActivityPanel(
+                      'Stock to review',
+                      'Keep your shelves ready',
+                      Icons.inventory_rounded,
+                      const Color(0xFFE4A331),
+                      _buildLowStockContent(lowStockProducts))),
+              const SizedBox(width: 16),
+              Expanded(
+                  child: _buildActivityPanel(
+                      'Customer favourites',
+                      'What is selling best',
+                      Icons.workspace_premium_outlined,
+                      const Color(0xFF365FF4),
+                      _buildMostSoldContent(mostSoldProducts)))
+            ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildActivityPanel(String title, String subtitle, IconData icon,
+          Color color, Widget content) =>
+      SurfacePanel(
+          padding: EdgeInsets.zero,
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(children: [
+                  Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                          color: color.withOpacity(.12),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: Icon(icon, color: color, size: 18)),
+                  const SizedBox(width: 11),
+                  Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF172033))),
+                        Text(subtitle,
+                            style: const TextStyle(
+                                color: Color(0xFF6C7486), fontSize: 11))
+                      ])
+                ])),
+            const Divider(),
+            content
+          ]));
+
+  Widget _buildLauncher(BuildContext context, double width) {
+    final provider = context.read<AppProvider>();
+    const tools = [
+      (1, 'New sale', Icons.point_of_sale_rounded, Color(0xFF12A594)),
+      (2, 'Products', Icons.inventory_2_rounded, Color(0xFF365FF4)),
+      (3, 'Categories', Icons.account_tree_rounded, Color(0xFF8D63D8)),
+      (4, 'Invoices', Icons.receipt_long_rounded, Color(0xFFE4A331)),
+      (5, 'Stock', Icons.warehouse_rounded, Color(0xFFE75C5C)),
+      (6, 'Insights', Icons.auto_graph_rounded, Color(0xFF365FF4)),
+      (7, 'Business', Icons.storefront_rounded, Color(0xFF12A594)),
+    ];
+    final crossAxisCount = width >= 1100
+        ? 7
+        : width >= 760
+            ? 4
+            : 3;
+    return SurfacePanel(
+      padding: const EdgeInsets.all(14),
+      child: GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: width < 500 ? .95 : 1.25,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        children: [
+          for (final tool in tools)
+            _launcherItem(
+                tool.$2, tool.$3, tool.$4, () => provider.setNavIndex(tool.$1))
+        ],
+      ),
+    );
+  }
+
+  Widget _launcherItem(
+          String label, IconData icon, Color color, VoidCallback onTap) =>
+      Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(15),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(15),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                    color: color.withOpacity(.12),
+                    borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, color: color, size: 21)),
+            const SizedBox(height: 7),
+            Text(label,
+                style: const TextStyle(
+                    color: Color(0xFF172033),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700),
+                textAlign: TextAlign.center),
+          ]),
         ),
-      ),
-    );
-  }
-
-  Widget _buildMetricCard(String title, String value, IconData icon, Color color, Color bgColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(title, style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text(value, style: const TextStyle(color: Color(0xFF0F172A), fontSize: 18, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionCard(String title, IconData icon, Color iconColor, Widget child) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Icon(icon, color: iconColor, size: 20),
-                const SizedBox(width: 8),
-                Text(title, style: const TextStyle(color: Color(0xFF0F172A), fontSize: 15, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          child,
-        ],
-      ),
-    );
-  }
+      );
 
   Widget _buildLowStockContent(List lowStockProducts) {
     if (lowStockProducts.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(20.0),
-        child: Text('All products are sufficiently stocked.', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+        child: Text('All products are sufficiently stocked.',
+            style: TextStyle(color: Color(0xFF6C7486), fontSize: 13)),
       );
     }
     return Column(
@@ -270,20 +331,29 @@ class _DashboardViewState extends State<DashboardView> {
         return ListTile(
           dense: true,
           leading: CircleAvatar(
-            backgroundColor: const Color(0xFFFFFBEB),
-            child: const Icon(Icons.inventory_2, color: Color(0xFFF59E0B), size: 18),
+            backgroundColor: const Color(0xFFFFF8E8),
+            child: const Icon(Icons.inventory_2,
+                color: Color(0xFFE4A331), size: 18),
           ),
-          title: Text(p['name'] ?? '', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w600, fontSize: 13)),
-          subtitle: Text('Price: ₹${p['sellingPrice']}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+          title: Text(p['name'] ?? '',
+              style: const TextStyle(
+                  color: Color(0xFF172033),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13)),
+          subtitle: Text('Price: ₹${p['sellingPrice']}',
+              style: const TextStyle(color: Color(0xFF6C7486), fontSize: 12)),
           trailing: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
+              color: const Color(0xFFFFF0F0),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               '${p['stockQuantity']} left',
-              style: const TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold, fontSize: 11),
+              style: const TextStyle(
+                  color: Color(0xFFE75C5C),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11),
             ),
           ),
         );
@@ -295,7 +365,8 @@ class _DashboardViewState extends State<DashboardView> {
     if (mostSoldProducts.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(20.0),
-        child: Text('No sales records yet.', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+        child: Text('No sales records yet.',
+            style: TextStyle(color: Color(0xFF6C7486), fontSize: 13)),
       );
     }
     return Column(
@@ -303,14 +374,23 @@ class _DashboardViewState extends State<DashboardView> {
         return ListTile(
           dense: true,
           leading: CircleAvatar(
-            backgroundColor: const Color(0xFFEFF6FF),
-            child: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF2563EB), size: 18),
+            backgroundColor: const Color(0xFFEEF0FF),
+            child: const Icon(Icons.shopping_bag_outlined,
+                color: Color(0xFF365FF4), size: 18),
           ),
-          title: Text(p['productName'] ?? '', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w600, fontSize: 13)),
-          subtitle: Text('${p['totalQuantitySold']} units sold', style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+          title: Text(p['productName'] ?? '',
+              style: const TextStyle(
+                  color: Color(0xFF172033),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13)),
+          subtitle: Text('${p['totalQuantitySold']} units sold',
+              style: const TextStyle(color: Color(0xFF6C7486), fontSize: 12)),
           trailing: Text(
             '₹${p['totalRevenue']}',
-            style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 13),
+            style: const TextStyle(
+                color: Color(0xFF12A594),
+                fontWeight: FontWeight.bold,
+                fontSize: 13),
           ),
         );
       }).toList(),

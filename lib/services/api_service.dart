@@ -16,7 +16,8 @@ class ApiService {
     return headers;
   }
 
-  static Future<dynamic> get(String endpoint, {Map<String, String>? queryParameters}) async {
+  static Future<dynamic> get(String endpoint,
+      {Map<String, String>? queryParameters}) async {
     Uri uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
     if (queryParameters != null) {
       uri = uri.replace(queryParameters: queryParameters);
@@ -29,21 +30,24 @@ class ApiService {
   static Future<dynamic> post(String endpoint, dynamic data) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
     final headers = await _getHeaders();
-    final response = await http.post(uri, headers: headers, body: jsonEncode(data));
+    final response =
+        await http.post(uri, headers: headers, body: jsonEncode(data));
     return _processResponse(response);
   }
 
   static Future<dynamic> put(String endpoint, dynamic data) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
     final headers = await _getHeaders();
-    final response = await http.put(uri, headers: headers, body: jsonEncode(data));
+    final response =
+        await http.put(uri, headers: headers, body: jsonEncode(data));
     return _processResponse(response);
   }
 
   static Future<dynamic> patch(String endpoint, dynamic data) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
     final headers = await _getHeaders();
-    final response = await http.patch(uri, headers: headers, body: jsonEncode(data));
+    final response =
+        await http.patch(uri, headers: headers, body: jsonEncode(data));
     return _processResponse(response);
   }
 
@@ -58,7 +62,7 @@ class ApiService {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.uploadImage}');
       final request = http.MultipartRequest('POST', uri);
-      
+
       final token = await StorageService.getToken();
       if (token != null && token.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $token';
@@ -69,7 +73,9 @@ class ApiService {
       final response = await http.Response.fromStream(streamedResponse);
       final data = jsonDecode(response.body);
 
-      if (response.statusCode >= 200 && response.statusCode < 300 && data['success'] == true) {
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          data['success'] == true) {
         return data['data']['url'] as String?;
       } else {
         throw Exception(data['message'] ?? 'Failed to upload image');
@@ -84,7 +90,8 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
     } else {
-      final message = body['message'] ?? 'An error occurred (Status ${response.statusCode})';
+      final message = body['message'] ??
+          'An error occurred (Status ${response.statusCode})';
       throw Exception(message);
     }
   }
