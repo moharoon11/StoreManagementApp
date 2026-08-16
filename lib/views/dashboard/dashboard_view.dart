@@ -103,66 +103,94 @@ class _DashboardViewState extends State<DashboardView> {
             ? 'Good afternoon'
             : 'Good evening';
     return WorkspacePage(
-      child: RefreshIndicator(
-        onRefresh: _loadDashboard,
-        child: ListView(children: [
-          _dashboardGreeting(greeting, provider.username),
-          const SizedBox(height: 20),
-          _salesHero(todaySales, todayInvoices, totalProducts),
-          const SizedBox(height: 18),
-          Wrap(spacing: 12, runSpacing: 12, children: [
-            _actionCard(
-                width: width,
-                title: 'New bill',
-                subtitle: 'Create a normal bill',
-                icon: Icons.add_rounded,
-                colors: const [Color(0xFF2563EB), Color(0xFF104FC7)],
-                onTap: () => provider.setNavIndex(1)),
-            _actionCard(
-                width: width,
-                title: 'Quick bill',
-                subtitle: 'Fast billing in seconds',
-                icon: Icons.bolt_rounded,
-                colors: const [Color(0xFFFF9D00), Color(0xFFE66B00)],
-                onTap: () => provider.setNavIndex(1)),
-          ]),
-          const SizedBox(height: 22),
-          _recentBills(recentInvoices, provider),
-          const SizedBox(height: 24),
-          if (width < 800) ...[
-            _buildActivityPanel(
-                'Stock to review',
-                'Keep your shelves ready',
-                Icons.inventory_rounded,
-                const Color(0xFFE4A331),
-                _buildLowStockContent(lowStockProducts)),
-            const SizedBox(height: 16),
-            _buildActivityPanel(
-                'Customer favourites',
-                'What is selling best',
-                Icons.workspace_premium_outlined,
-                const Color(0xFF365FF4),
-                _buildMostSoldContent(mostSoldProducts))
-          ] else
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
-                  child: _buildActivityPanel(
-                      'Stock to review',
-                      'Keep your shelves ready',
-                      Icons.inventory_rounded,
-                      const Color(0xFFE4A331),
-                      _buildLowStockContent(lowStockProducts))),
-              const SizedBox(width: 16),
-              Expanded(
-                  child: _buildActivityPanel(
-                      'Customer favourites',
-                      'What is selling best',
-                      Icons.workspace_premium_outlined,
-                      const Color(0xFF365FF4),
-                      _buildMostSoldContent(mostSoldProducts)))
+      child: Stack(children: [
+        Positioned(
+          top: -120,
+          right: -100,
+          child: IgnorePointer(
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: const BoxDecoration(
+                  color: Color(0x142563EB), shape: BoxShape.circle),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 120,
+          left: -130,
+          child: IgnorePointer(
+            child: Container(
+              width: 270,
+              height: 270,
+              decoration: const BoxDecoration(
+                  color: Color(0x1212A594), shape: BoxShape.circle),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: RefreshIndicator(
+            onRefresh: _loadDashboard,
+            child: ListView(children: [
+              _dashboardGreeting(greeting, provider.username),
+              const SizedBox(height: 20),
+              _salesHero(todaySales, todayInvoices, totalProducts),
+              const SizedBox(height: 18),
+              Wrap(spacing: 12, runSpacing: 12, children: [
+                _actionCard(
+                    width: width,
+                    title: 'New bill',
+                    subtitle: 'Create a normal bill',
+                    icon: Icons.add_rounded,
+                    colors: const [Color(0xFF2563EB), Color(0xFF104FC7)],
+                    onTap: () => provider.setNavIndex(1)),
+                _actionCard(
+                    width: width,
+                    title: 'Quick bill',
+                    subtitle: 'Fast billing in seconds',
+                    icon: Icons.bolt_rounded,
+                    colors: const [Color(0xFFFF9D00), Color(0xFFE66B00)],
+                    onTap: () => provider.setNavIndex(1)),
+              ]),
+              const SizedBox(height: 22),
+              _recentBills(recentInvoices, provider),
+              const SizedBox(height: 24),
+              if (width < 800) ...[
+                _buildActivityPanel(
+                    'Stock to review',
+                    'Keep your shelves ready',
+                    Icons.inventory_rounded,
+                    const Color(0xFFE4A331),
+                    _buildLowStockContent(lowStockProducts)),
+                const SizedBox(height: 16),
+                _buildActivityPanel(
+                    'Customer favourites',
+                    'What is selling best',
+                    Icons.workspace_premium_outlined,
+                    const Color(0xFF365FF4),
+                    _buildMostSoldContent(mostSoldProducts))
+              ] else
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(
+                      child: _buildActivityPanel(
+                          'Stock to review',
+                          'Keep your shelves ready',
+                          Icons.inventory_rounded,
+                          const Color(0xFFE4A331),
+                          _buildLowStockContent(lowStockProducts))),
+                  const SizedBox(width: 16),
+                  Expanded(
+                      child: _buildActivityPanel(
+                          'Customer favourites',
+                          'What is selling best',
+                          Icons.workspace_premium_outlined,
+                          const Color(0xFF365FF4),
+                          _buildMostSoldContent(mostSoldProducts)))
+                ]),
             ]),
-        ]),
-      ),
+          ),
+        ),
+      ]),
     );
   }
 
@@ -194,13 +222,15 @@ class _DashboardViewState extends State<DashboardView> {
               gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF2879F1), Color(0xFF104AB9)]),
+                  colors: [Color(0xFF3A86F7), Color(0xFF1556C0)]),
               borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0x66FFFFFF)),
               boxShadow: const [
                 BoxShadow(
-                    color: Color(0x332563EB),
-                    blurRadius: 20,
-                    offset: Offset(0, 9))
+                    color: Color(0x3D1556C0),
+                    blurRadius: 26,
+                    spreadRadius: 1,
+                    offset: Offset(0, 12))
               ]),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -280,7 +310,13 @@ class _DashboardViewState extends State<DashboardView> {
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
                           gradient: LinearGradient(colors: colors),
-                          borderRadius: BorderRadius.circular(19)),
+                          borderRadius: BorderRadius.circular(19),
+                          boxShadow: [
+                            BoxShadow(
+                                color: colors.last.withValues(alpha: .27),
+                                blurRadius: 18,
+                                offset: const Offset(0, 8))
+                          ]),
                       child: Row(children: [
                         Container(
                             padding: const EdgeInsets.all(12),
@@ -307,78 +343,98 @@ class _DashboardViewState extends State<DashboardView> {
                             color: Colors.white, size: 28)
                       ])))));
 
-  Widget _recentBills(List invoices, AppProvider provider) => SurfacePanel(
-      padding: EdgeInsets.zero,
-      child: Column(children: [
-        Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 12, 12),
-            child: Row(children: [
-              const Expanded(
-                  child: Text('RECENT BILLS',
-                      style: TextStyle(
-                          color: Color(0xFF172033),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800))),
-              TextButton(
-                  onPressed: () => provider.setNavIndex(4),
-                  child: const Text('View all'))
-            ])),
-        const Divider(),
-        if (invoices.isEmpty)
-          const Padding(
-              padding: EdgeInsets.all(22),
-              child: Text('Your completed bills will appear here.',
-                  style: TextStyle(color: Color(0xFF6C7486))))
-        else
-          ...invoices.take(4).map((invoice) => ListTile(
-              onTap: () => provider.setNavIndex(4),
-              leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFEEF4FF),
-                  child: Icon(Icons.receipt_long_outlined,
-                      color: Color(0xFF2563EB))),
-              title: Text(invoice['invoiceNumber'] ?? 'Invoice',
-                  style: const TextStyle(fontWeight: FontWeight.w800)),
-              subtitle: Text(
-                  '${invoice['createdAt'] ?? ''}'.replaceFirst('T', ' '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11)),
-              trailing: Text('₹${invoice['grandTotal']}',
-                  style: const TextStyle(
-                      color: Color(0xFF16834B), fontWeight: FontWeight.w800)))),
-      ]));
+  Widget _recentBills(List invoices, AppProvider provider) => Container(
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [
+            BoxShadow(
+                color: Color(0x140F2454), blurRadius: 18, offset: Offset(0, 8))
+          ]),
+      child: SurfacePanel(
+          padding: EdgeInsets.zero,
+          child: Column(children: [
+            Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 12, 12),
+                child: Row(children: [
+                  const Expanded(
+                      child: Text('RECENT BILLS',
+                          style: TextStyle(
+                              color: Color(0xFF172033),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800))),
+                  TextButton(
+                      onPressed: () => provider.setNavIndex(4),
+                      child: const Text('View all'))
+                ])),
+            const Divider(),
+            if (invoices.isEmpty)
+              const Padding(
+                  padding: EdgeInsets.all(22),
+                  child: Text('Your completed bills will appear here.',
+                      style: TextStyle(color: Color(0xFF6C7486))))
+            else
+              ...invoices.take(4).map((invoice) => ListTile(
+                  onTap: () => provider.setNavIndex(4),
+                  leading: const CircleAvatar(
+                      backgroundColor: Color(0xFFEEF4FF),
+                      child: Icon(Icons.receipt_long_outlined,
+                          color: Color(0xFF2563EB))),
+                  title: Text(invoice['invoiceNumber'] ?? 'Invoice',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: Text(
+                      '${invoice['createdAt'] ?? ''}'.replaceFirst('T', ' '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11)),
+                  trailing: Text('₹${invoice['grandTotal']}',
+                      style: const TextStyle(
+                          color: Color(0xFF16834B),
+                          fontWeight: FontWeight.w800)))),
+          ])));
 
   Widget _buildActivityPanel(String title, String subtitle, IconData icon,
           Color color, Widget content) =>
-      SurfacePanel(
-          padding: EdgeInsets.zero,
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(children: [
-                  Container(
-                      padding: const EdgeInsets.all(9),
-                      decoration: BoxDecoration(
-                          color: color.withOpacity(.12),
-                          borderRadius: BorderRadius.circular(10)),
-                      child: Icon(icon, color: color, size: 18)),
-                  const SizedBox(width: 11),
-                  Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF172033))),
-                        Text(subtitle,
-                            style: const TextStyle(
-                                color: Color(0xFF6C7486), fontSize: 11))
-                      ])
-                ])),
-            const Divider(),
-            content
-          ]));
+      Container(
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(
+                    color: Color(0x120F2454),
+                    blurRadius: 16,
+                    offset: Offset(0, 7))
+              ]),
+          child: SurfacePanel(
+              padding: EdgeInsets.zero,
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Row(children: [
+                          Container(
+                              padding: const EdgeInsets.all(9),
+                              decoration: BoxDecoration(
+                                  color: color.withOpacity(.12),
+                                  borderRadius: BorderRadius.circular(10)),
+                              child: Icon(icon, color: color, size: 18)),
+                          const SizedBox(width: 11),
+                          Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(title,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF172033))),
+                                Text(subtitle,
+                                    style: const TextStyle(
+                                        color: Color(0xFF6C7486), fontSize: 11))
+                              ])
+                        ])),
+                    const Divider(),
+                    content
+                  ])));
 
   Widget _buildLowStockContent(List lowStockProducts) {
     if (lowStockProducts.isEmpty) {

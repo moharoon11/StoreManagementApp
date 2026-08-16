@@ -463,19 +463,25 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
                 ? const Center(child: CircularProgressIndicator())
                 : _productGrid(_products, provider, wide))
       ]);
-      return Padding(
-          padding: EdgeInsets.all(wide ? 28 : 16),
-          child: wide
-              ? Row(children: [
-                  Expanded(flex: 3, child: products),
-                  const SizedBox(width: 22),
-                  SizedBox(width: 360, child: _cartPanel(provider))
-                ])
-              : Column(children: [
-                  Expanded(child: products),
-                  const SizedBox(height: 12),
-                  _cartBar(provider)
-                ]));
+      return DecoratedBox(
+          decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFF8FAFF), Color(0xFFF2F7FF)])),
+          child: Padding(
+              padding: EdgeInsets.all(wide ? 28 : 16),
+              child: wide
+                  ? Row(children: [
+                      Expanded(flex: 3, child: products),
+                      const SizedBox(width: 22),
+                      SizedBox(width: 360, child: _cartPanel(provider))
+                    ])
+                  : Column(children: [
+                      Expanded(child: products),
+                      const SizedBox(height: 12),
+                      _cartBar(provider)
+                    ])));
     });
   }
 
@@ -511,6 +517,8 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
         final imageUrl = product['imageUrl'] as String? ?? '';
         return Material(
             color: Colors.white,
+            elevation: 2,
+            shadowColor: const Color(0x1F2657B9),
             borderRadius: BorderRadius.circular(14),
             child: InkWell(
                 onTap: stock > 0 ? () => provider.addToCart(product) : null,
@@ -652,7 +660,14 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
           child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
               decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFE6E8EF)),
+                  color: Colors.white,
+                  border: Border.all(color: const Color(0xFFDCE6F8)),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Color(0x1A1556C0),
+                        blurRadius: 18,
+                        offset: Offset(0, 7))
+                  ],
                   borderRadius: BorderRadius.circular(18)),
               child: Row(children: [
                 const Icon(Icons.shopping_bag_outlined,
