@@ -13,7 +13,7 @@ class WorkspacePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 760;
     return ColoredBox(
-      color: AppColors.canvas,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: SafeArea(
         top: false,
         child: Padding(
@@ -79,9 +79,10 @@ class SurfacePanel extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: padding,
         decoration: BoxDecoration(
-            color: color ?? Colors.white,
+            color: color ?? Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.line)),
+            border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant)),
         child: child,
       );
 }

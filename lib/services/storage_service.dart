@@ -4,6 +4,7 @@ class StorageService {
   static const String _keyToken = 'jwt_token';
   static const String _keyUsername = 'username';
   static const String _keyUserId = 'user_id';
+  static const String _keyTheme = 'app_theme';
 
   static Future<void> saveAuthData(
       {required String token,
@@ -28,6 +29,16 @@ class StorageService {
   static Future<int?> getUserId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_keyUserId);
+  }
+
+  static Future<String?> getTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyTheme);
+  }
+
+  static Future<void> saveTheme(String theme) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyTheme, theme);
   }
 
   static Future<void> clearAuthData() async {

@@ -13,7 +13,7 @@ void main() {
 }
 
 class StoreManagementApp extends StatelessWidget {
-  const StoreManagementApp({Key? key}) : super(key: key);
+  const StoreManagementApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +24,7 @@ class StoreManagementApp extends StatelessWidget {
           return MaterialApp(
             title: 'Nexora Commerce',
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.light,
+            theme: AppTheme.forOption(provider.themeOption),
             home: AnimatedSwitcher(
               duration: const Duration(milliseconds: 520),
               switchInCurve: Curves.easeOutCubic,

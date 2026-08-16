@@ -1,635 +1,522 @@
+import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../services/api_service.dart';
+
 import '../../config/api_config.dart';
+import '../../services/api_service.dart';
 
 class CategoriesView extends StatefulWidget {
-  const CategoriesView({Key? key}) : super(key: key);
+  const CategoriesView({super.key});
 
   @override
   State<CategoriesView> createState() => _CategoriesViewState();
 }
 
 class _CategoriesViewState extends State<CategoriesView> {
+  static const _pageSize = 30;
+  final ScrollController _productsController = ScrollController();
+  Timer? _searchDebounce;
   bool _isLoading = true;
+  bool _isLoadingProducts = false;
+  bool _isLoadingMore = false;
+  bool _hasMoreProducts = true;
+  int _page = 1;
+  int? _selectedCategoryId;
+  String _search = '';
   List<dynamic> _categories = [];
+  List<dynamic> _products = [];
 
   @override
   void initState() {
     super.initState();
+    _productsController.addListener(_loadMoreWhenNeeded);
     _fetchCategories();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _productsController
+      ..removeListener(_loadMoreWhenNeeded)
+      ..dispose();
+    super.dispose();
   }
 
   Future<void> _fetchCategories() async {
     setState(() => _isLoading = true);
     try {
       final res = await ApiService.get(ApiConfig.categories);
-      if (res['success'] == true) {
+      final items = res['success'] == true ? (res['data'] as List? ?? []) : [];
+      if (!mounted) return;
+      final keepsSelection =
+          items.any((item) => item['id'] == _selectedCategoryId);
+      setState(() {
+        _categories = items;
+        _selectedCategoryId = keepsSelection
+            ? _selectedCategoryId
+            : (items.isNotEmpty ? items.first['id'] as int? : null);
+        _isLoading = false;
+      });
+      if (_selectedCategoryId != null) await _fetchProducts(reset: true);
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _loadMoreWhenNeeded() {
+    if (_productsController.hasClients &&
+        _productsController.position.extentAfter < 280) {
+      _fetchProducts();
+    }
+  }
+
+  Future<void> _fetchProducts({bool reset = false}) async {
+    if (_selectedCategoryId == null ||
+        _isLoadingMore ||
+        (!reset && (!_hasMoreProducts || _isLoadingProducts))) {
+      return;
+    }
+    final nextPage = reset ? 1 : _page + 1;
+    setState(() {
+      if (reset) {
+        _isLoadingProducts = true;
+        _hasMoreProducts = true;
+      } else {
+        _isLoadingMore = true;
+      }
+    });
+    try {
+      final res = await ApiService.get(ApiConfig.products, queryParameters: {
+        'categoryId': _selectedCategoryId.toString(),
+        'pageNumber': nextPage.toString(),
+        'pageSize': _pageSize.toString(),
+        if (_search.isNotEmpty) 'searchTerm': _search,
+      });
+      if (!mounted) return;
+      final data = res['data'] as Map<String, dynamic>? ?? {};
+      final items = data['items'] as List? ?? [];
+      setState(() {
+        _products = reset ? items : [..._products, ...items];
+        _page = nextPage;
+        _hasMoreProducts = items.length >= _pageSize;
+        _isLoadingProducts = false;
+        _isLoadingMore = false;
+      });
+    } catch (_) {
+      if (mounted) {
         setState(() {
-          _categories = res['data'] ?? [];
-          _isLoading = false;
+          _isLoadingProducts = false;
+          _isLoadingMore = false;
         });
       }
-    } catch (e) {
-      setState(() => _isLoading = false);
     }
   }
 
-  void _showCategoryProductsModal(Map<String, dynamic> category) {
-    List<dynamic> catProducts = [];
-    bool loadingProducts = true;
-    String search = '';
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            void loadCatProducts() async {
-              try {
-                final res = await ApiService.get(
-                  ApiConfig.products,
-                  queryParameters: {
-                    'categoryId': category['id'].toString(),
-                    'pageSize': '100',
-                  },
-                );
-                if (res['success'] == true) {
-                  setModalState(() {
-                    catProducts = res['data']['items'] ?? [];
-                    loadingProducts = false;
-                  });
-                }
-              } catch (_) {
-                setModalState(() => loadingProducts = false);
-              }
-            }
-
-            if (loadingProducts) {
-              loadCatProducts();
-            }
-
-            final filtered = catProducts.where((p) {
-              final name = (p['name'] as String).toLowerCase();
-              return name.contains(search.toLowerCase());
-            }).toList();
-
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.75,
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-                top: 20,
-                left: 20,
-                right: 20,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: const Color(0xFFEEF0FF),
-                        backgroundImage: category['imageUrl'] != null &&
-                                (category['imageUrl'] as String).isNotEmpty
-                            ? NetworkImage(category['imageUrl'])
-                            : null,
-                        child: category['imageUrl'] == null ||
-                                (category['imageUrl'] as String).isEmpty
-                            ? const Icon(Icons.category,
-                                color: Color(0xFF365FF4), size: 20)
-                            : null,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              category['name'] ?? 'Category Products',
-                              style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF172033)),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              '${catProducts.length} items in this category',
-                              style: const TextStyle(
-                                  color: Color(0xFF6C7486), fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Color(0xFF6C7486)),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    style: const TextStyle(color: Color(0xFF172033)),
-                    onChanged: (val) => setModalState(() => search = val),
-                    decoration: const InputDecoration(
-                      hintText: 'Search products in category...',
-                      prefixIcon: Icon(Icons.search, color: Color(0xFF365FF4)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: loadingProducts
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                                color: Color(0xFF365FF4)))
-                        : filtered.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(Icons.inventory_2_outlined,
-                                        size: 48, color: Color(0xFFA1A8B7)),
-                                    SizedBox(height: 12),
-                                    Text('No products in this category yet',
-                                        style: TextStyle(
-                                            color: Color(0xFF6C7486),
-                                            fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: filtered.length,
-                                itemBuilder: (context, index) {
-                                  final p = filtered[index];
-                                  final img = p['imageUrl'] as String?;
-                                  final stock = p['stockQuantity'] as int;
-
-                                  return Card(
-                                    margin: const EdgeInsets.only(bottom: 10),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12)),
-                                    elevation: 0,
-                                    color: const Color(0xFFF6F7FB),
-                                    child: ListTile(
-                                      leading: Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          border: Border.all(
-                                              color: const Color(0xFFE6E8EF)),
-                                          image: img != null && img.isNotEmpty
-                                              ? DecorationImage(
-                                                  image: NetworkImage(img),
-                                                  fit: BoxFit.cover)
-                                              : null,
-                                        ),
-                                        child: img == null || img.isEmpty
-                                            ? const Icon(Icons.inventory_2,
-                                                color: Color(0xFF365FF4),
-                                                size: 20)
-                                            : null,
-                                      ),
-                                      title: Text(p['name'] ?? '',
-                                          style: const TextStyle(
-                                              color: Color(0xFF172033),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14)),
-                                      subtitle: Text('Stock: $stock',
-                                          style: TextStyle(
-                                              color: stock > 0
-                                                  ? const Color(0xFF6C7486)
-                                                  : const Color(0xFFE75C5C),
-                                              fontSize: 12)),
-                                      trailing: Text('₹${p['sellingPrice']}',
-                                          style: const TextStyle(
-                                              color: Color(0xFF12A594),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 15)),
-                                    ),
-                                  );
-                                },
-                              ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+  void _selectCategory(int id) {
+    if (_selectedCategoryId == id) return;
+    setState(() {
+      _selectedCategoryId = id;
+      _search = '';
+    });
+    _fetchProducts(reset: true);
   }
 
-  void _showCategoryDialog({Map<String, dynamic>? category}) {
-    final nameController = TextEditingController(text: category?['name'] ?? '');
-    String currentImageUrl = category?['imageUrl'] ?? '';
-    bool isUploading = false;
-    File? pickedImageFile;
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            Future<void> pickImage(ImageSource source) async {
-              try {
-                final picker = ImagePicker();
-                final XFile? image =
-                    await picker.pickImage(source: source, imageQuality: 80);
-                if (image != null) {
-                  setModalState(() {
-                    pickedImageFile = File(image.path);
-                    isUploading = true;
-                  });
-
-                  final uploadedUrl = await ApiService.uploadImage(image.path);
-                  if (uploadedUrl != null) {
-                    setModalState(() {
-                      currentImageUrl = uploadedUrl;
-                      isUploading = false;
-                    });
-                  }
-                }
-              } catch (e) {
-                setModalState(() => isUploading = false);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                            'Upload failed: ${e.toString().replaceAll("Exception: ", "")}')),
-                  );
-                }
-              }
-            }
-
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              title: Text(
-                category == null ? 'Add Category' : 'Edit Category',
-                style: const TextStyle(
-                    color: Color(0xFF172033), fontWeight: FontWeight.bold),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (_) => Container(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ListTile(
-                                  leading: const Icon(Icons.photo_library,
-                                      color: Color(0xFF365FF4)),
-                                  title: const Text('Choose from Gallery'),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    pickImage(ImageSource.gallery);
-                                  },
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.camera_alt,
-                                      color: Color(0xFF365FF4)),
-                                  title: const Text('Take a Photo'),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    pickImage(ImageSource.camera);
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF2F3F8),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFD2D6E0)),
-                          image: pickedImageFile != null
-                              ? DecorationImage(
-                                  image: FileImage(pickedImageFile!),
-                                  fit: BoxFit.cover)
-                              : (currentImageUrl.isNotEmpty
-                                  ? DecorationImage(
-                                      image: NetworkImage(currentImageUrl),
-                                      fit: BoxFit.cover)
-                                  : null),
-                        ),
-                        child: isUploading
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                    color: Color(0xFF365FF4)))
-                            : (pickedImageFile == null &&
-                                    currentImageUrl.isEmpty
-                                ? Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
-                                      Icon(Icons.add_a_photo,
-                                          color: Color(0xFF365FF4), size: 28),
-                                      SizedBox(height: 4),
-                                      Text('Pick Image',
-                                          style: TextStyle(
-                                              color: Color(0xFF6C7486),
-                                              fontSize: 11)),
-                                    ],
-                                  )
-                                : null),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: nameController,
-                      style: const TextStyle(color: Color(0xFF172033)),
-                      decoration: const InputDecoration(
-                        labelText: 'Category Name',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel',
-                      style: TextStyle(color: Color(0xFF6C7486))),
-                ),
-                ElevatedButton(
-                  onPressed: isUploading
-                      ? null
-                      : () async {
-                          final name = nameController.text.trim();
-                          if (name.isEmpty) return;
-
-                          Navigator.pop(ctx);
-                          if (category == null) {
-                            await ApiService.post(ApiConfig.categories, {
-                              'name': name,
-                              'imageUrl': currentImageUrl,
-                            });
-                          } else {
-                            await ApiService.put(
-                                '${ApiConfig.categories}/${category['id']}', {
-                              'name': name,
-                              'imageUrl': currentImageUrl,
-                            });
-                          }
-                          _fetchCategories();
-                        },
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF365FF4),
-                      foregroundColor: Colors.white),
-                  child: const Text('Save'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+  void _setSearch(String value) {
+    _search = value.trim();
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 320), () {
+      _fetchProducts(reset: true);
+    });
   }
 
-  Future<void> _deleteCategory(int id) async {
-    try {
-      await ApiService.delete('${ApiConfig.categories}/$id');
-      _fetchCategories();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-        );
-      }
-    }
-  }
-
-  Future<void> _confirmDeleteCategory(Map<String, dynamic> category) async {
+  Future<void> _deleteCategory(Map<String, dynamic> category) async {
     final name = (category['name'] ?? 'this category').toString();
-    final shouldDelete = await showDialog<bool>(
+    final remove = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete category'),
-        content: Text(
-            'Delete "$name"? Products already in this category will not be deleted.'),
+        title: const Text('Delete category?'),
+        content: Text('Delete "$name"? This cannot be undone.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Cancel')),
           FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFE75C5C)),
+              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
               onPressed: () => Navigator.pop(dialogContext, true),
               child: const Text('Delete')),
         ],
       ),
     );
-    if (shouldDelete == true) {
-      await _deleteCategory(category['id'] as int);
+    if (remove != true) return;
+    try {
+      await ApiService.delete('${ApiConfig.categories}/${category['id']}');
+      await _fetchCategories();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', ''))));
+      }
     }
+  }
+
+  void _showCategoryDialog({Map<String, dynamic>? category}) {
+    final nameController = TextEditingController(text: category?['name'] ?? '');
+    String imageUrl = category?['imageUrl'] ?? '';
+    File? localImage;
+    bool uploading = false;
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          Future<void> pick(ImageSource source) async {
+            try {
+              final image = await ImagePicker()
+                  .pickImage(source: source, imageQuality: 80);
+              if (image == null) return;
+              setDialogState(() {
+                localImage = File(image.path);
+                uploading = true;
+              });
+              final uploaded = await ApiService.uploadImage(image.path);
+              if (uploaded != null) {
+                setDialogState(() {
+                  imageUrl = uploaded;
+                  uploading = false;
+                });
+              }
+            } catch (e) {
+              setDialogState(() => uploading = false);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(
+                        'Upload failed: ${e.toString().replaceAll('Exception: ', '')}')));
+              }
+            }
+          }
+
+          final scheme = Theme.of(context).colorScheme;
+          return AlertDialog(
+            title: Text(category == null ? 'Add category' : 'Edit category'),
+            content: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                GestureDetector(
+                  onTap: () => showModalBottomSheet(
+                    context: context,
+                    builder: (_) => SafeArea(
+                      child: Wrap(children: [
+                        ListTile(
+                            leading: const Icon(Icons.photo_library_outlined),
+                            title: const Text('Choose from gallery'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              pick(ImageSource.gallery);
+                            }),
+                        ListTile(
+                            leading: const Icon(Icons.camera_alt_outlined),
+                            title: const Text('Take a photo'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              pick(ImageSource.camera);
+                            }),
+                      ]),
+                    ),
+                  ),
+                  child: Container(
+                    width: 112,
+                    height: 86,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                        color: scheme.primary.withValues(alpha: .08),
+                        border: Border.all(color: scheme.outlineVariant),
+                        borderRadius: BorderRadius.circular(14)),
+                    child: uploading
+                        ? const Center(child: CircularProgressIndicator())
+                        : localImage != null
+                            ? Image.file(localImage!, fit: BoxFit.contain)
+                            : imageUrl.isNotEmpty
+                                ? Image.network(imageUrl,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, __, ___) => Icon(
+                                        Icons.add_photo_alternate_outlined,
+                                        color: scheme.primary))
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.add_photo_alternate_outlined,
+                                          color: scheme.primary),
+                                      const SizedBox(height: 4),
+                                      const Text('Add image',
+                                          style: TextStyle(fontSize: 11))
+                                    ],
+                                  ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                    controller: nameController,
+                    autofocus: true,
+                    decoration:
+                        const InputDecoration(labelText: 'Category name')),
+              ]),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel')),
+              FilledButton(
+                  onPressed: uploading
+                      ? null
+                      : () async {
+                          final name = nameController.text.trim();
+                          if (name.isEmpty) return;
+                          Navigator.pop(dialogContext);
+                          final body = {'name': name, 'imageUrl': imageUrl};
+                          if (category == null) {
+                            await ApiService.post(ApiConfig.categories, body);
+                          } else {
+                            await ApiService.put(
+                                '${ApiConfig.categories}/${category['id']}',
+                                body);
+                          }
+                          if (mounted) _fetchCategories();
+                        },
+                  child: const Text('Save')),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-          child: CircularProgressIndicator(color: Color(0xFF365FF4)));
-    }
-
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    final narrow = MediaQuery.sizeOf(context).width < 640;
     return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Product Categories',
-                  style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF172033),
-                      letterSpacing: -0.5),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _showCategoryDialog(),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add Category'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF365FF4),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
+      padding: EdgeInsets.all(narrow ? 16 : 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
           Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text('Categories',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800, letterSpacing: -1)),
+                const SizedBox(height: 3),
+                Text('Select a category to browse and manage its products.',
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: .65),
+                        fontSize: 12))
+              ])),
+          FilledButton.icon(
+              onPressed: () => _showCategoryDialog(),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(narrow ? 'Add' : 'Add category'))
+        ]),
+        const SizedBox(height: 18),
+        Expanded(
             child: _categories.isEmpty
-                ? const Center(
-                    child: Text('No categories added yet.',
-                        style: TextStyle(color: Color(0xFF6C7486))))
-                : GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 220,
-                      mainAxisExtent: 225,
-                      crossAxisSpacing: 14,
-                      mainAxisSpacing: 14,
-                    ),
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) {
-                      final cat = _categories[index];
-                      final imageUrl = cat['imageUrl'] as String?;
+                ? _emptyCategories(context)
+                : Row(children: [
+                    SizedBox(width: narrow ? 112 : 230, child: _categoryRail()),
+                    const SizedBox(width: 12),
+                    Expanded(child: _productsPane())
+                  ])),
+      ]),
+    );
+  }
 
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE6E8EF)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF172033).withOpacity(0.04),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(16),
-                          child: InkWell(
-                            onTap: () => _showCategoryProductsModal(cat),
-                            borderRadius: BorderRadius.circular(16),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFEEF0FF),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color: const Color(0xFFE6EDFF)),
-                                          image: imageUrl != null &&
-                                                  imageUrl.isNotEmpty
-                                              ? DecorationImage(
-                                                  image: NetworkImage(imageUrl),
-                                                  fit: BoxFit.cover)
-                                              : null,
-                                        ),
-                                        child: imageUrl == null ||
-                                                imageUrl.isEmpty
-                                            ? const Icon(Icons.category_rounded,
-                                                color: Color(0xFF365FF4),
-                                                size: 22)
-                                            : null,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Spacer(),
-                                      PopupMenuButton<String>(
-                                        tooltip: 'Category actions',
-                                        icon: const Icon(Icons.more_horiz,
-                                            color: Color(0xFF6C7486)),
-                                        onSelected: (action) {
-                                          if (action == 'edit') {
-                                            _showCategoryDialog(category: cat);
-                                          } else {
-                                            _confirmDeleteCategory(cat);
-                                          }
-                                        },
-                                        itemBuilder: (_) => const [
-                                          PopupMenuItem(
-                                            value: 'edit',
-                                            child: ListTile(
-                                              leading:
-                                                  Icon(Icons.edit_outlined),
-                                              title: Text('Edit category'),
-                                              contentPadding: EdgeInsets.zero,
-                                            ),
-                                          ),
-                                          PopupMenuItem(
-                                            value: 'delete',
-                                            child: ListTile(
-                                              leading: Icon(
-                                                  Icons.delete_outline_rounded,
-                                                  color: Color(0xFFE75C5C)),
-                                              title: Text('Delete category',
-                                                  style: TextStyle(
-                                                      color:
-                                                          Color(0xFFE75C5C))),
-                                              contentPadding: EdgeInsets.zero,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    cat['name'] ?? '',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Color(0xFF172033),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: const [
-                                      Text(
-                                        'View products',
-                                        style: TextStyle(
-                                          color: Color(0xFF365FF4),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      SizedBox(width: 4),
-                                      Icon(Icons.arrow_forward_rounded,
-                                          size: 12, color: Color(0xFF365FF4)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
+  Widget _emptyCategories(BuildContext context) => Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.account_tree_outlined,
+              size: 42, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(height: 12),
+          const Text('Create your first category'),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+              onPressed: () => _showCategoryDialog(),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add category')),
+        ]),
+      );
+
+  Widget _categoryRail() {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+          color: scheme.surface,
+          border: Border.all(color: scheme.outlineVariant),
+          borderRadius: BorderRadius.circular(18)),
+      child: ListView.separated(
+        padding: const EdgeInsets.all(7),
+        itemCount: _categories.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 4),
+        itemBuilder: (context, index) {
+          final category = Map<String, dynamic>.from(_categories[index] as Map);
+          final selected = category['id'] == _selectedCategoryId;
+          return Material(
+            color: selected
+                ? scheme.primary.withValues(alpha: .13)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => _selectCategory(category['id'] as int),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 5, 10),
+                child: Row(children: [
+                  Expanded(
+                      child: Text(category['name'] ?? 'Untitled',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color:
+                                  selected ? scheme.primary : scheme.onSurface,
+                              fontSize: 12,
+                              fontWeight: selected
+                                  ? FontWeight.w800
+                                  : FontWeight.w600))),
+                  PopupMenuButton<String>(
+                      padding: EdgeInsets.zero,
+                      iconSize: 18,
+                      tooltip: 'Category actions',
+                      onSelected: (action) => action == 'edit'
+                          ? _showCategoryDialog(category: category)
+                          : _deleteCategory(category),
+                      itemBuilder: (_) => const [
+                            PopupMenuItem(value: 'edit', child: Text('Edit')),
+                            PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Delete',
+                                    style: TextStyle(color: Colors.redAccent))),
+                          ])
+                ]),
+              ),
+            ),
+          );
+        },
       ),
+    );
+  }
+
+  Widget _productsPane() {
+    final selected = _categories.firstWhere(
+        (category) => category['id'] == _selectedCategoryId,
+        orElse: () => null);
+    if (selected == null) return const SizedBox();
+    final category = Map<String, dynamic>.from(selected as Map);
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+          color: scheme.surface,
+          border: Border.all(color: scheme.outlineVariant),
+          borderRadius: BorderRadius.circular(18)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(
+              child: Text(category['name'] ?? 'Category',
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w800))),
+          IconButton(
+              tooltip: 'Edit category',
+              onPressed: () => _showCategoryDialog(category: category),
+              icon: const Icon(Icons.edit_outlined, size: 19))
+        ]),
+        const SizedBox(height: 8),
+        TextField(
+            onChanged: _setSearch,
+            decoration: const InputDecoration(
+                isDense: true,
+                hintText: 'Search in this category',
+                prefixIcon: Icon(Icons.search_rounded))),
+        const SizedBox(height: 12),
+        Expanded(
+            child: _isLoadingProducts
+                ? const Center(child: CircularProgressIndicator())
+                : _products.isEmpty
+                    ? Center(
+                        child: Text('No products in this category yet.',
+                            style: TextStyle(
+                                color:
+                                    scheme.onSurface.withValues(alpha: .62))))
+                    : ListView.separated(
+                        controller: _productsController,
+                        itemCount: _products.length + (_isLoadingMore ? 1 : 0),
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) {
+                          if (index == _products.length) {
+                            return const Padding(
+                                padding: EdgeInsets.all(12),
+                                child:
+                                    Center(child: CircularProgressIndicator()));
+                          }
+                          final product = _products[index];
+                          final image = product['imageUrl'] as String? ?? '';
+                          final stock = product['stockQuantity'] as int? ?? 0;
+                          return Container(
+                            padding: const EdgeInsets.all(9),
+                            decoration: BoxDecoration(
+                                color: scheme.primary.withValues(alpha: .045),
+                                borderRadius: BorderRadius.circular(12)),
+                            child: Row(children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                clipBehavior: Clip.antiAlias,
+                                decoration: BoxDecoration(
+                                    color: scheme.primary.withValues(alpha: .1),
+                                    borderRadius: BorderRadius.circular(9)),
+                                child: image.isEmpty
+                                    ? Icon(Icons.inventory_2_outlined,
+                                        color: scheme.primary)
+                                    : Image.network(image,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Icon(
+                                            Icons.inventory_2_outlined,
+                                            color: scheme.primary)),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                  child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                    Text(product['name'] ?? '',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w800)),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                        stock > 0
+                                            ? '$stock in stock'
+                                            : 'Out of stock',
+                                        style: TextStyle(
+                                            color: stock > 0
+                                                ? scheme.onSurface
+                                                    .withValues(alpha: .6)
+                                                : scheme.error,
+                                            fontSize: 11))
+                                  ])),
+                              const SizedBox(width: 6),
+                              Text('₹${product['sellingPrice']}',
+                                  style: TextStyle(
+                                      color: scheme.secondary,
+                                      fontWeight: FontWeight.w800))
+                            ]),
+                          );
+                        }))
+      ]),
     );
   }
 }

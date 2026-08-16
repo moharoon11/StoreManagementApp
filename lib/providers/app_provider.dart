@@ -3,6 +3,8 @@ import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../config/api_config.dart';
 
+enum AppThemeOption { light, nightOwl, evergreen }
+
 class AppProvider extends ChangeNotifier {
   bool _isBootstrapping = true;
   bool get isBootstrapping => _isBootstrapping;
@@ -21,6 +23,9 @@ class AppProvider extends ChangeNotifier {
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
+
+  AppThemeOption _themeOption = AppThemeOption.light;
+  AppThemeOption get themeOption => _themeOption;
 
   // Cart State for Billing / POS
   final Map<int, Map<String, dynamic>> _cartItems =
@@ -53,6 +58,11 @@ class AppProvider extends ChangeNotifier {
     final minimumSplash =
         Future<void>.delayed(const Duration(milliseconds: 1300));
     try {
+      final savedTheme = await StorageService.getTheme();
+      _themeOption = AppThemeOption.values.firstWhere(
+        (option) => option.name == savedTheme,
+        orElse: () => AppThemeOption.light,
+      );
       final token = await StorageService.getToken();
       if (token != null && token.isNotEmpty) {
         _isAuthenticated = true;
@@ -72,6 +82,13 @@ class AppProvider extends ChangeNotifier {
   void setNavIndex(int index) {
     _selectedNavIndex = index;
     notifyListeners();
+  }
+
+  Future<void> setThemeOption(AppThemeOption option) async {
+    if (_themeOption == option) return;
+    _themeOption = option;
+    notifyListeners();
+    await StorageService.saveTheme(option.name);
   }
 
   Future<bool> login(String username, String password) async {

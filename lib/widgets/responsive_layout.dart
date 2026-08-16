@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
-import '../theme/app_theme.dart';
 import '../views/billing/pos_checkout_view.dart';
 import '../views/categories/categories_view.dart';
 import '../views/dashboard/dashboard_view.dart';
@@ -73,7 +72,8 @@ class _ResponsiveLayoutState extends State<ResponsiveLayout> {
         child: NavigationBar(
           height: width >= 760 ? 76 : 70,
           selectedIndex: _bottomIndex(provider.selectedNavIndex),
-          indicatorColor: AppColors.brandSoft,
+          indicatorColor:
+              Theme.of(context).colorScheme.primary.withValues(alpha: .14),
           onDestinationSelected: (index) {
             if (index == 4) {
               _showMore(context);
@@ -114,7 +114,7 @@ class _ResponsiveLayoutState extends State<ResponsiveLayout> {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (sheetContext) => SafeArea(
@@ -124,14 +124,19 @@ class _ResponsiveLayoutState extends State<ResponsiveLayout> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('More tools',
+                Text('More tools',
                     style: TextStyle(
-                        color: AppColors.ink,
+                        color: Theme.of(sheetContext).colorScheme.onSurface,
                         fontWeight: FontWeight.w800,
                         fontSize: 20)),
                 const SizedBox(height: 5),
-                const Text('Everything else for your business.',
-                    style: TextStyle(color: AppColors.muted, fontSize: 12)),
+                Text('Everything else for your business.',
+                    style: TextStyle(
+                        color: Theme.of(sheetContext)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: .65),
+                        fontSize: 12)),
                 const SizedBox(height: 16),
                 GridView.count(
                     shrinkWrap: true,
@@ -148,6 +153,24 @@ class _ResponsiveLayoutState extends State<ResponsiveLayout> {
                               Navigator.pop(sheetContext);
                             })
                     ]),
+                const SizedBox(height: 18),
+                Text('Appearance',
+                    style: TextStyle(
+                        color: Theme.of(sheetContext).colorScheme.onSurface,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14)),
+                const SizedBox(height: 10),
+                Row(children: [
+                  for (final option in AppThemeOption.values) ...[
+                    Expanded(
+                        child: _ThemeChoice(
+                            option: option,
+                            selected: provider.themeOption == option,
+                            onTap: () => provider.setThemeOption(option))),
+                    if (option != AppThemeOption.values.last)
+                      const SizedBox(width: 8),
+                  ]
+                ]),
                 const SizedBox(height: 10),
                 TextButton.icon(
                     onPressed: () {
@@ -176,21 +199,26 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         height: 76,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: const BoxDecoration(
-            color: Color(0xFFFCFCFE),
-            border: Border(bottom: BorderSide(color: AppColors.line))),
+        decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+                bottom: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant))),
         child: Row(children: [
           if (title != 'Home')
             IconButton(
                 onPressed: () => context.read<AppProvider>().setNavIndex(0),
                 tooltip: 'Back to Home',
-                icon: const Icon(Icons.arrow_back_rounded,
-                    color: AppColors.muted)),
+                icon: Icon(Icons.arrow_back_rounded,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: .65))),
           Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                  color: AppColors.brand,
+                  color: Theme.of(context).colorScheme.primary,
                   borderRadius: BorderRadius.circular(12)),
               child: const Icon(Icons.auto_graph_rounded,
                   color: Colors.white, size: 20)),
@@ -201,19 +229,26 @@ class _TopBar extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                 Text(title,
-                    style: const TextStyle(
-                        color: AppColors.ink,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w800,
                         fontSize: 17)),
                 Text(subtitle,
-                    style:
-                        const TextStyle(color: AppColors.muted, fontSize: 10))
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: .62),
+                        fontSize: 10))
               ])),
           IconButton(
               onPressed: onBusiness,
               tooltip: 'Business profile',
-              icon: const Icon(Icons.storefront_outlined,
-                  color: AppColors.muted)),
+              icon: Icon(Icons.storefront_outlined,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: .65))),
         ]),
       );
 }
@@ -223,8 +258,10 @@ class _MoreTool extends StatelessWidget {
   final _Destination item;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Material(
-      color: AppColors.canvas,
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.primary.withValues(alpha: .07),
       borderRadius: BorderRadius.circular(15),
       child: InkWell(
           onTap: onTap,
@@ -232,15 +269,66 @@ class _MoreTool extends StatelessWidget {
           child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(children: [
-                Icon(item.selectedIcon, color: AppColors.brand, size: 19),
+                Icon(item.selectedIcon, color: scheme.primary, size: 19),
                 const SizedBox(width: 9),
                 Expanded(
                     child: Text(item.title,
-                        style: const TextStyle(
-                            color: AppColors.ink,
+                        style: TextStyle(
+                            color: scheme.onSurface,
                             fontWeight: FontWeight.w700,
                             fontSize: 12)))
-              ]))));
+              ]))),
+    );
+  }
+}
+
+class _ThemeChoice extends StatelessWidget {
+  const _ThemeChoice(
+      {required this.option, required this.selected, required this.onTap});
+  final AppThemeOption option;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final (label, swatch) = switch (option) {
+      AppThemeOption.light => ('Light', const Color(0xFF365FF4)),
+      AppThemeOption.nightOwl => ('Night Owl', const Color(0xFF82AAFF)),
+      AppThemeOption.evergreen => ('Evergreen', const Color(0xFF256B5C)),
+    };
+    return Material(
+      color: selected ? scheme.primary.withValues(alpha: .12) : scheme.surface,
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(13),
+        child: Container(
+          height: 66,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+              border: Border.all(
+                  color: selected ? scheme.primary : scheme.outlineVariant,
+                  width: selected ? 1.5 : 1),
+              borderRadius: BorderRadius.circular(13)),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Container(
+                width: 19,
+                height: 19,
+                decoration:
+                    BoxDecoration(color: swatch, shape: BoxShape.circle)),
+            const SizedBox(height: 5),
+            Text(label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: scheme.onSurface,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700))
+          ]),
+        ),
+      ),
+    );
+  }
 }
 
 class _Destination {
