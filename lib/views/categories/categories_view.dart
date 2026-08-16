@@ -25,6 +25,7 @@ class _CategoriesViewState extends State<CategoriesView> {
   int _page = 1;
   int? _selectedCategoryId;
   String _search = '';
+  bool _inStockOnly = false;
   List<dynamic> _categories = [];
   List<dynamic> _products = [];
 
@@ -119,6 +120,7 @@ class _CategoriesViewState extends State<CategoriesView> {
     setState(() {
       _selectedCategoryId = id;
       _search = '';
+      _inStockOnly = false;
     });
     _fetchProducts(reset: true);
   }
@@ -293,20 +295,21 @@ class _CategoriesViewState extends State<CategoriesView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    final mobile = MediaQuery.sizeOf(context).width < 700;
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 520;
     return Padding(
-      padding: EdgeInsets.all(mobile ? 12 : 20),
+      padding: EdgeInsets.all(compact ? 10 : 18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                Text('Categories',
+                Text('Browse categories',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800, letterSpacing: -1)),
+                        fontWeight: FontWeight.w800, letterSpacing: -.7)),
                 const SizedBox(height: 3),
-                Text('Select a category to browse and manage its products.',
+                Text('Choose a category to view its products.',
                     style: TextStyle(
                         color: Theme.of(context)
                             .colorScheme
@@ -320,23 +323,19 @@ class _CategoriesViewState extends State<CategoriesView> {
                   padding: const EdgeInsets.symmetric(horizontal: 12)),
               onPressed: () => _showCategoryDialog(),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: Text(mobile ? 'Add' : 'Add category'))
+              label: Text(compact ? 'Add' : 'Add category'))
         ]),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
         Expanded(
             child: _categories.isEmpty
                 ? _emptyCategories(context)
-                : mobile
-                    ? Column(children: [
-                        _mobileCategorySelector(),
-                        const SizedBox(height: 12),
-                        Expanded(child: _productsPane())
-                      ])
-                    : Row(children: [
-                        SizedBox(width: 184, child: _categoryRail()),
-                        const SizedBox(width: 12),
-                        Expanded(child: _productsPane())
-                      ])),
+                : Row(children: [
+                    SizedBox(
+                        width: compact ? 88 : (width < 760 ? 108 : 136),
+                        child: _categoryRail()),
+                    const SizedBox(width: 10),
+                    Expanded(child: _productsPane())
+                  ])),
       ]),
     );
   }
@@ -359,126 +358,66 @@ class _CategoriesViewState extends State<CategoriesView> {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-          color: scheme.surface,
-          border: Border.all(color: scheme.outlineVariant),
-          borderRadius: BorderRadius.circular(14)),
+          color: scheme.surface.withValues(alpha: .92),
+          border: Border(right: BorderSide(color: scheme.outlineVariant))),
       child: ListView.separated(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.fromLTRB(5, 8, 5, 12),
         itemCount: _categories.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 4),
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (context, index) {
           final category = Map<String, dynamic>.from(_categories[index] as Map);
           final selected = category['id'] == _selectedCategoryId;
           final imageUrl = category['imageUrl'] as String? ?? '';
           return Material(
-            color: selected
-                ? scheme.primary.withValues(alpha: .13)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               onTap: () => _selectCategory(category['id'] as int),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 3, 8),
-                child: Row(children: [
+              child: Ink(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                decoration: BoxDecoration(
+                    color: selected
+                        ? scheme.primary.withValues(alpha: .12)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12)),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Container(
-                    width: 30,
-                    height: 30,
+                    width: 43,
+                    height: 43,
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
-                        color: scheme.primary.withValues(alpha: .08),
-                        borderRadius: BorderRadius.circular(8)),
+                        color: selected
+                            ? scheme.primary.withValues(alpha: .14)
+                            : scheme.surfaceContainerHighest
+                                .withValues(alpha: .55),
+                        borderRadius: BorderRadius.circular(10)),
                     child: imageUrl.isEmpty
                         ? Icon(Icons.category_outlined,
-                            size: 16,
+                            size: 20,
                             color: selected
                                 ? scheme.primary
                                 : scheme.onSurface.withValues(alpha: .55))
                         : Image.network(imageUrl,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                             errorBuilder: (_, __, ___) => Icon(
                                 Icons.category_outlined,
-                                size: 16,
+                                size: 20,
                                 color: scheme.primary)),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: Text(category['name'] ?? 'Untitled',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color:
-                                  selected ? scheme.primary : scheme.onSurface,
-                              fontSize: 11,
-                              fontWeight: selected
-                                  ? FontWeight.w800
-                                  : FontWeight.w600))),
-                  PopupMenuButton<String>(
-                      padding: EdgeInsets.zero,
-                      iconSize: 18,
-                      tooltip: 'Category actions',
-                      onSelected: (action) => action == 'edit'
-                          ? _showCategoryDialog(category: category)
-                          : _deleteCategory(category),
-                      itemBuilder: (_) => const [
-                            PopupMenuItem(value: 'edit', child: Text('Edit')),
-                            PopupMenuItem(
-                                value: 'delete',
-                                child: Text('Delete',
-                                    style: TextStyle(color: Colors.redAccent))),
-                          ])
+                  const SizedBox(height: 6),
+                  Text(category['name'] ?? 'Untitled',
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: selected ? scheme.primary : scheme.onSurface,
+                          fontSize: 10,
+                          height: 1.15,
+                          fontWeight:
+                              selected ? FontWeight.w800 : FontWeight.w600)),
                 ]),
               ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _mobileCategorySelector() {
-    final scheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      height: 38,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final category = _categories[index] as Map;
-          final id = category['id'] as int;
-          final selected = id == _selectedCategoryId;
-          final name = (category['name'] ?? 'Untitled').toString();
-          final imageUrl = category['imageUrl'] as String? ?? '';
-          return Tooltip(
-            message: name,
-            child: ChoiceChip(
-              selected: selected,
-              showCheckmark: false,
-              label: Row(mainAxisSize: MainAxisSize.min, children: [
-                if (imageUrl.isNotEmpty) ...[
-                  ClipRRect(
-                      borderRadius: BorderRadius.circular(5),
-                      child: Image.network(imageUrl,
-                          width: 18,
-                          height: 18,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const SizedBox())),
-                  const SizedBox(width: 5),
-                ],
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 120),
-                  child: Text(name, overflow: TextOverflow.ellipsis),
-                ),
-              ]),
-              labelStyle: TextStyle(
-                  color: selected ? scheme.primary : scheme.onSurface,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600),
-              backgroundColor: scheme.surface,
-              selectedColor: scheme.primary.withValues(alpha: .13),
-              side: BorderSide(
-                  color: selected ? scheme.primary : scheme.outlineVariant),
-              onSelected: (_) => _selectCategory(id),
             ),
           );
         },
@@ -493,10 +432,16 @@ class _CategoriesViewState extends State<CategoriesView> {
     if (selected == null) return const SizedBox();
     final category = Map<String, dynamic>.from(selected as Map);
     final scheme = Theme.of(context).colorScheme;
+    final visibleProducts = _inStockOnly
+        ? _products
+            .where((product) =>
+                _stockFor(Map<String, dynamic>.from(product as Map)) > 0)
+            .toList()
+        : _products;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
       decoration: BoxDecoration(
-          color: scheme.surface,
+          color: scheme.surface.withValues(alpha: .94),
           border: Border.all(color: scheme.outlineVariant),
           borderRadius: BorderRadius.circular(14)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -507,7 +452,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                   style: Theme.of(context)
                       .textTheme
                       .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w800))),
+                      ?.copyWith(fontSize: 18, fontWeight: FontWeight.w800))),
           PopupMenuButton<String>(
               tooltip: 'Category actions',
               onSelected: (action) => action == 'edit'
@@ -530,91 +475,226 @@ class _CategoriesViewState extends State<CategoriesView> {
                             contentPadding: EdgeInsets.zero)),
                   ])
         ]),
-        const SizedBox(height: 8),
-        TextField(
-            key: ValueKey('category-search-$_selectedCategoryId'),
-            onChanged: _setSearch,
-            decoration: const InputDecoration(
-                isDense: true,
-                hintText: 'Search in this category',
-                prefixIcon: Icon(Icons.search_rounded))),
-        const SizedBox(height: 12),
+        const SizedBox(height: 6),
+        LayoutBuilder(builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 390;
+          return Wrap(spacing: 7, runSpacing: 7, children: [
+            _filterButton(
+                icon: Icons.tune_rounded,
+                label: narrow ? null : 'Filters',
+                onTap: _showProductFilters),
+            _filterButton(
+                icon: Icons.search_rounded,
+                label: 'Search',
+                onTap: _showSearchSheet),
+            _filterButton(
+                icon: Icons.inventory_2_outlined,
+                label: _inStockOnly ? 'In stock' : 'All products',
+                selected: _inStockOnly,
+                onTap: () => setState(() => _inStockOnly = !_inStockOnly)),
+          ]);
+        }),
+        const SizedBox(height: 10),
         Expanded(
             child: _isLoadingProducts
                 ? const Center(child: CircularProgressIndicator())
-                : _products.isEmpty
+                : visibleProducts.isEmpty
                     ? Center(
-                        child: Text('No products in this category yet.',
+                        child: Text(
+                            _inStockOnly
+                                ? 'No products in stock.'
+                                : 'No products in this category yet.',
                             style: TextStyle(
                                 color:
                                     scheme.onSurface.withValues(alpha: .62))))
-                    : ListView.separated(
+                    : GridView.builder(
                         controller: _productsController,
-                        itemCount: _products.length + (_isLoadingMore ? 1 : 0),
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                                maxCrossAxisExtent: 180,
+                                mainAxisSpacing: 10,
+                                crossAxisSpacing: 10,
+                                childAspectRatio: .61),
+                        itemCount:
+                            visibleProducts.length + (_isLoadingMore ? 1 : 0),
                         itemBuilder: (context, index) {
-                          if (index == _products.length) {
+                          if (index == visibleProducts.length) {
                             return const Padding(
                                 padding: EdgeInsets.all(12),
                                 child:
                                     Center(child: CircularProgressIndicator()));
                           }
-                          final product = _products[index];
-                          final image = product['imageUrl'] as String? ?? '';
-                          final stock = product['stockQuantity'] as int? ?? 0;
-                          return Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                                color: scheme.primary.withValues(alpha: .045),
-                                borderRadius: BorderRadius.circular(10)),
-                            child: Row(children: [
-                              Container(
-                                width: 48,
-                                height: 48,
-                                clipBehavior: Clip.antiAlias,
-                                decoration: BoxDecoration(
-                                    color: scheme.primary.withValues(alpha: .1),
-                                    borderRadius: BorderRadius.circular(9)),
-                                child: image.isEmpty
-                                    ? Icon(Icons.inventory_2_outlined,
-                                        color: scheme.primary)
-                                    : Image.network(image,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Icon(
-                                            Icons.inventory_2_outlined,
-                                            color: scheme.primary)),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                  child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                    Text(product['name'] ?? '',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w800)),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                        stock > 0
-                                            ? '$stock in stock'
-                                            : 'Out of stock',
-                                        style: TextStyle(
-                                            color: stock > 0
-                                                ? scheme.onSurface
-                                                    .withValues(alpha: .6)
-                                                : scheme.error,
-                                            fontSize: 11))
-                                  ])),
-                              const SizedBox(width: 6),
-                              Text('₹${product['sellingPrice']}',
-                                  style: TextStyle(
-                                      color: scheme.secondary,
-                                      fontWeight: FontWeight.w800))
-                            ]),
-                          );
+                          return _productCard(Map<String, dynamic>.from(
+                              visibleProducts[index] as Map));
                         }))
+      ]),
+    );
+  }
+
+  int _stockFor(Map<String, dynamic> product) =>
+      (product['stockQuantity'] as num?)?.toInt() ?? 0;
+
+  Widget _filterButton({
+    required IconData icon,
+    String? label,
+    bool selected = false,
+    required VoidCallback onTap,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? scheme.primary.withValues(alpha: .12) : scheme.surface,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          height: 36,
+          padding: EdgeInsets.symmetric(horizontal: label == null ? 9 : 10),
+          decoration: BoxDecoration(
+              border: Border.all(
+                  color: selected ? scheme.primary : scheme.outlineVariant),
+              borderRadius: BorderRadius.circular(10)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 18, color: selected ? scheme.primary : null),
+            if (label != null) ...[
+              const SizedBox(width: 6),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: selected ? scheme.primary : scheme.onSurface,
+                      fontWeight: FontWeight.w700))
+            ]
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showProductFilters() => showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Product filters'),
+          content: StatefulBuilder(builder: (context, setDialogState) {
+            return SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('In-stock products only'),
+              value: _inStockOnly,
+              onChanged: (value) {
+                setState(() => _inStockOnly = value);
+                setDialogState(() {});
+              },
+            );
+          }),
+          actions: [
+            TextButton(
+                onPressed: () {
+                  setState(() => _inStockOnly = false);
+                  Navigator.pop(context);
+                },
+                child: const Text('Reset')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Done')),
+          ],
+        ),
+      );
+
+  Future<void> _showSearchSheet() async {
+    final controller = TextEditingController(text: _search);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            18, 18, 18, MediaQuery.viewInsetsOf(context).bottom + 18),
+        child: TextField(
+          controller: controller,
+          autofocus: true,
+          onChanged: _setSearch,
+          decoration: InputDecoration(
+              hintText: 'Search in this category',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: _search.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () {
+                        controller.clear();
+                        _setSearch('');
+                      })),
+        ),
+      ),
+    );
+    controller.dispose();
+  }
+
+  Widget _productCard(Map<String, dynamic> product) {
+    final scheme = Theme.of(context).colorScheme;
+    final image = product['imageUrl'] as String? ?? '';
+    final stock = _stockFor(product);
+    final price = product['sellingPrice'];
+    return Container(
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+          color: scheme.surface,
+          border: Border.all(color: scheme.outlineVariant),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: .025),
+                blurRadius: 8,
+                offset: const Offset(0, 3))
+          ]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+            child: Stack(children: [
+          Positioned.fill(
+              child: Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+                color: scheme.primary.withValues(alpha: .055),
+                borderRadius: BorderRadius.circular(9)),
+            child: image.isEmpty
+                ? Icon(Icons.inventory_2_outlined,
+                    size: 34, color: scheme.primary.withValues(alpha: .7))
+                : Image.network(image,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Icon(
+                        Icons.inventory_2_outlined,
+                        size: 34,
+                        color: scheme.primary.withValues(alpha: .7))),
+          )),
+          Positioned(
+              top: 5,
+              right: 5,
+              child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                      color: scheme.surface.withValues(alpha: .92),
+                      shape: BoxShape.circle),
+                  child: Icon(Icons.favorite_border_rounded,
+                      size: 15, color: scheme.primary)))
+        ])),
+        const SizedBox(height: 7),
+        Text(product['name']?.toString() ?? 'Untitled product',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                fontSize: 12, height: 1.2, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 5),
+        Row(children: [
+          Text('₹${price ?? '—'}',
+              style: TextStyle(
+                  fontSize: 14,
+                  color: scheme.secondary,
+                  fontWeight: FontWeight.w900)),
+          const Spacer(),
+          Text(stock > 0 ? '$stock left' : 'Out',
+              style: TextStyle(
+                  fontSize: 10,
+                  color: stock > 0 ? scheme.primary : scheme.error,
+                  fontWeight: FontWeight.w700))
+        ])
       ]),
     );
   }
