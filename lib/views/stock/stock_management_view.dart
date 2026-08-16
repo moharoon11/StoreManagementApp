@@ -160,7 +160,7 @@ class _StockManagementViewState extends State<StockManagementView> {
               const Expanded(
                 child: Text('Stock Movements',
                     style: TextStyle(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF172033),
                         letterSpacing: -0.5),

@@ -5,7 +5,7 @@ class WorkspacePage extends StatelessWidget {
   const WorkspacePage(
       {super.key,
       required this.child,
-      this.padding = const EdgeInsets.all(28)});
+      this.padding = const EdgeInsets.all(20)});
   final Widget child;
   final EdgeInsets padding;
 
@@ -17,7 +17,7 @@ class WorkspacePage extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: compact ? const EdgeInsets.all(16) : padding,
+          padding: compact ? const EdgeInsets.all(12) : padding,
           child: child,
         ),
       ),
@@ -51,7 +51,7 @@ class PageIntro extends StatelessWidget {
             Text(title,
                 style: const TextStyle(
                     color: AppColors.ink,
-                    fontSize: 27,
+                    fontSize: 23,
                     letterSpacing: -1.1,
                     fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
@@ -70,7 +70,7 @@ class SurfacePanel extends StatelessWidget {
   const SurfacePanel(
       {super.key,
       required this.child,
-      this.padding = const EdgeInsets.all(20),
+      this.padding = const EdgeInsets.all(16),
       this.color});
   final Widget child;
   final EdgeInsets padding;
@@ -80,7 +80,7 @@ class SurfacePanel extends StatelessWidget {
         padding: padding,
         decoration: BoxDecoration(
             color: color ?? Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
                 color: Theme.of(context).colorScheme.outlineVariant)),
         child: child,
@@ -119,7 +119,7 @@ class StatTile extends StatelessWidget {
           Text(value,
               style: const TextStyle(
                   color: AppColors.ink,
-                  fontSize: 24,
+                  fontSize: 20,
                   letterSpacing: -.8,
                   fontWeight: FontWeight.w800)),
           if (note != null) ...[

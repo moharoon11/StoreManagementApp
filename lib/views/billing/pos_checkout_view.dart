@@ -147,7 +147,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
               child: Text('Customer details',
                   style: TextStyle(
                       color: Color(0xFF172033),
-                      fontSize: 19,
+                      fontSize: 17,
                       fontWeight: FontWeight.w800)),
             ),
           ],
@@ -217,7 +217,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
                       Text('₹${provider.cartTotal.toStringAsFixed(2)}',
                           style: const TextStyle(
                               color: Color(0xFF12A594),
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.w800)),
                     ],
                   ),
@@ -304,7 +304,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
                       style: TextStyle(
                           color: Color(0xFF172033),
                           fontWeight: FontWeight.bold,
-                          fontSize: 18)),
+                          fontSize: 16)),
                 ],
               ),
             ),
@@ -326,7 +326,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
                     Text('₹${invoice['grandTotal']}',
                         style: const TextStyle(
                             color: Color(0xFF12A594),
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold)),
                   ],
                 ),
@@ -470,7 +470,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
                   end: Alignment.bottomCenter,
                   colors: [Color(0xFFF8FAFF), Color(0xFFF2F7FF)])),
           child: Padding(
-              padding: EdgeInsets.all(wide ? 28 : 16),
+              padding: EdgeInsets.all(wide ? 20 : 12),
               child: wide
                   ? Row(children: [
                       Expanded(flex: 3, child: products),
@@ -698,7 +698,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
       Row(children: [
         const Expanded(
             child: Text('Current sale',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
         IconButton(
             onPressed: provider.clearCart,
             icon: const Icon(Icons.delete_sweep_outlined,
@@ -737,12 +737,12 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
       const Divider(),
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         const Text('Total',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
         Text('₹${provider.cartTotal.toStringAsFixed(2)}',
             style: const TextStyle(
                 color: Color(0xFF12A594),
                 fontWeight: FontWeight.w800,
-                fontSize: 23))
+                fontSize: 20))
       ]),
       const SizedBox(height: 12),
       SizedBox(

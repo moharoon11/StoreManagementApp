@@ -68,6 +68,8 @@ abstract final class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       brightness: colorScheme.brightness,
       scaffoldBackgroundColor: canvas,
       colorScheme: colorScheme,
@@ -91,7 +93,8 @@ abstract final class AppTheme {
         filled: true,
         fillColor: colorScheme.surface,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        isDense: true,
         labelStyle:
             TextStyle(color: colorScheme.onSurface.withValues(alpha: .66)),
         hintStyle:
@@ -108,7 +111,7 @@ abstract final class AppTheme {
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
           textStyle:
@@ -119,7 +122,7 @@ abstract final class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: colorScheme.onSurface,
           side: BorderSide(color: colorScheme.outlineVariant),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
         ),

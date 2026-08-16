@@ -202,7 +202,7 @@ class _DashboardViewState extends State<DashboardView> {
           const Text('STORE MANAGEMENT',
               style: TextStyle(
                   color: Color(0xFF172033),
-                  fontSize: 25,
+                  fontSize: 22,
                   letterSpacing: -1,
                   fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
@@ -217,7 +217,7 @@ class _DashboardViewState extends State<DashboardView> {
 
   Widget _salesHero(dynamic sales, dynamic invoices, dynamic products) =>
       Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
               gradient: const LinearGradient(
                   begin: Alignment.topLeft,
@@ -248,7 +248,7 @@ class _DashboardViewState extends State<DashboardView> {
             Text('₹$sales',
                 style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 38,
+                    fontSize: 32,
                     letterSpacing: -1.5,
                     fontWeight: FontWeight.w800)),
             const SizedBox(height: 18),
@@ -283,7 +283,7 @@ class _DashboardViewState extends State<DashboardView> {
           Text(value,
               style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 21,
+                  fontSize: 18,
                   fontWeight: FontWeight.w800))
         ])
       ]));
@@ -306,8 +306,8 @@ class _DashboardViewState extends State<DashboardView> {
                   onTap: onTap,
                   borderRadius: BorderRadius.circular(19),
                   child: Ink(
-                      height: 110,
-                      padding: const EdgeInsets.all(18),
+                      height: 96,
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                           gradient: LinearGradient(colors: colors),
                           borderRadius: BorderRadius.circular(19),
@@ -332,7 +332,7 @@ class _DashboardViewState extends State<DashboardView> {
                               Text(title.toUpperCase(),
                                   style: const TextStyle(
                                       color: Colors.white,
-                                      fontSize: 18,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.w800)),
                               const SizedBox(height: 3),
                               Text(subtitle,
@@ -354,13 +354,13 @@ class _DashboardViewState extends State<DashboardView> {
           padding: EdgeInsets.zero,
           child: Column(children: [
             Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 12, 12),
+                padding: const EdgeInsets.fromLTRB(16, 13, 10, 10),
                 child: Row(children: [
                   const Expanded(
                       child: Text('RECENT BILLS',
                           style: TextStyle(
                               color: Color(0xFF172033),
-                              fontSize: 15,
+                              fontSize: 13,
                               fontWeight: FontWeight.w800))),
                   TextButton(
                       onPressed: () => provider.setNavIndex(4),

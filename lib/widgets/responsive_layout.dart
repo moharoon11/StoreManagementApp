@@ -70,7 +70,7 @@ class _ResponsiveLayoutState extends State<ResponsiveLayout> {
       bottomNavigationBar: SafeArea(
         top: false,
         child: NavigationBar(
-          height: width >= 760 ? 76 : 70,
+          height: width >= 760 ? 68 : 64,
           selectedIndex: _bottomIndex(provider.selectedNavIndex),
           indicatorColor:
               Theme.of(context).colorScheme.primary.withValues(alpha: .14),
@@ -128,7 +128,7 @@ class _ResponsiveLayoutState extends State<ResponsiveLayout> {
                     style: TextStyle(
                         color: Theme.of(sheetContext).colorScheme.onSurface,
                         fontWeight: FontWeight.w800,
-                        fontSize: 20)),
+                        fontSize: 17)),
                 const SizedBox(height: 5),
                 Text('Everything else for your business.',
                     style: TextStyle(
@@ -197,8 +197,8 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onBusiness;
   @override
   Widget build(BuildContext context) => Container(
-        height: 76,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        height: 68,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             border: Border(
@@ -232,7 +232,7 @@ class _TopBar extends StatelessWidget {
                     style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w800,
-                        fontSize: 17)),
+                        fontSize: 16)),
                 Text(subtitle,
                     style: TextStyle(
                         color: Theme.of(context)

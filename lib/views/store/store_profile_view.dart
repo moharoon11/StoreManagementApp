@@ -163,11 +163,11 @@ class _StoreProfileViewState extends State<StoreProfileView> {
     if (!_showEditor) return _buildBusinessPage(isMobile);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.all(16.0),
       child: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 750),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -186,7 +186,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
               const Text(
                 'Store & Business Profile',
                 style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF172033),
                     letterSpacing: -0.5),
@@ -369,7 +369,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
       _pincodeController.text
     ].where((part) => part.trim().isNotEmpty).join(', ');
     return SingleChildScrollView(
-      padding: EdgeInsets.all(isMobile ? 16 : 28),
+      padding: EdgeInsets.all(isMobile ? 12 : 20),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 980),
@@ -384,7 +384,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                         style: TextStyle(
                             color: Color(0xFF172033),
                             fontWeight: FontWeight.w800,
-                            fontSize: 27)),
+                            fontSize: 22)),
                     SizedBox(height: 4),
                     Text('The details your customers see on every invoice.',
                         style:
@@ -395,10 +395,10 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   label: const Text('Edit details'))
             ]),
-            const SizedBox(height: 22),
+            const SizedBox(height: 16),
             Container(
                 width: double.infinity,
-                padding: EdgeInsets.all(isMobile ? 24 : 36),
+                padding: EdgeInsets.all(isMobile ? 18 : 24),
                 decoration: BoxDecoration(
                     gradient: const LinearGradient(
                         begin: Alignment.topLeft,
@@ -411,8 +411,8 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Container(
-                          width: 100,
-                          height: 100,
+                          width: 80,
+                          height: 80,
                           decoration: BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
@@ -440,7 +440,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                                 style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 30,
+                                    fontSize: 24,
                                     letterSpacing: -1)),
                             const SizedBox(height: 7),
                             Text(

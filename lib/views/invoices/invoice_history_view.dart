@@ -73,7 +73,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
               Text('Invoice ${invoice['invoiceNumber']}',
                   style: const TextStyle(
                       color: Color(0xFF172033),
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold)),
               const SizedBox(width: 8),
               IconButton(
@@ -98,7 +98,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                     Text('Grand Total: ₹${invoice['grandTotal']}',
                         style: const TextStyle(
                             color: Color(0xFF12A594),
-                            fontSize: 16,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold)),
                     const SizedBox(width: 12),
                     Text('${invoice['createdAt']?.toString().split('T').first}',
@@ -162,7 +162,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
         children: [
           const Text('Invoice History',
               style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF172033),
                   letterSpacing: -0.5)),

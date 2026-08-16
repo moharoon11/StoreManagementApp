@@ -397,7 +397,7 @@ class _ProductsViewState extends State<ProductsView> {
                             _productCard(_products[index]))),
       ]);
       return Padding(
-        padding: EdgeInsets.all(wide ? 28 : 16),
+        padding: EdgeInsets.all(wide ? 20 : 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Wrap(
               alignment: WrapAlignment.spaceBetween,
@@ -410,7 +410,7 @@ class _ProductsViewState extends State<ProductsView> {
                       Text('Catalogue',
                           style: TextStyle(
                               color: Color(0xFF172033),
-                              fontSize: 27,
+                              fontSize: 22,
                               fontWeight: FontWeight.w800)),
                       SizedBox(height: 4),
                       Text('Browse products by collection',
@@ -422,15 +422,15 @@ class _ProductsViewState extends State<ProductsView> {
                     icon: const Icon(Icons.add_rounded),
                     label: const Text('Add product'))
               ]),
-          const SizedBox(height: 22),
+          const SizedBox(height: 16),
           Expanded(
               child: wide
                   ? Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                           SizedBox(
-                              width: 210, child: _categoryMenu(vertical: true)),
-                          const SizedBox(width: 20),
+                              width: 184, child: _categoryMenu(vertical: true)),
+                          const SizedBox(width: 14),
                           Expanded(child: catalogue)
                         ])
                   : Column(children: [

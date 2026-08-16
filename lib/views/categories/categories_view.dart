@@ -295,7 +295,7 @@ class _CategoriesViewState extends State<CategoriesView> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     final mobile = MediaQuery.sizeOf(context).width < 700;
     return Padding(
-      padding: EdgeInsets.all(mobile ? 16 : 24),
+      padding: EdgeInsets.all(mobile ? 12 : 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(
@@ -316,8 +316,8 @@ class _CategoriesViewState extends State<CategoriesView> {
               ])),
           FilledButton.icon(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 44),
-                  padding: const EdgeInsets.symmetric(horizontal: 14)),
+                  minimumSize: const Size(0, 38),
+                  padding: const EdgeInsets.symmetric(horizontal: 12)),
               onPressed: () => _showCategoryDialog(),
               icon: const Icon(Icons.add_rounded, size: 18),
               label: Text(mobile ? 'Add' : 'Add category'))
@@ -333,8 +333,8 @@ class _CategoriesViewState extends State<CategoriesView> {
                         Expanded(child: _productsPane())
                       ])
                     : Row(children: [
-                        SizedBox(width: 230, child: _categoryRail()),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 184, child: _categoryRail()),
+                        const SizedBox(width: 12),
                         Expanded(child: _productsPane())
                       ])),
       ]),
@@ -361,25 +361,47 @@ class _CategoriesViewState extends State<CategoriesView> {
       decoration: BoxDecoration(
           color: scheme.surface,
           border: Border.all(color: scheme.outlineVariant),
-          borderRadius: BorderRadius.circular(18)),
+          borderRadius: BorderRadius.circular(14)),
       child: ListView.separated(
-        padding: const EdgeInsets.all(7),
+        padding: const EdgeInsets.all(6),
         itemCount: _categories.length,
         separatorBuilder: (_, __) => const SizedBox(height: 4),
         itemBuilder: (context, index) {
           final category = Map<String, dynamic>.from(_categories[index] as Map);
           final selected = category['id'] == _selectedCategoryId;
+          final imageUrl = category['imageUrl'] as String? ?? '';
           return Material(
             color: selected
                 ? scheme.primary.withValues(alpha: .13)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             child: InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               onTap: () => _selectCategory(category['id'] as int),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 5, 10),
+                padding: const EdgeInsets.fromLTRB(8, 8, 3, 8),
                 child: Row(children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                        color: scheme.primary.withValues(alpha: .08),
+                        borderRadius: BorderRadius.circular(8)),
+                    child: imageUrl.isEmpty
+                        ? Icon(Icons.category_outlined,
+                            size: 16,
+                            color: selected
+                                ? scheme.primary
+                                : scheme.onSurface.withValues(alpha: .55))
+                        : Image.network(imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(
+                                Icons.category_outlined,
+                                size: 16,
+                                color: scheme.primary)),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                       child: Text(category['name'] ?? 'Untitled',
                           maxLines: 2,
@@ -387,7 +409,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                           style: TextStyle(
                               color:
                                   selected ? scheme.primary : scheme.onSurface,
-                              fontSize: 12,
+                              fontSize: 11,
                               fontWeight: selected
                                   ? FontWeight.w800
                                   : FontWeight.w600))),
@@ -417,7 +439,7 @@ class _CategoriesViewState extends State<CategoriesView> {
   Widget _mobileCategorySelector() {
     final scheme = Theme.of(context).colorScheme;
     return SizedBox(
-      height: 44,
+      height: 38,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _categories.length,
@@ -427,15 +449,28 @@ class _CategoriesViewState extends State<CategoriesView> {
           final id = category['id'] as int;
           final selected = id == _selectedCategoryId;
           final name = (category['name'] ?? 'Untitled').toString();
+          final imageUrl = category['imageUrl'] as String? ?? '';
           return Tooltip(
             message: name,
             child: ChoiceChip(
               selected: selected,
               showCheckmark: false,
-              label: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 150),
-                child: Text(name, overflow: TextOverflow.ellipsis),
-              ),
+              label: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (imageUrl.isNotEmpty) ...[
+                  ClipRRect(
+                      borderRadius: BorderRadius.circular(5),
+                      child: Image.network(imageUrl,
+                          width: 18,
+                          height: 18,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const SizedBox())),
+                  const SizedBox(width: 5),
+                ],
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 120),
+                  child: Text(name, overflow: TextOverflow.ellipsis),
+                ),
+              ]),
               labelStyle: TextStyle(
                   color: selected ? scheme.primary : scheme.onSurface,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600),
@@ -459,11 +494,11 @@ class _CategoriesViewState extends State<CategoriesView> {
     final category = Map<String, dynamic>.from(selected as Map);
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
           color: scheme.surface,
           border: Border.all(color: scheme.outlineVariant),
-          borderRadius: BorderRadius.circular(18)),
+          borderRadius: BorderRadius.circular(14)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(
@@ -528,10 +563,10 @@ class _CategoriesViewState extends State<CategoriesView> {
                           final image = product['imageUrl'] as String? ?? '';
                           final stock = product['stockQuantity'] as int? ?? 0;
                           return Container(
-                            padding: const EdgeInsets.all(9),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                                 color: scheme.primary.withValues(alpha: .045),
-                                borderRadius: BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(10)),
                             child: Row(children: [
                               Container(
                                 width: 48,

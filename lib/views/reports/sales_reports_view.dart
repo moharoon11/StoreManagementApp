@@ -59,7 +59,7 @@ class _SalesReportsViewState extends State<SalesReportsView> {
               const Expanded(
                 child: Text('Sales Reports',
                     style: TextStyle(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF172033),
                         letterSpacing: -0.5),
@@ -283,7 +283,7 @@ class _SalesReportsViewState extends State<SalesReportsView> {
               Text(value,
                   style: const TextStyle(
                       color: Color(0xFF172033),
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold)),
             ],
           ),
