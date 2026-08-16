@@ -26,6 +26,9 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
   bool _hasMore = true;
   Timer? _searchDebounce;
   final ScrollController _productsController = ScrollController();
+  final TextEditingController _customerNameController = TextEditingController();
+  final TextEditingController _customerMobileController =
+      TextEditingController();
 
   static const _pageSize = 36;
 
@@ -42,6 +45,8 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
     _productsController
       ..removeListener(_loadMoreWhenNeeded)
       ..dispose();
+    _customerNameController.dispose();
+    _customerMobileController.dispose();
     super.dispose();
   }
 
@@ -126,8 +131,137 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
     _fetchAvailableProducts(reset: true);
   }
 
+  Future<void> _showCheckoutDialog(AppProvider provider) async {
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.receipt_long_outlined, color: Color(0xFF365FF4)),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text('Customer details',
+                  style: TextStyle(
+                      color: Color(0xFF172033),
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Add these details to complete the invoice.',
+                    style: TextStyle(color: Colors.blueGrey.shade600),
+                  ),
+                  const SizedBox(height: 18),
+                  TextFormField(
+                    controller: _customerNameController,
+                    autofocus: true,
+                    maxLength: 150,
+                    textCapitalization: TextCapitalization.words,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.name],
+                    decoration: const InputDecoration(
+                      labelText: 'Customer name',
+                      hintText: 'Enter customer name',
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
+                    validator: (value) {
+                      if ((value ?? '').trim().isEmpty) {
+                        return 'Customer name is required.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _customerMobileController,
+                    maxLength: 20,
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.telephoneNumber],
+                    decoration: const InputDecoration(
+                      labelText: 'Customer mobile number',
+                      hintText: 'e.g. +91 98765 43210',
+                      prefixIcon: Icon(Icons.phone_outlined),
+                    ),
+                    validator: (value) {
+                      final mobile = (value ?? '').trim();
+                      if (mobile.isEmpty) {
+                        return 'Customer mobile number is required.';
+                      }
+                      if (!RegExp(r'^[0-9+\-\s()]{7,20}$').hasMatch(mobile)) {
+                        return 'Enter a valid mobile number.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Invoice total',
+                          style: TextStyle(fontWeight: FontWeight.w700)),
+                      Text('₹${provider.cartTotal.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                              color: Color(0xFF12A594),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              Navigator.of(dialogContext).pop();
+              await _processCheckout(provider);
+            },
+            icon: const Icon(Icons.lock_outline_rounded, size: 18),
+            label: const Text('Complete checkout'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF12A594),
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _processCheckout(AppProvider provider) async {
     if (provider.cartItems.isEmpty) return;
+
+    final customerName = _customerNameController.text.trim();
+    final customerMobileNumber = _customerMobileController.text.trim();
+    if (customerName.isEmpty || customerMobileNumber.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Enter the customer name and mobile number.')),
+      );
+      return;
+    }
 
     setState(() => _isCheckingOut = true);
     try {
@@ -138,11 +272,17 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
         };
       }).toList();
 
-      final res = await ApiService.post(ApiConfig.checkout, {'items': items});
+      final res = await ApiService.post(ApiConfig.checkout, {
+        'customerName': customerName,
+        'customerMobileNumber': customerMobileNumber,
+        'items': items,
+      });
 
       if (res['success'] == true && mounted) {
         final invoice = res['data'];
         provider.clearCart();
+        _customerNameController.clear();
+        _customerMobileController.clear();
         _fetchAvailableProducts(reset: true);
 
         final invoiceId = invoice['id'] as int;
@@ -298,7 +438,9 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
         );
       }
     }
-    setState(() => _isCheckingOut = false);
+    if (mounted) {
+      setState(() => _isCheckingOut = false);
+    }
   }
 
   @override
@@ -569,7 +711,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
           child: ElevatedButton.icon(
               onPressed: provider.cartItems.isEmpty || _isCheckingOut
                   ? null
-                  : () => _processCheckout(provider),
+                  : () => _showCheckoutDialog(provider),
               icon: const Icon(Icons.lock_outline_rounded),
               label: Text(_isCheckingOut
                   ? 'Processing...'
