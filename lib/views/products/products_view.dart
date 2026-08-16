@@ -91,283 +91,290 @@ class _ProductsViewState extends State<ProductsView> {
     bool isUploading = false;
     File? pickedImageFile;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            Future<void> pickProductImage(ImageSource source) async {
-              try {
-                final picker = ImagePicker();
-                final XFile? image =
-                    await picker.pickImage(source: source, imageQuality: 80);
-                if (image != null) {
-                  setModalState(() {
-                    pickedImageFile = File(image.path);
-                    isUploading = true;
-                  });
-
-                  final url = await ApiService.uploadImage(image.path);
-                  if (url != null) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => Scaffold(
+          appBar: AppBar(
+            title: const Text('Add product',
+                style: TextStyle(fontWeight: FontWeight.w800)),
+            leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => Navigator.pop(ctx)),
+          ),
+          body: StatefulBuilder(
+            builder: (context, setModalState) {
+              Future<void> pickProductImage(ImageSource source) async {
+                try {
+                  final picker = ImagePicker();
+                  final XFile? image =
+                      await picker.pickImage(source: source, imageQuality: 80);
+                  if (image != null) {
                     setModalState(() {
-                      productImageUrl = url;
-                      isUploading = false;
+                      pickedImageFile = File(image.path);
+                      isUploading = true;
                     });
+
+                    final url = await ApiService.uploadImage(image.path);
+                    if (url != null) {
+                      setModalState(() {
+                        productImageUrl = url;
+                        isUploading = false;
+                      });
+                    }
+                  }
+                } catch (e) {
+                  setModalState(() => isUploading = false);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(
+                              'Upload failed: ${e.toString().replaceAll("Exception: ", "")}')),
+                    );
                   }
                 }
-              } catch (e) {
-                setModalState(() => isUploading = false);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                            'Upload failed: ${e.toString().replaceAll("Exception: ", "")}')),
-                  );
-                }
               }
-            }
 
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-                top: 20,
-                left: 20,
-                right: 20,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Add New Product',
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF172033))),
-                        IconButton(
-                          icon:
-                              const Icon(Icons.close, color: Color(0xFF6C7486)),
-                          onPressed: () => Navigator.pop(ctx),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Center(
-                      child: GestureDetector(
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            builder: (_) => Container(
-                              padding: const EdgeInsets.all(20),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  ListTile(
-                                    leading: const Icon(Icons.photo_library,
-                                        color: Color(0xFF365FF4)),
-                                    title: const Text('Choose from Gallery'),
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      pickProductImage(ImageSource.gallery);
-                                    },
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(Icons.camera_alt,
-                                        color: Color(0xFF365FF4)),
-                                    title: const Text('Take a Photo'),
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      pickProductImage(ImageSource.camera);
-                                    },
-                                  ),
-                                ],
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                  top: 20,
+                  left: 20,
+                  right: 20,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Add New Product',
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF172033))),
+                          IconButton(
+                            icon: const Icon(Icons.close,
+                                color: Color(0xFF6C7486)),
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: GestureDetector(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              builder: (_) => Container(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ListTile(
+                                      leading: const Icon(Icons.photo_library,
+                                          color: Color(0xFF365FF4)),
+                                      title: const Text('Choose from Gallery'),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        pickProductImage(ImageSource.gallery);
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: const Icon(Icons.camera_alt,
+                                          color: Color(0xFF365FF4)),
+                                      title: const Text('Take a Photo'),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        pickProductImage(ImageSource.camera);
+                                      },
+                                    ),
+                                  ],
+                                ),
                               ),
+                            );
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            height: 110,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF6F7FB),
+                              borderRadius: BorderRadius.circular(12),
+                              border:
+                                  Border.all(color: const Color(0xFFD2D6E0)),
+                              image: pickedImageFile != null
+                                  ? DecorationImage(
+                                      image: FileImage(pickedImageFile!),
+                                      fit: BoxFit.cover)
+                                  : (productImageUrl.isNotEmpty
+                                      ? DecorationImage(
+                                          image: NetworkImage(productImageUrl),
+                                          fit: BoxFit.cover)
+                                      : null),
                             ),
-                          );
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          height: 110,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF6F7FB),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFD2D6E0)),
-                            image: pickedImageFile != null
-                                ? DecorationImage(
-                                    image: FileImage(pickedImageFile!),
-                                    fit: BoxFit.cover)
-                                : (productImageUrl.isNotEmpty
-                                    ? DecorationImage(
-                                        image: NetworkImage(productImageUrl),
-                                        fit: BoxFit.cover)
+                            child: isUploading
+                                ? const Center(
+                                    child: CircularProgressIndicator(
+                                        color: Color(0xFF365FF4)))
+                                : (pickedImageFile == null &&
+                                        productImageUrl.isEmpty
+                                    ? Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: const [
+                                          Icon(Icons.add_a_photo,
+                                              color: Color(0xFF365FF4),
+                                              size: 30),
+                                          SizedBox(height: 4),
+                                          Text('Upload Product Image',
+                                              style: TextStyle(
+                                                  color: Color(0xFF6C7486),
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500)),
+                                        ],
+                                      )
                                     : null),
                           ),
-                          child: isUploading
-                              ? const Center(
-                                  child: CircularProgressIndicator(
-                                      color: Color(0xFF365FF4)))
-                              : (pickedImageFile == null &&
-                                      productImageUrl.isEmpty
-                                  ? Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: const [
-                                        Icon(Icons.add_a_photo,
-                                            color: Color(0xFF365FF4), size: 30),
-                                        SizedBox(height: 4),
-                                        Text('Upload Product Image',
-                                            style: TextStyle(
-                                                color: Color(0xFF6C7486),
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500)),
-                                      ],
-                                    )
-                                  : null),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: nameController,
-                      style: const TextStyle(color: Color(0xFF172033)),
-                      decoration:
-                          const InputDecoration(labelText: 'Product Name *'),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Checkbox(
-                          value: createNewCategory,
-                          onChanged: (val) {
-                            setModalState(
-                                () => createNewCategory = val ?? false);
-                          },
-                          activeColor: const Color(0xFF365FF4),
-                        ),
-                        const Text('Create a new category inline',
-                            style: TextStyle(
-                                color: Color(0xFF172033), fontSize: 13)),
-                      ],
-                    ),
-                    if (createNewCategory) ...[
+                      const SizedBox(height: 14),
                       TextField(
-                        controller: newCatController,
-                        style: const TextStyle(color: Color(0xFF172033)),
-                        decoration: const InputDecoration(
-                            labelText: 'New Category Name *'),
-                      ),
-                    ] else ...[
-                      DropdownButtonFormField<int>(
-                        value: selectedCategory,
+                        controller: nameController,
                         style: const TextStyle(color: Color(0xFF172033)),
                         decoration:
-                            const InputDecoration(labelText: 'Select Category'),
-                        items: _categories.map<DropdownMenuItem<int>>((cat) {
-                          return DropdownMenuItem<int>(
-                            value: cat['id'],
-                            child: Text(cat['name'] ?? ''),
-                          );
-                        }).toList(),
-                        onChanged: (val) =>
-                            setModalState(() => selectedCategory = val),
+                            const InputDecoration(labelText: 'Product Name *'),
                       ),
-                    ],
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: costPriceController,
-                            keyboardType: TextInputType.number,
-                            style: const TextStyle(color: Color(0xFF172033)),
-                            decoration: const InputDecoration(
-                                labelText: 'Cost Price (₹)'),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: createNewCategory,
+                            onChanged: (val) {
+                              setModalState(
+                                  () => createNewCategory = val ?? false);
+                            },
+                            activeColor: const Color(0xFF365FF4),
                           ),
+                          const Text('Create a new category inline',
+                              style: TextStyle(
+                                  color: Color(0xFF172033), fontSize: 13)),
+                        ],
+                      ),
+                      if (createNewCategory) ...[
+                        TextField(
+                          controller: newCatController,
+                          style: const TextStyle(color: Color(0xFF172033)),
+                          decoration: const InputDecoration(
+                              labelText: 'New Category Name *'),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: sellingPriceController,
-                            keyboardType: TextInputType.number,
-                            style: const TextStyle(color: Color(0xFF172033)),
-                            decoration: const InputDecoration(
-                                labelText: 'Selling Price (₹) *'),
-                          ),
+                      ] else ...[
+                        DropdownButtonFormField<int>(
+                          value: selectedCategory,
+                          style: const TextStyle(color: Color(0xFF172033)),
+                          decoration: const InputDecoration(
+                              labelText: 'Select Category'),
+                          items: _categories.map<DropdownMenuItem<int>>((cat) {
+                            return DropdownMenuItem<int>(
+                              value: cat['id'],
+                              child: Text(cat['name'] ?? ''),
+                            );
+                          }).toList(),
+                          onChanged: (val) =>
+                              setModalState(() => selectedCategory = val),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: stockController,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(color: Color(0xFF172033)),
-                      decoration: const InputDecoration(
-                          labelText: 'Initial Stock Quantity *'),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: isUploading
-                            ? null
-                            : () async {
-                                if (nameController.text.isEmpty ||
-                                    sellingPriceController.text.isEmpty) return;
-
-                                final body = {
-                                  'name': nameController.text.trim(),
-                                  'costPrice': double.tryParse(
-                                          costPriceController.text) ??
-                                      0.0,
-                                  'sellingPrice': double.tryParse(
-                                          sellingPriceController.text) ??
-                                      0.0,
-                                  'stockQuantity':
-                                      int.tryParse(stockController.text) ?? 0,
-                                  'imageUrl': productImageUrl,
-                                };
-
-                                if (createNewCategory) {
-                                  body['newCategoryName'] =
-                                      newCatController.text.trim();
-                                } else {
-                                  if (selectedCategory != null)
-                                    body['categoryId'] = selectedCategory!;
-                                }
-
-                                Navigator.pop(ctx);
-                                await ApiService.post(ApiConfig.products, body);
-                                await _fetchCategories();
-                                await _fetchProducts();
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF365FF4),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: const Text('Create Product',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 15)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: costPriceController,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: Color(0xFF172033)),
+                              decoration: const InputDecoration(
+                                  labelText: 'Cost Price (₹)'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: sellingPriceController,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: Color(0xFF172033)),
+                              decoration: const InputDecoration(
+                                  labelText: 'Selling Price (₹) *'),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: stockController,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Color(0xFF172033)),
+                        decoration: const InputDecoration(
+                            labelText: 'Initial Stock Quantity *'),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: isUploading
+                              ? null
+                              : () async {
+                                  if (nameController.text.isEmpty ||
+                                      sellingPriceController.text.isEmpty)
+                                    return;
+
+                                  final body = {
+                                    'name': nameController.text.trim(),
+                                    'costPrice': double.tryParse(
+                                            costPriceController.text) ??
+                                        0.0,
+                                    'sellingPrice': double.tryParse(
+                                            sellingPriceController.text) ??
+                                        0.0,
+                                    'stockQuantity':
+                                        int.tryParse(stockController.text) ?? 0,
+                                    'imageUrl': productImageUrl,
+                                  };
+
+                                  if (createNewCategory) {
+                                    body['newCategoryName'] =
+                                        newCatController.text.trim();
+                                  } else {
+                                    if (selectedCategory != null)
+                                      body['categoryId'] = selectedCategory!;
+                                  }
+
+                                  Navigator.pop(ctx);
+                                  await ApiService.post(
+                                      ApiConfig.products, body);
+                                  await _fetchCategories();
+                                  await _fetchProducts();
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF365FF4),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: const Text('Create Product',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 15)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
-        );
-      },
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 

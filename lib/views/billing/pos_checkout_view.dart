@@ -207,7 +207,6 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
-
     final filteredProducts = _products.where((p) {
       final name = (p['name'] as String).toLowerCase();
       final cat = (p['categoryName'] as String? ?? '').toLowerCase();
@@ -215,341 +214,208 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
       return name.contains(search) || cat.contains(search);
     }).toList();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        bool isWide = constraints.maxWidth > 800;
+    return LayoutBuilder(builder: (context, constraints) {
+      final wide = constraints.maxWidth >= 860;
+      final products = Column(children: [
+        TextField(
+            onChanged: (value) => setState(() => _searchTerm = value),
+            decoration: const InputDecoration(
+                hintText: 'Search and add products',
+                prefixIcon: Icon(Icons.search_rounded))),
+        const SizedBox(height: 16),
+        Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _productGrid(filteredProducts, provider, wide))
+      ]);
+      return Padding(
+          padding: EdgeInsets.all(wide ? 28 : 16),
+          child: wide
+              ? Row(children: [
+                  Expanded(flex: 3, child: products),
+                  const SizedBox(width: 22),
+                  SizedBox(width: 360, child: _cartPanel(provider))
+                ])
+              : Column(children: [
+                  Expanded(child: products),
+                  const SizedBox(height: 12),
+                  _cartBar(provider)
+                ]));
+    });
+  }
 
-        Widget productListSection = Column(
-          children: [
-            TextField(
-              style: const TextStyle(color: Color(0xFF172033)),
-              onChanged: (val) => setState(() => _searchTerm = val),
-              decoration: const InputDecoration(
-                hintText: 'Search product to add to bill...',
-                prefixIcon: Icon(Icons.search, color: Color(0xFF365FF4)),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                      child:
-                          CircularProgressIndicator(color: Color(0xFF365FF4)))
-                  : GridView.builder(
-                      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: isWide ? 190 : 150,
-                        childAspectRatio: 0.85,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
-                      itemCount: filteredProducts.length,
-                      itemBuilder: (context, index) {
-                        final p = filteredProducts[index];
-                        final stock = p['stockQuantity'] as int;
-                        final isInCart =
-                            provider.cartItems.containsKey(p['id']);
-
-                        return InkWell(
-                          onTap: stock > 0 ? () => provider.addToCart(p) : null,
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isInCart
-                                    ? const Color(0xFF365FF4)
-                                    : const Color(0xFFE6E8EF),
-                                width: isInCart ? 2 : 1,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.02),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _productGrid(List<dynamic> products, AppProvider provider, bool wide) {
+    return GridView.builder(
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: wide ? 220 : 165,
+          childAspectRatio: 1.12,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12),
+      itemCount: products.length,
+      itemBuilder: (_, index) {
+        final product = products[index];
+        final stock = product['stockQuantity'] as int? ?? 0;
+        final inCart = provider.cartItems.containsKey(product['id']);
+        return Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+                onTap: stock > 0 ? () => provider.addToCart(product) : null,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                        border: Border.all(
+                            color: inCart
+                                ? const Color(0xFF365FF4)
+                                : const Color(0xFFE6E8EF),
+                            width: inCart ? 2 : 1),
+                        borderRadius: BorderRadius.circular(16)),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(product['categoryName'] ?? 'PRODUCT',
+                              style: const TextStyle(
+                                  color: Color(0xFF365FF4),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 5),
+                          Text(product['name'] ?? '',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: Color(0xFF172033),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14)),
+                          const Spacer(),
+                          Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  p['name'] ?? '',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      color: Color(0xFF172033),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13),
-                                ),
-                                const Spacer(),
-                                Text('₹${p['sellingPrice']}',
+                                Text('₹${product['sellingPrice']}',
                                     style: const TextStyle(
                                         color: Color(0xFF12A594),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14)),
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text('Stock: $stock',
-                                        style: TextStyle(
-                                            color: stock > 0
-                                                ? const Color(0xFF6C7486)
-                                                : const Color(0xFFE75C5C),
-                                            fontSize: 11)),
-                                    const Icon(Icons.add_shopping_cart,
-                                        color: Color(0xFF365FF4), size: 18),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        );
-
-        Widget cartSection = Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE6E8EF)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Current Invoice',
-                      style: TextStyle(
-                          color: Color(0xFF172033),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16)),
-                  IconButton(
-                    icon: const Icon(Icons.delete_sweep_outlined,
-                        color: Color(0xFFE75C5C)),
-                    onPressed: provider.clearCart,
-                    tooltip: 'Clear Cart',
-                  ),
-                ],
-              ),
-              const Divider(color: Color(0xFFE6E8EF)),
-              Expanded(
-                child: provider.cartItems.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.shopping_cart_outlined,
-                                size: 40, color: Color(0xFFA1A8B7)),
-                            SizedBox(height: 8),
-                            Text('Tap products to add to bill.',
-                                style: TextStyle(
-                                    color: Color(0xFF6C7486), fontSize: 13)),
-                          ],
-                        ),
-                      )
-                    : ListView.separated(
-                        itemCount: provider.cartItems.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, color: Color(0xFFF2F3F8)),
-                        itemBuilder: (context, index) {
-                          final item =
-                              provider.cartItems.values.toList()[index];
-                          final product = item['product'];
-                          final qty = item['quantity'] as int;
-                          final availableStock =
-                              (product['stockQuantity'] as int? ?? 9999);
-                          final price =
-                              (product['sellingPrice'] as num).toDouble();
-                          final total = price * qty;
-
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 8, horizontal: 4),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        product['name'] ?? '',
-                                        style: const TextStyle(
-                                          color: Color(0xFF172033),
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '₹${price.toStringAsFixed(2)} × $qty = ₹${total.toStringAsFixed(2)}',
-                                        style: const TextStyle(
-                                          color: Color(0xFF12A594),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    InkWell(
-                                      onTap: () => provider
-                                          .removeFromCart(product['id']),
-                                      borderRadius: BorderRadius.circular(20),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFFF3D6),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(Icons.remove,
-                                            color: Color(0xFFBD781D), size: 16),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10),
-                                      child: Text(
-                                        '$qty',
-                                        style: const TextStyle(
-                                          color: Color(0xFF172033),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                    InkWell(
-                                      onTap: qty < availableStock
-                                          ? () => provider.addToCart(product)
-                                          : () {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                      'Cannot add more. Max stock available: $availableStock'),
-                                                  duration: const Duration(
-                                                      seconds: 1),
-                                                ),
-                                              );
-                                            },
-                                      borderRadius: BorderRadius.circular(20),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
-                                          color: qty < availableStock
-                                              ? const Color(0xFFE6EDFF)
-                                              : const Color(0xFFF2F3F8),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          Icons.add,
-                                          color: qty < availableStock
-                                              ? const Color(0xFF365FF4)
-                                              : const Color(0xFFA1A8B7),
-                                          size: 16,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-              ),
-              const Divider(color: Color(0xFFE6E8EF)),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Grand Total:',
-                      style: TextStyle(
-                          color: Color(0xFF172033),
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold)),
-                  Text('₹${provider.cartTotal.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                          color: Color(0xFF12A594),
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold)),
-                ],
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton.icon(
-                  onPressed: provider.cartItems.isEmpty || _isCheckingOut
-                      ? null
-                      : () => _processCheckout(provider),
-                  icon: const Icon(Icons.point_of_sale, size: 18),
-                  label: _isCheckingOut
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : Text('Checkout (${provider.cartCount} items)',
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF12A594),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-
-        if (isWide) {
-          return Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Row(
-              children: [
-                Expanded(flex: 3, child: productListSection),
-                const SizedBox(width: 20),
-                Expanded(flex: 2, child: cartSection),
-              ],
-            ),
-          );
-        } else {
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Expanded(flex: 3, child: productListSection),
-                const SizedBox(height: 14),
-                Expanded(flex: 2, child: cartSection),
-              ],
-            ),
-          );
-        }
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16)),
+                                Icon(
+                                    inCart
+                                        ? Icons.check_circle_rounded
+                                        : Icons.add_circle_outline_rounded,
+                                    color: stock > 0
+                                        ? const Color(0xFF365FF4)
+                                        : const Color(0xFFA1A8B7))
+                              ]),
+                          const SizedBox(height: 4),
+                          Text(stock > 0 ? '$stock available' : 'Out of stock',
+                              style: TextStyle(
+                                  color: stock > 0
+                                      ? const Color(0xFF6C7486)
+                                      : const Color(0xFFE75C5C),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600))
+                        ]))));
       },
     );
+  }
+
+  Widget _cartBar(AppProvider provider) => Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+          onTap: () => _openCart(provider),
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFE6E8EF)),
+                  borderRadius: BorderRadius.circular(18)),
+              child: Row(children: [
+                const Icon(Icons.shopping_bag_outlined,
+                    color: Color(0xFF12A594)),
+                const SizedBox(width: 11),
+                Expanded(
+                    child: Text('${provider.cartCount} items · tap to review',
+                        style: const TextStyle(fontWeight: FontWeight.w800))),
+                Text('₹${provider.cartTotal.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                        color: Color(0xFF12A594),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800))
+              ]))));
+
+  void _openCart(AppProvider provider) => showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => SizedBox(
+          height: MediaQuery.sizeOf(context).height * .72,
+          child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: _cartPanel(provider))));
+
+  Widget _cartPanel(AppProvider provider) {
+    return Column(children: [
+      Row(children: [
+        const Expanded(
+            child: Text('Current sale',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
+        IconButton(
+            onPressed: provider.clearCart,
+            icon: const Icon(Icons.delete_sweep_outlined,
+                color: Color(0xFFE75C5C)))
+      ]),
+      const Divider(),
+      Expanded(
+          child: provider.cartItems.isEmpty
+              ? const Center(child: Text('Choose products to begin this sale.'))
+              : ListView.builder(
+                  itemCount: provider.cartItems.length,
+                  itemBuilder: (_, index) {
+                    final item = provider.cartItems.values.elementAt(index);
+                    final product = item['product'];
+                    final qty = item['quantity'] as int;
+                    return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(product['name'] ?? '',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w800)),
+                        subtitle: Text('₹${product['sellingPrice']}'),
+                        trailing:
+                            Row(mainAxisSize: MainAxisSize.min, children: [
+                          IconButton(
+                              onPressed: () =>
+                                  provider.removeFromCart(product['id']),
+                              icon: const Icon(
+                                  Icons.remove_circle_outline_rounded)),
+                          Text('$qty'),
+                          IconButton(
+                              onPressed: () => provider.addToCart(product),
+                              icon: const Icon(Icons.add_circle_outline_rounded,
+                                  color: Color(0xFF365FF4)))
+                        ]));
+                  })),
+      const Divider(),
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        const Text('Total',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        Text('₹${provider.cartTotal.toStringAsFixed(2)}',
+            style: const TextStyle(
+                color: Color(0xFF12A594),
+                fontWeight: FontWeight.w800,
+                fontSize: 23))
+      ]),
+      const SizedBox(height: 12),
+      SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+              onPressed: provider.cartItems.isEmpty || _isCheckingOut
+                  ? null
+                  : () => _processCheckout(provider),
+              icon: const Icon(Icons.lock_outline_rounded),
+              label: Text(_isCheckingOut
+                  ? 'Processing...'
+                  : 'Checkout ${provider.cartCount} items'),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF12A594))))
+    ]);
   }
 }

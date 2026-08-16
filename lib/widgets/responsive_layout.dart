@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../views/billing/pos_checkout_view.dart';
-import '../views/categories/categories_view.dart';
 import '../views/dashboard/dashboard_view.dart';
 import '../views/invoices/invoice_history_view.dart';
 import '../views/products/products_view.dart';
@@ -22,7 +21,7 @@ class _ResponsiveLayoutState extends State<ResponsiveLayout> {
     DashboardView(),
     PosCheckoutView(),
     ProductsView(),
-    CategoriesView(),
+    ProductsView(key: ValueKey('categories-browser')),
     InvoiceHistoryView(),
     StockManagementView(),
     SalesReportsView(),
@@ -180,6 +179,12 @@ class _TopBar extends StatelessWidget {
             color: Color(0xFFFCFCFE),
             border: Border(bottom: BorderSide(color: AppColors.line))),
         child: Row(children: [
+          if (title != 'Home')
+            IconButton(
+                onPressed: () => context.read<AppProvider>().setNavIndex(0),
+                tooltip: 'Back to Home',
+                icon: const Icon(Icons.arrow_back_rounded,
+                    color: AppColors.muted)),
           Container(
               width: 36,
               height: 36,

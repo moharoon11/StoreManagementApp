@@ -32,102 +32,106 @@ class WorkdayWelcome extends StatelessWidget {
             left: -100,
             child: _shape(350, const Color(0xFF12A594).withOpacity(.11))),
         SafeArea(
-            child: Center(
-                child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1000),
-                    child: Padding(
-                        padding: EdgeInsets.all(compact ? 24 : 48),
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(children: [
-                                Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                        color: AppColors.brand,
-                                        borderRadius:
-                                            BorderRadius.circular(14)),
-                                    child: const Icon(Icons.auto_graph_rounded,
-                                        color: Colors.white)),
-                                const SizedBox(width: 11),
-                                const Text('NEXORA',
-                                    style: TextStyle(
-                                        letterSpacing: 2,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.ink)),
-                                const Spacer(),
-                                TextButton.icon(
-                                    onPressed: onContinue,
-                                    icon: const Icon(
-                                        Icons.arrow_forward_rounded,
-                                        size: 17),
-                                    label: const Text('Skip to workspace'))
-                              ]),
-                              const Spacer(),
-                              Text('Welcome${user.isEmpty ? '' : ', $user'}.',
-                                  style: TextStyle(
-                                      color: AppColors.ink,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: compact ? 33 : 48,
-                                      letterSpacing: -2)),
-                              const SizedBox(height: 12),
-                              const Text('What would make today a win?',
-                                  style: TextStyle(
-                                      color: AppColors.muted,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500)),
-                              const SizedBox(height: 30),
-                              Wrap(spacing: 16, runSpacing: 16, children: [
-                                _JourneyCard(
-                                    width: compact ? double.infinity : 290,
-                                    index: '01',
-                                    icon: Icons.point_of_sale_rounded,
-                                    color: const Color(0xFF12A594),
-                                    title: 'Start a sale',
-                                    text:
-                                        'Build a bill and complete checkout in seconds.',
-                                    onTap: () {
-                                      context
-                                          .read<AppProvider>()
-                                          .setNavIndex(1);
-                                      onContinue();
-                                    }),
-                                _JourneyCard(
-                                    width: compact ? double.infinity : 290,
-                                    index: '02',
-                                    icon: Icons.inventory_2_rounded,
-                                    color: const Color(0xFF365FF4),
-                                    title: 'Manage products',
-                                    text:
-                                        'Add items, pricing, stock, and favourites.',
-                                    onTap: () {
-                                      context
-                                          .read<AppProvider>()
-                                          .setNavIndex(2);
-                                      onContinue();
-                                    }),
-                                _JourneyCard(
-                                    width: compact ? double.infinity : 290,
-                                    index: '03',
-                                    icon: Icons.auto_graph_rounded,
-                                    color: const Color(0xFF8D63D8),
-                                    title: 'Review the day',
-                                    text:
-                                        'See revenue, stock alerts, and what is moving.',
-                                    onTap: () {
-                                      context
-                                          .read<AppProvider>()
-                                          .setNavIndex(0);
-                                      onContinue();
-                                    }),
-                              ]),
-                              const Spacer(flex: 2),
-                              const Text(
-                                  'Choose a task to enter your workspace. You can move between every area at any time.',
-                                  style: TextStyle(
-                                      color: AppColors.muted, fontSize: 12)),
-                            ]))))),
+            child: SingleChildScrollView(
+                child: Center(
+                    child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1000),
+                        child: Padding(
+                            padding: EdgeInsets.all(compact ? 24 : 48),
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(children: [
+                                    Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                            color: AppColors.brand,
+                                            borderRadius:
+                                                BorderRadius.circular(14)),
+                                        child: const Icon(
+                                            Icons.auto_graph_rounded,
+                                            color: Colors.white)),
+                                    const SizedBox(width: 11),
+                                    const Text('NEXORA',
+                                        style: TextStyle(
+                                            letterSpacing: 2,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.ink)),
+                                    const Spacer(),
+                                    TextButton.icon(
+                                        onPressed: onContinue,
+                                        icon: const Icon(
+                                            Icons.arrow_forward_rounded,
+                                            size: 17),
+                                        label: const Text('Skip to workspace'))
+                                  ]),
+                                  SizedBox(height: compact ? 40 : 100),
+                                  Text(
+                                      'Welcome${user.isEmpty ? '' : ', $user'}.',
+                                      style: TextStyle(
+                                          color: AppColors.ink,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: compact ? 33 : 48,
+                                          letterSpacing: -2)),
+                                  const SizedBox(height: 12),
+                                  const Text('What would make today a win?',
+                                      style: TextStyle(
+                                          color: AppColors.muted,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500)),
+                                  const SizedBox(height: 30),
+                                  Wrap(spacing: 16, runSpacing: 16, children: [
+                                    _JourneyCard(
+                                        width: compact ? double.infinity : 290,
+                                        index: '01',
+                                        icon: Icons.point_of_sale_rounded,
+                                        color: const Color(0xFF12A594),
+                                        title: 'Start a sale',
+                                        text:
+                                            'Build a bill and complete checkout in seconds.',
+                                        onTap: () {
+                                          context
+                                              .read<AppProvider>()
+                                              .setNavIndex(1);
+                                          onContinue();
+                                        }),
+                                    _JourneyCard(
+                                        width: compact ? double.infinity : 290,
+                                        index: '02',
+                                        icon: Icons.inventory_2_rounded,
+                                        color: const Color(0xFF365FF4),
+                                        title: 'Manage products',
+                                        text:
+                                            'Add items, pricing, stock, and favourites.',
+                                        onTap: () {
+                                          context
+                                              .read<AppProvider>()
+                                              .setNavIndex(2);
+                                          onContinue();
+                                        }),
+                                    _JourneyCard(
+                                        width: compact ? double.infinity : 290,
+                                        index: '03',
+                                        icon: Icons.auto_graph_rounded,
+                                        color: const Color(0xFF8D63D8),
+                                        title: 'Review the day',
+                                        text:
+                                            'See revenue, stock alerts, and what is moving.',
+                                        onTap: () {
+                                          context
+                                              .read<AppProvider>()
+                                              .setNavIndex(0);
+                                          onContinue();
+                                        }),
+                                  ]),
+                                  const SizedBox(height: 28),
+                                  const Text(
+                                      'Choose a task to enter your workspace. You can move between every area at any time.',
+                                      style: TextStyle(
+                                          color: AppColors.muted,
+                                          fontSize: 12)),
+                                ])))))),
       ]),
     );
   }
