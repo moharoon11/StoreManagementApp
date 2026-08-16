@@ -453,7 +453,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
         TextField(
             onChanged: _setSearch,
             decoration: const InputDecoration(
-                hintText: 'Search and add products',
+                hintText: 'Search product...',
                 prefixIcon: Icon(Icons.search_rounded))),
         const SizedBox(height: 12),
         _categoryFilters(),
@@ -488,11 +488,17 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
     }
     return GridView.builder(
       controller: _productsController,
-      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: wide ? 260 : 190,
-          childAspectRatio: wide ? .98 : .76,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12),
+      gridDelegate: wide
+          ? const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 230,
+              childAspectRatio: .94,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12)
+          : const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 1.38,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10),
       itemCount: products.length + (_isLoadingMore ? 1 : 0),
       itemBuilder: (_, index) {
         if (index == products.length) {
@@ -505,86 +511,104 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
         final imageUrl = product['imageUrl'] as String? ?? '';
         return Material(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             child: InkWell(
                 onTap: stock > 0 ? () => provider.addToCart(product) : null,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 child: Container(
-                    padding: const EdgeInsets.all(13),
+                    padding: EdgeInsets.all(wide ? 13 : 10),
                     decoration: BoxDecoration(
                         border: Border.all(
                             color: inCart
                                 ? const Color(0xFF365FF4)
                                 : const Color(0xFFE6E8EF),
                             width: inCart ? 2 : 1),
-                        borderRadius: BorderRadius.circular(16)),
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Container(
-                              width: double.infinity,
-                              clipBehavior: Clip.antiAlias,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF2F3F8),
-                                borderRadius: BorderRadius.circular(11),
-                              ),
-                              child: imageUrl.isEmpty
-                                  ? const Icon(Icons.inventory_2_outlined,
-                                      color: Color(0xFFA1A8B7), size: 34)
-                                  : Image.network(imageUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => const Icon(
-                                          Icons.inventory_2_outlined,
-                                          color: Color(0xFFA1A8B7),
-                                          size: 34)),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(product['categoryName'] ?? 'PRODUCT',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: Color(0xFF365FF4),
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 4),
-                          Text(product['name'] ?? '',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: Color(0xFF172033),
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14)),
-                          const SizedBox(height: 7),
-                          Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('₹${product['sellingPrice']}',
-                                    style: const TextStyle(
-                                        color: Color(0xFF12A594),
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 16)),
-                                Icon(
-                                    inCart
-                                        ? Icons.check_circle_rounded
-                                        : Icons.add_circle_outline_rounded,
-                                    color: stock > 0
-                                        ? const Color(0xFF365FF4)
-                                        : const Color(0xFFA1A8B7))
-                              ]),
-                          const SizedBox(height: 4),
-                          Text(stock > 0 ? '$stock available' : 'Out of stock',
-                              style: TextStyle(
-                                  color: stock > 0
-                                      ? const Color(0xFF6C7486)
-                                      : const Color(0xFFE75C5C),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600))
-                        ]))));
+                        borderRadius: BorderRadius.circular(14)),
+                    child: wide
+                        ? _wideProductCard(product, imageUrl, stock, inCart)
+                        : _compactProductCard(
+                            product, imageUrl, stock, inCart))));
       },
     );
   }
+
+  Widget _wideProductCard(
+          dynamic product, String imageUrl, int stock, bool inCart) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(child: _productImage(imageUrl, double.infinity)),
+        const SizedBox(height: 10),
+        Text(product['categoryName'] ?? 'PRODUCT',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: Color(0xFF365FF4),
+                fontSize: 9,
+                fontWeight: FontWeight.w800)),
+        const SizedBox(height: 4),
+        Text(product['name'] ?? '',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: Color(0xFF172033),
+                fontWeight: FontWeight.w800,
+                fontSize: 14)),
+        const SizedBox(height: 7),
+        _productPriceRow(product, stock, inCart),
+      ]);
+
+  Widget _compactProductCard(
+          dynamic product, String imageUrl, int stock, bool inCart) =>
+      Row(children: [
+        _productImage(imageUrl, 50),
+        const SizedBox(width: 9),
+        Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(product['name'] ?? '',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  color: Color(0xFF172033),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13)),
+          const SizedBox(height: 5),
+          _productPriceRow(product, stock, inCart, compact: true),
+        ]))
+      ]);
+
+  Widget _productImage(String imageUrl, double size) => Container(
+      width: size,
+      height: size,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+          color: const Color(0xFFF2F3F8),
+          borderRadius: BorderRadius.circular(11)),
+      child: imageUrl.isEmpty
+          ? const Icon(Icons.inventory_2_outlined,
+              color: Color(0xFFA1A8B7), size: 30)
+          : Image.network(imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(
+                  Icons.inventory_2_outlined,
+                  color: Color(0xFFA1A8B7),
+                  size: 30)));
+
+  Widget _productPriceRow(dynamic product, int stock, bool inCart,
+          {bool compact = false}) =>
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Expanded(
+            child: Text('₹${product['sellingPrice']}',
+                style: TextStyle(
+                    color: stock > 0
+                        ? const Color(0xFF1764C0)
+                        : const Color(0xFFE75C5C),
+                    fontWeight: FontWeight.w800,
+                    fontSize: compact ? 14 : 16))),
+        Icon(inCart ? Icons.check_circle_rounded : Icons.add_circle_outline,
+            color:
+                stock > 0 ? const Color(0xFF1764C0) : const Color(0xFFA1A8B7),
+            size: compact ? 19 : 22)
+      ]);
 
   Widget _categoryFilters() => SizedBox(
         height: 38,

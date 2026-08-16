@@ -88,112 +88,48 @@ class _DashboardViewState extends State<DashboardView> {
     final todaySales = _dashboardData?['todaySales'] ?? 0;
     final todayInvoices = _dashboardData?['todayInvoiceCount'] ?? 0;
     final totalProducts = _dashboardData?['totalProducts'] ?? 0;
-    final totalCategories = _dashboardData?['totalCategories'] ?? 0;
     final lowStockProducts =
         (_dashboardData?['lowStockProducts'] as List?) ?? [];
     final mostSoldProducts =
         (_dashboardData?['mostSoldProducts'] as List?) ?? [];
+    final recentInvoices = (_dashboardData?['recentInvoices'] as List?) ?? [];
 
     final width = MediaQuery.sizeOf(context).width;
-    final columns = width >= 1120
-        ? 4
-        : width >= 650
-            ? 2
-            : 1;
+    final provider = context.watch<AppProvider>();
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'Good morning'
+        : hour < 17
+            ? 'Good afternoon'
+            : 'Good evening';
     return WorkspacePage(
       child: RefreshIndicator(
         onRefresh: _loadDashboard,
         child: ListView(children: [
-          PageIntro(
-              eyebrow: 'Workspace home',
-              title: 'Everything, in one place.',
-              description: 'Choose a part of your business to work on.',
-              action: OutlinedButton.icon(
-                  onPressed: _loadDashboard,
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                  label: const Text('Refresh'))),
-          const SizedBox(height: 24),
-          _buildLauncher(context, width),
-          const SizedBox(height: 24),
-          Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                      colors: [Color(0xFF1D2B5C), Color(0xFF365FF4)]),
-                  borderRadius: BorderRadius.circular(22)),
-              child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  runSpacing: 18,
-                  children: [
-                    Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("Today's revenue",
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(.72),
-                                  fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 7),
-                          Text('₹$todaySales',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 34,
-                                  letterSpacing: -1.5,
-                                  fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 6),
-                          Text('$todayInvoices invoices created today',
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(.8),
-                                  fontSize: 12))
-                        ]),
-                    Container(
-                        padding: const EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(.13),
-                            borderRadius: BorderRadius.circular(17)),
-                        child: const Icon(Icons.trending_up_rounded,
-                            color: Color(0xFF82E9DE), size: 35))
-                  ])),
+          _dashboardGreeting(greeting, provider.username),
+          const SizedBox(height: 20),
+          _salesHero(todaySales, todayInvoices, totalProducts),
           const SizedBox(height: 18),
-          GridView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: columns,
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 14,
-                // A fixed, generous height prevents the value and its helper
-                // text from being pushed below the card on small phones.
-                mainAxisExtent: columns == 1 ? 142 : 154,
-              ),
-              children: [
-                StatTile(
-                    label: 'Invoices today',
-                    value: '$todayInvoices',
-                    note: 'Transactions created',
-                    icon: Icons.receipt_long_outlined,
-                    color: const Color(0xFF365FF4)),
-                StatTile(
-                    label: 'Products',
-                    value: '$totalProducts',
-                    note: 'In your catalogue',
-                    icon: Icons.inventory_2_outlined,
-                    color: const Color(0xFF8D63D8)),
-                StatTile(
-                    label: 'Categories',
-                    value: '$totalCategories',
-                    note: 'Ways customers browse',
-                    icon: Icons.account_tree_outlined,
-                    color: const Color(0xFFE4A331)),
-                StatTile(
-                    label: 'Stock alerts',
-                    value: '${lowStockProducts.length}',
-                    note: 'Items need a check',
-                    icon: Icons.priority_high_rounded,
-                    color: const Color(0xFFE75C5C))
-              ]),
+          Wrap(spacing: 12, runSpacing: 12, children: [
+            _actionCard(
+                width: width,
+                title: 'New bill',
+                subtitle: 'Create a normal bill',
+                icon: Icons.add_rounded,
+                colors: const [Color(0xFF2563EB), Color(0xFF104FC7)],
+                onTap: () => provider.setNavIndex(1)),
+            _actionCard(
+                width: width,
+                title: 'Quick bill',
+                subtitle: 'Fast billing in seconds',
+                icon: Icons.bolt_rounded,
+                colors: const [Color(0xFFFF9D00), Color(0xFFE66B00)],
+                onTap: () => provider.setNavIndex(1)),
+          ]),
+          const SizedBox(height: 22),
+          _recentBills(recentInvoices, provider),
           const SizedBox(height: 24),
-          if (width < 780) ...[
+          if (width < 800) ...[
             _buildActivityPanel(
                 'Stock to review',
                 'Keep your shelves ready',
@@ -230,6 +166,188 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
+  Widget _dashboardGreeting(String greeting, String username) =>
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('STORE MANAGEMENT',
+              style: TextStyle(
+                  color: Color(0xFF172033),
+                  fontSize: 25,
+                  letterSpacing: -1,
+                  fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text('$greeting${username.isEmpty ? '' : ', $username'}',
+              style: const TextStyle(color: Color(0xFF6C7486), fontSize: 14))
+        ])),
+        IconButton(
+            onPressed: _loadDashboard,
+            tooltip: 'Refresh dashboard',
+            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF365FF4)))
+      ]);
+
+  Widget _salesHero(dynamic sales, dynamic invoices, dynamic products) =>
+      Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF2879F1), Color(0xFF104AB9)]),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: const [
+                BoxShadow(
+                    color: Color(0x332563EB),
+                    blurRadius: 20,
+                    offset: Offset(0, 9))
+              ]),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Text("TODAY'S SALES",
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: .85),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13)),
+              const Spacer(),
+              Icon(Icons.auto_graph_rounded,
+                  color: Colors.white.withValues(alpha: .7))
+            ]),
+            const SizedBox(height: 12),
+            Text('₹$sales',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 38,
+                    letterSpacing: -1.5,
+                    fontWeight: FontWeight.w800)),
+            const SizedBox(height: 18),
+            Container(height: 1, color: Colors.white.withValues(alpha: .25)),
+            const SizedBox(height: 16),
+            Row(children: [
+              _heroStat(
+                  Icons.receipt_long_outlined, '$invoices', 'TOTAL BILLS'),
+              Container(
+                  height: 38,
+                  width: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 22),
+                  color: Colors.white.withValues(alpha: .25)),
+              _heroStat(Icons.inventory_2_outlined, '$products', 'PRODUCTS'),
+            ])
+          ]));
+
+  Widget _heroStat(IconData icon, String value, String label) => Expanded(
+          child: Row(children: [
+        Container(
+            padding: const EdgeInsets.all(9),
+            decoration: const BoxDecoration(
+                color: Color(0x22FFFFFF), shape: BoxShape.circle),
+            child: Icon(icon, color: Colors.white, size: 18)),
+        const SizedBox(width: 9),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label,
+              style: const TextStyle(
+                  color: Color(0xDFFFFFFF),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800)),
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800))
+        ])
+      ]));
+
+  Widget _actionCard(
+          {required double width,
+          required String title,
+          required String subtitle,
+          required IconData icon,
+          required List<Color> colors,
+          required VoidCallback onTap}) =>
+      SizedBox(
+          width: width >= 680
+              ? (width >= 760 ? width - 68 : width - 44) / 2
+              : double.infinity,
+          child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(19),
+              child: InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(19),
+                  child: Ink(
+                      height: 110,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: colors),
+                          borderRadius: BorderRadius.circular(19)),
+                      child: Row(children: [
+                        Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: const BoxDecoration(
+                                color: Colors.white, shape: BoxShape.circle),
+                            child: Icon(icon, color: colors.first, size: 25)),
+                        const SizedBox(width: 14),
+                        Expanded(
+                            child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                              Text(title.toUpperCase(),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800)),
+                              const SizedBox(height: 3),
+                              Text(subtitle,
+                                  style: const TextStyle(
+                                      color: Color(0xDFFFFFFF), fontSize: 12))
+                            ])),
+                        const Icon(Icons.chevron_right_rounded,
+                            color: Colors.white, size: 28)
+                      ])))));
+
+  Widget _recentBills(List invoices, AppProvider provider) => SurfacePanel(
+      padding: EdgeInsets.zero,
+      child: Column(children: [
+        Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 12, 12),
+            child: Row(children: [
+              const Expanded(
+                  child: Text('RECENT BILLS',
+                      style: TextStyle(
+                          color: Color(0xFF172033),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800))),
+              TextButton(
+                  onPressed: () => provider.setNavIndex(4),
+                  child: const Text('View all'))
+            ])),
+        const Divider(),
+        if (invoices.isEmpty)
+          const Padding(
+              padding: EdgeInsets.all(22),
+              child: Text('Your completed bills will appear here.',
+                  style: TextStyle(color: Color(0xFF6C7486))))
+        else
+          ...invoices.take(4).map((invoice) => ListTile(
+              onTap: () => provider.setNavIndex(4),
+              leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFEEF4FF),
+                  child: Icon(Icons.receipt_long_outlined,
+                      color: Color(0xFF2563EB))),
+              title: Text(invoice['invoiceNumber'] ?? 'Invoice',
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text(
+                  '${invoice['createdAt'] ?? ''}'.replaceFirst('T', ' '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11)),
+              trailing: Text('₹${invoice['grandTotal']}',
+                  style: const TextStyle(
+                      color: Color(0xFF16834B), fontWeight: FontWeight.w800)))),
+      ]));
+
   Widget _buildActivityPanel(String title, String subtitle, IconData icon,
           Color color, Widget content) =>
       SurfacePanel(
@@ -261,66 +379,6 @@ class _DashboardViewState extends State<DashboardView> {
             const Divider(),
             content
           ]));
-
-  Widget _buildLauncher(BuildContext context, double width) {
-    final provider = context.read<AppProvider>();
-    const tools = [
-      (1, 'New sale', Icons.point_of_sale_rounded, Color(0xFF12A594)),
-      (2, 'Products', Icons.inventory_2_rounded, Color(0xFF365FF4)),
-      (3, 'Categories', Icons.account_tree_rounded, Color(0xFF8D63D8)),
-      (4, 'Invoices', Icons.receipt_long_rounded, Color(0xFFE4A331)),
-      (5, 'Stock', Icons.warehouse_rounded, Color(0xFFE75C5C)),
-      (6, 'Insights', Icons.auto_graph_rounded, Color(0xFF365FF4)),
-      (7, 'Business', Icons.storefront_rounded, Color(0xFF12A594)),
-    ];
-    final crossAxisCount = width >= 1100
-        ? 7
-        : width >= 760
-            ? 4
-            : 3;
-    return SurfacePanel(
-      padding: const EdgeInsets.all(14),
-      child: GridView.count(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: width < 500 ? .95 : 1.25,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        children: [
-          for (final tool in tools)
-            _launcherItem(
-                tool.$2, tool.$3, tool.$4, () => provider.setNavIndex(tool.$1))
-        ],
-      ),
-    );
-  }
-
-  Widget _launcherItem(
-          String label, IconData icon, Color color, VoidCallback onTap) =>
-      Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(15),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(15),
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                    color: color.withOpacity(.12),
-                    borderRadius: BorderRadius.circular(12)),
-                child: Icon(icon, color: color, size: 21)),
-            const SizedBox(height: 7),
-            Text(label,
-                style: const TextStyle(
-                    color: Color(0xFF172033),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700),
-                textAlign: TextAlign.center),
-          ]),
-        ),
-      );
 
   Widget _buildLowStockContent(List lowStockProducts) {
     if (lowStockProducts.isEmpty) {
