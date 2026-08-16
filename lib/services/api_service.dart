@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import 'storage_service.dart';
@@ -25,6 +26,21 @@ class ApiService {
     final headers = await _getHeaders();
     final response = await http.get(uri, headers: headers);
     return _processResponse(response);
+  }
+
+  /// Downloads a non-JSON response while applying the same authentication
+  /// headers as the rest of the API calls.
+  static Future<Uint8List> getBytes(String endpoint) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+    final headers = await _getHeaders(isJson: false);
+    headers['Accept'] = 'application/pdf';
+    final response = await http.get(uri, headers: headers);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Failed to download file (HTTP ${response.statusCode})');
+    }
+
+    return response.bodyBytes;
   }
 
   static Future<dynamic> post(String endpoint, dynamic data) async {

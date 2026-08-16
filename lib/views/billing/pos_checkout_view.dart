@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:http/http.dart' as http;
 import 'package:printing/printing.dart';
 import '../../providers/app_provider.dart';
 import '../../services/api_service.dart';
+import '../../services/invoice_pdf_service.dart';
 import '../../config/api_config.dart';
 
 class PosCheckoutView extends StatefulWidget {
@@ -146,7 +145,8 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
         provider.clearCart();
         _fetchAvailableProducts(reset: true);
 
-        final pdfUrl = '${ApiConfig.baseUrl}/invoices/${invoice['id']}/pdf';
+        final invoiceId = invoice['id'] as int;
+        final pdfFilename = 'Invoice_${invoice['invoiceNumber']}.pdf';
 
         showDialog(
           context: context,
@@ -202,24 +202,27 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    // PDF Download / Print
+                    // PDF download
                     IconButton(
                       icon: const Icon(Icons.picture_as_pdf,
                           color: Color(0xFFE75C5C), size: 28),
                       tooltip: 'Download PDF',
                       onPressed: () async {
                         try {
-                          final res = await http.get(Uri.parse(pdfUrl));
-                          if (res.statusCode == 200) {
-                            await Printing.layoutPdf(
-                                onLayout: (format) async => res.bodyBytes,
-                                name:
-                                    'Invoice_${invoice['invoiceNumber']}.pdf');
+                          final bytes =
+                              await InvoicePdfService.fetch(invoiceId);
+                          final wasSaved =
+                              await InvoicePdfService.save(bytes, pdfFilename);
+                          if (mounted && wasSaved) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('PDF saved successfully.')),
+                            );
                           }
                         } catch (e) {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text('Error loading PDF: $e')));
+                                content: Text('Error downloading PDF: $e')));
                           }
                         }
                       },
@@ -230,13 +233,23 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
                           color: Color(0xFF25D366), size: 28),
                       tooltip: 'Share on WhatsApp',
                       onPressed: () async {
-                        final text = Uri.encodeComponent(
-                            "Invoice #${invoice['invoiceNumber']} - Total: ₹${invoice['grandTotal']}\nPDF: $pdfUrl");
-                        final waUri = Uri.parse("https://wa.me/?text=$text");
                         try {
-                          await launchUrl(waUri,
-                              mode: LaunchMode.externalApplication);
-                        } catch (_) {}
+                          final bytes =
+                              await InvoicePdfService.fetch(invoiceId);
+                          await Printing.sharePdf(
+                            bytes: bytes,
+                            filename: pdfFilename,
+                            subject: 'Invoice ${invoice['invoiceNumber']}',
+                            body:
+                                'Invoice #${invoice['invoiceNumber']} - Total: ₹${invoice['grandTotal']}',
+                          );
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error sharing PDF: $e')),
+                            );
+                          }
+                        }
                       },
                     ),
                     // Print Invoice
@@ -246,13 +259,12 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
                       tooltip: 'Print Invoice',
                       onPressed: () async {
                         try {
-                          final res = await http.get(Uri.parse(pdfUrl));
-                          if (res.statusCode == 200) {
-                            await Printing.layoutPdf(
-                                onLayout: (format) async => res.bodyBytes,
-                                name:
-                                    'Invoice_${invoice['invoiceNumber']}.pdf');
-                          }
+                          final bytes =
+                              await InvoicePdfService.fetch(invoiceId);
+                          await Printing.layoutPdf(
+                            onLayout: (format) async => bytes,
+                            name: pdfFilename,
+                          );
                         } catch (e) {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(

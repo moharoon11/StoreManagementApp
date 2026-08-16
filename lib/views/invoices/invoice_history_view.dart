@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:printing/printing.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
+import '../../services/invoice_pdf_service.dart';
 
 class InvoiceHistoryView extends StatefulWidget {
   const InvoiceHistoryView({Key? key}) : super(key: key);
@@ -37,31 +36,21 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     }
   }
 
-  Future<void> _openPdf(int invoiceId) async {
-    final pdfUrl = '${ApiConfig.baseUrl}/invoices/$invoiceId/pdf';
+  Future<void> _downloadPdf(int invoiceId) async {
     try {
-      final response = await http.get(Uri.parse(pdfUrl));
-      if (response.statusCode == 200) {
-        final bytes = response.bodyBytes;
-        await Printing.layoutPdf(
-          onLayout: (format) async => bytes,
-          name: 'Invoice_$invoiceId.pdf',
+      final bytes = await InvoicePdfService.fetch(invoiceId);
+      final wasSaved =
+          await InvoicePdfService.save(bytes, 'Invoice_$invoiceId.pdf');
+      if (mounted && wasSaved) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PDF saved successfully.')),
         );
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content:
-                    Text('Failed to load PDF. Status: ${response.statusCode}'),
-                backgroundColor: const Color(0xFFE75C5C)),
-          );
-        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Error loading PDF: ${e.toString()}'),
+              content: Text('Error downloading PDF: ${e.toString()}'),
               backgroundColor: const Color(0xFFE75C5C)),
         );
       }
@@ -90,7 +79,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
               IconButton(
                 icon:
                     const Icon(Icons.picture_as_pdf, color: Color(0xFFE75C5C)),
-                onPressed: () => _openPdf(invoice['id']),
+                onPressed: () => _downloadPdf(invoice['id']),
                 tooltip: 'Download PDF Invoice',
               ),
             ],
@@ -142,9 +131,9 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
         ),
         actions: [
           ElevatedButton.icon(
-            onPressed: () => _openPdf(invoice['id']),
+            onPressed: () => _downloadPdf(invoice['id']),
             icon: const Icon(Icons.picture_as_pdf, size: 18),
-            label: const Text('Download / Share PDF'),
+            label: const Text('Download PDF'),
             style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFE75C5C),
                 foregroundColor: Colors.white),
@@ -229,7 +218,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                               IconButton(
                                 icon: const Icon(Icons.picture_as_pdf,
                                     color: Color(0xFFE75C5C), size: 20),
-                                onPressed: () => _openPdf(inv['id']),
+                                onPressed: () => _downloadPdf(inv['id']),
                               ),
                             ],
                           ),

@@ -19,6 +19,9 @@ dependencies:
   image_picker: ^1.1.2
   printing: ^5.13.0
   path_provider: ^2.1.2
+  # 3.0.2 adds the Android namespace required by AGP 8 while remaining
+  # compatible with this project's Dart and Android SDK versions.
+  flutter_file_dialog: 3.0.2
 
 dev_dependencies:
   flutter_test:
