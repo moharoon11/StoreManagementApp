@@ -419,6 +419,31 @@ class _CategoriesViewState extends State<CategoriesView> {
     }
   }
 
+  Future<void> _confirmDeleteCategory(Map<String, dynamic> category) async {
+    final name = (category['name'] ?? 'this category').toString();
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete category'),
+        content: Text(
+            'Delete "$name"? Products already in this category will not be deleted.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFE75C5C)),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (shouldDelete == true) {
+      await _deleteCategory(category['id'] as int);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -527,55 +552,42 @@ class _CategoriesViewState extends State<CategoriesView> {
                                             : null,
                                       ),
                                       const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.end,
-                                          children: [
-                                            InkWell(
-                                              onTap: () => _showCategoryDialog(
-                                                  category: cat),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.all(6),
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      const Color(0xFFEEF0FF),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: const Icon(
-                                                    Icons.edit_outlined,
-                                                    size: 16,
-                                                    color: Color(0xFF365FF4)),
-                                              ),
+                                      const Spacer(),
+                                      PopupMenuButton<String>(
+                                        tooltip: 'Category actions',
+                                        icon: const Icon(Icons.more_horiz,
+                                            color: Color(0xFF6C7486)),
+                                        onSelected: (action) {
+                                          if (action == 'edit') {
+                                            _showCategoryDialog(category: cat);
+                                          } else {
+                                            _confirmDeleteCategory(cat);
+                                          }
+                                        },
+                                        itemBuilder: (_) => const [
+                                          PopupMenuItem(
+                                            value: 'edit',
+                                            child: ListTile(
+                                              leading:
+                                                  Icon(Icons.edit_outlined),
+                                              title: Text('Edit category'),
+                                              contentPadding: EdgeInsets.zero,
                                             ),
-                                            const SizedBox(width: 6),
-                                            InkWell(
-                                              onTap: () =>
-                                                  _deleteCategory(cat['id']),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.all(6),
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      const Color(0xFFFFF0F0),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: const Icon(
-                                                    Icons
-                                                        .delete_outline_rounded,
-                                                    size: 16,
-                                                    color: Color(0xFFE75C5C)),
-                                              ),
+                                          ),
+                                          PopupMenuItem(
+                                            value: 'delete',
+                                            child: ListTile(
+                                              leading: Icon(
+                                                  Icons.delete_outline_rounded,
+                                                  color: Color(0xFFE75C5C)),
+                                              title: Text('Delete category',
+                                                  style: TextStyle(
+                                                      color:
+                                                          Color(0xFFE75C5C))),
+                                              contentPadding: EdgeInsets.zero,
                                             ),
-                                          ],
-                                        ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),

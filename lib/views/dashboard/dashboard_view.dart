@@ -155,13 +155,17 @@ class _DashboardViewState extends State<DashboardView> {
                             color: Color(0xFF82E9DE), size: 35))
                   ])),
           const SizedBox(height: 18),
-          GridView.count(
+          GridView(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: columns,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              childAspectRatio: columns == 1 ? 3.4 : 1.55,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+                // A fixed, generous height prevents the value and its helper
+                // text from being pushed below the card on small phones.
+                mainAxisExtent: columns == 1 ? 142 : 154,
+              ),
               children: [
                 StatTile(
                     label: 'Invoices today',

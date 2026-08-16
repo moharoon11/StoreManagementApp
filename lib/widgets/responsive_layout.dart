@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../views/billing/pos_checkout_view.dart';
+import '../views/categories/categories_view.dart';
 import '../views/dashboard/dashboard_view.dart';
 import '../views/invoices/invoice_history_view.dart';
 import '../views/products/products_view.dart';
@@ -21,7 +22,7 @@ class _ResponsiveLayoutState extends State<ResponsiveLayout> {
     DashboardView(),
     PosCheckoutView(),
     ProductsView(),
-    ProductsView(key: ValueKey('categories-browser')),
+    CategoriesView(),
     InvoiceHistoryView(),
     StockManagementView(),
     SalesReportsView(),

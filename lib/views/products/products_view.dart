@@ -197,44 +197,31 @@ class _ProductsViewState extends State<ProductsView> {
                           },
                           child: Container(
                             width: double.infinity,
-                            height: 110,
+                            height: 156,
+                            clipBehavior: Clip.antiAlias,
                             decoration: BoxDecoration(
                               color: const Color(0xFFF6F7FB),
                               borderRadius: BorderRadius.circular(12),
                               border:
                                   Border.all(color: const Color(0xFFD2D6E0)),
-                              image: pickedImageFile != null
-                                  ? DecorationImage(
-                                      image: FileImage(pickedImageFile!),
-                                      fit: BoxFit.cover)
-                                  : (productImageUrl.isNotEmpty
-                                      ? DecorationImage(
-                                          image: NetworkImage(productImageUrl),
-                                          fit: BoxFit.cover)
-                                      : null),
                             ),
                             child: isUploading
                                 ? const Center(
                                     child: CircularProgressIndicator(
                                         color: Color(0xFF365FF4)))
-                                : (pickedImageFile == null &&
-                                        productImageUrl.isEmpty
-                                    ? Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: const [
-                                          Icon(Icons.add_a_photo,
-                                              color: Color(0xFF365FF4),
-                                              size: 30),
-                                          SizedBox(height: 4),
-                                          Text('Upload Product Image',
-                                              style: TextStyle(
-                                                  color: Color(0xFF6C7486),
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500)),
-                                        ],
-                                      )
-                                    : null),
+                                : pickedImageFile != null
+                                    ? Image.file(pickedImageFile!,
+                                        width: double.infinity,
+                                        height: double.infinity,
+                                        fit: BoxFit.contain)
+                                    : productImageUrl.isNotEmpty
+                                        ? Image.network(productImageUrl,
+                                            width: double.infinity,
+                                            height: double.infinity,
+                                            fit: BoxFit.contain,
+                                            errorBuilder: (_, __, ___) =>
+                                                const _ImagePlaceholder())
+                                        : const _ImagePlaceholder(),
                           ),
                         ),
                       ),
@@ -604,4 +591,22 @@ class _ProductsViewState extends State<ProductsView> {
                       ]))
             ])));
   }
+}
+
+class _ImagePlaceholder extends StatelessWidget {
+  const _ImagePlaceholder();
+
+  @override
+  Widget build(BuildContext context) => const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.add_a_photo, color: Color(0xFF365FF4), size: 30),
+          SizedBox(height: 4),
+          Text('Upload Product Image',
+              style: TextStyle(
+                  color: Color(0xFF6C7486),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500)),
+        ],
+      );
 }
