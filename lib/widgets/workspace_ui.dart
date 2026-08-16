@@ -111,7 +111,7 @@ class StatTile extends StatelessWidget {
             Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                    color: color.withOpacity(.12),
+                    color: color.withValues(alpha: .12),
                     borderRadius: BorderRadius.circular(10)),
                 child: Icon(icon, size: 18, color: color))
           ]),

@@ -30,28 +30,28 @@ abstract final class AppTheme {
             AppColors.canvas),
         AppThemeOption.nightOwl => _build(
             const ColorScheme.dark(
-              primary: Color(0xFF82AAFF),
-              secondary: Color(0xFFC3E88D),
-              surface: Color(0xFF1D2A3A),
+              primary: Color(0xFF8B9CFF),
+              secondary: Color(0xFF5EEAD4),
+              surface: Color(0xFF151D31),
               error: Color(0xFFFF8A80),
-              onPrimary: Color(0xFF0B1726),
-              onSurface: Color(0xFFD6DEEB),
-              outline: Color(0xFF34455B),
-              outlineVariant: Color(0xFF34455B),
+              onPrimary: Color(0xFF0B1020),
+              onSurface: Color(0xFFE7ECF5),
+              outline: Color(0xFF2B3852),
+              outlineVariant: Color(0xFF2B3852),
             ),
-            const Color(0xFF011627)),
+            const Color(0xFF0B1020)),
         AppThemeOption.evergreen => _build(
             const ColorScheme.light(
-              primary: Color(0xFF256B5C),
-              secondary: Color(0xFFB8751A),
-              surface: Color(0xFFFFFFFF),
+              primary: Color(0xFF9A4E25),
+              secondary: Color(0xFF20756C),
+              surface: Color(0xFFFFFDFC),
               error: Color(0xFFB33A3A),
               onPrimary: Colors.white,
-              onSurface: Color(0xFF17352F),
-              outline: Color(0xFFDDE8E4),
-              outlineVariant: Color(0xFFDDE8E4),
+              onSurface: Color(0xFF332017),
+              outline: Color(0xFFE9DCD1),
+              outlineVariant: Color(0xFFE9DCD1),
             ),
-            const Color(0xFFF3F8F5)),
+            const Color(0xFFFFF7F0)),
       };
 
   static ThemeData _build(ColorScheme colorScheme, Color canvas) {
@@ -130,6 +130,19 @@ abstract final class AppTheme {
       ),
       dividerTheme:
           DividerThemeData(color: colorScheme.outlineVariant, space: 1),
+      navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: colorScheme.surface,
+          indicatorColor: colorScheme.primary.withValues(alpha: .14),
+          labelTextStyle: WidgetStatePropertyAll(
+              TextStyle(color: colorScheme.onSurface, fontSize: 11))),
+      bottomSheetTheme: BottomSheetThemeData(
+          backgroundColor: colorScheme.surface,
+          modalBackgroundColor: colorScheme.surface,
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)))),
+      popupMenuTheme: PopupMenuThemeData(
+          color: colorScheme.surface,
+          textStyle: TextStyle(color: colorScheme.onSurface)),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

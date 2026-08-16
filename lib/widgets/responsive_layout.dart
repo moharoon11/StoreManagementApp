@@ -294,8 +294,8 @@ class _ThemeChoice extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final (label, swatch) = switch (option) {
       AppThemeOption.light => ('Light', const Color(0xFF365FF4)),
-      AppThemeOption.nightOwl => ('Night Owl', const Color(0xFF82AAFF)),
-      AppThemeOption.evergreen => ('Evergreen', const Color(0xFF256B5C)),
+      AppThemeOption.nightOwl => ('Night Owl', const Color(0xFF8B9CFF)),
+      AppThemeOption.evergreen => ('Sand', const Color(0xFF9A4E25)),
     };
     return Material(
       color: selected ? scheme.primary.withValues(alpha: .12) : scheme.surface,

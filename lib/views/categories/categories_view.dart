@@ -293,9 +293,9 @@ class _CategoriesViewState extends State<CategoriesView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    final narrow = MediaQuery.sizeOf(context).width < 640;
+    final mobile = MediaQuery.sizeOf(context).width < 700;
     return Padding(
-      padding: EdgeInsets.all(narrow ? 16 : 24),
+      padding: EdgeInsets.all(mobile ? 16 : 24),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(
@@ -315,19 +315,28 @@ class _CategoriesViewState extends State<CategoriesView> {
                         fontSize: 12))
               ])),
           FilledButton.icon(
+              style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 14)),
               onPressed: () => _showCategoryDialog(),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: Text(narrow ? 'Add' : 'Add category'))
+              label: Text(mobile ? 'Add' : 'Add category'))
         ]),
         const SizedBox(height: 18),
         Expanded(
             child: _categories.isEmpty
                 ? _emptyCategories(context)
-                : Row(children: [
-                    SizedBox(width: narrow ? 112 : 230, child: _categoryRail()),
-                    const SizedBox(width: 12),
-                    Expanded(child: _productsPane())
-                  ])),
+                : mobile
+                    ? Column(children: [
+                        _mobileCategorySelector(),
+                        const SizedBox(height: 12),
+                        Expanded(child: _productsPane())
+                      ])
+                    : Row(children: [
+                        SizedBox(width: 230, child: _categoryRail()),
+                        const SizedBox(width: 16),
+                        Expanded(child: _productsPane())
+                      ])),
       ]),
     );
   }
@@ -405,6 +414,43 @@ class _CategoriesViewState extends State<CategoriesView> {
     );
   }
 
+  Widget _mobileCategorySelector() {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final category = _categories[index] as Map;
+          final id = category['id'] as int;
+          final selected = id == _selectedCategoryId;
+          final name = (category['name'] ?? 'Untitled').toString();
+          return Tooltip(
+            message: name,
+            child: ChoiceChip(
+              selected: selected,
+              showCheckmark: false,
+              label: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 150),
+                child: Text(name, overflow: TextOverflow.ellipsis),
+              ),
+              labelStyle: TextStyle(
+                  color: selected ? scheme.primary : scheme.onSurface,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600),
+              backgroundColor: scheme.surface,
+              selectedColor: scheme.primary.withValues(alpha: .13),
+              side: BorderSide(
+                  color: selected ? scheme.primary : scheme.outlineVariant),
+              onSelected: (_) => _selectCategory(id),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _productsPane() {
     final selected = _categories.firstWhere(
         (category) => category['id'] == _selectedCategoryId,
@@ -427,13 +473,31 @@ class _CategoriesViewState extends State<CategoriesView> {
                       .textTheme
                       .titleLarge
                       ?.copyWith(fontWeight: FontWeight.w800))),
-          IconButton(
-              tooltip: 'Edit category',
-              onPressed: () => _showCategoryDialog(category: category),
-              icon: const Icon(Icons.edit_outlined, size: 19))
+          PopupMenuButton<String>(
+              tooltip: 'Category actions',
+              onSelected: (action) => action == 'edit'
+                  ? _showCategoryDialog(category: category)
+                  : _deleteCategory(category),
+              itemBuilder: (_) => const [
+                    PopupMenuItem(
+                        value: 'edit',
+                        child: ListTile(
+                            leading: Icon(Icons.edit_outlined),
+                            title: Text('Edit category'),
+                            contentPadding: EdgeInsets.zero)),
+                    PopupMenuItem(
+                        value: 'delete',
+                        child: ListTile(
+                            leading: Icon(Icons.delete_outline_rounded,
+                                color: Colors.redAccent),
+                            title: Text('Delete category',
+                                style: TextStyle(color: Colors.redAccent)),
+                            contentPadding: EdgeInsets.zero)),
+                  ])
         ]),
         const SizedBox(height: 8),
         TextField(
+            key: ValueKey('category-search-$_selectedCategoryId'),
             onChanged: _setSearch,
             decoration: const InputDecoration(
                 isDense: true,
