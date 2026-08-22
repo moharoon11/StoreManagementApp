@@ -267,155 +267,173 @@ class _ManualBillingViewState extends State<ManualBillingView> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: scheme.surface,
       appBar: AppBar(
-        title: const Text('Normal Bill', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text('Normal Bill', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
         backgroundColor: scheme.surface,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        iconTheme: IconThemeData(color: scheme.onSurface),
       ),
       body: Column(
         children: [
+          // Table Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
+            ),
+            child: Row(
+              children: [
+                SizedBox(width: 28, child: Text('#', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurface.withValues(alpha: .6)))),
+                Expanded(flex: 3, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurface.withValues(alpha: .6)))),
+                const SizedBox(width: 8),
+                Expanded(flex: 2, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurface.withValues(alpha: .6)))),
+                const SizedBox(width: 8),
+                Expanded(flex: 3, child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurface.withValues(alpha: .6)))),
+                const SizedBox(width: 32), // space for delete icon
+              ],
+            ),
+          ),
           Expanded(
             child: Form(
               key: _formKey,
               child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: _items.length,
-                separatorBuilder: (context, index) => const Divider(height: 32),
+                padding: const EdgeInsets.only(bottom: 20),
+                itemCount: _items.length + 1,
+                separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (context, index) {
+                  if (index == _items.length) {
+                    return InkWell(
+                      onTap: _addItem,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add, size: 18, color: scheme.primary),
+                            const SizedBox(width: 4),
+                            Text('Add Item', style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w700, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
                   final item = _items[index];
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.only(top: 14),
-                        width: 30,
-                        child: Text('${index + 1}.',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: scheme.onSurface.withValues(alpha: .6))),
-                      ),
-                      Expanded(
-                        flex: 3,
-                        child: TextFormField(
-                          controller: item.rateController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: const InputDecoration(
-                            labelText: 'Rate (₹)',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          ),
-                          onChanged: (_) => setState(() {}),
-                          validator: (val) {
-                            if (val == null || val.isEmpty) return 'Required';
-                            if (double.tryParse(val) == null) return 'Invalid';
-                            return null;
-                          },
+                  final itemRate = double.tryParse(item.rateController.text) ?? 0;
+                  final itemQty = int.tryParse(item.qtyController.text) ?? 0;
+                  final itemTotal = itemRate * itemQty;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 28,
+                          child: Text('${index + 1}.', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: scheme.onSurface.withValues(alpha: .7))),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: TextFormField(
-                          controller: item.qtyController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Qty',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        Expanded(
+                          flex: 3,
+                          child: TextFormField(
+                            controller: item.rateController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              filled: true,
+                              fillColor: scheme.surfaceContainerHighest.withValues(alpha: .4),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onChanged: (_) => setState(() {}),
                           ),
-                          onChanged: (_) => setState(() {}),
-                          validator: (val) {
-                            if (val == null || val.isEmpty) return 'Required';
-                            if (int.tryParse(val) == null) return 'Invalid';
-                            return null;
-                          },
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 3,
-                        child: Container(
-                          padding: const EdgeInsets.only(top: 14),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: TextFormField(
+                            controller: item.qtyController,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              filled: true,
+                              fillColor: scheme.surfaceContainerHighest.withValues(alpha: .4),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 3,
                           child: Text(
-                            '₹${((double.tryParse(item.rateController.text) ?? 0) * (int.tryParse(item.qtyController.text) ?? 0)).toStringAsFixed(2)}',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: scheme.secondary),
+                            '₹${itemTotal.toStringAsFixed(2)}',
                             textAlign: TextAlign.right,
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF16834B)),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: Icon(Icons.remove_circle_outline, color: scheme.error),
-                        onPressed: _items.length > 1 ? () => _removeItem(index) : null,
-                        tooltip: 'Remove Item',
-                      ),
-                    ],
+                        SizedBox(
+                          width: 32,
+                          child: _items.length > 1
+                              ? IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  icon: Icon(Icons.close_rounded, size: 18, color: scheme.error.withValues(alpha: .7)),
+                                  onPressed: () => _removeItem(index),
+                                )
+                              : const SizedBox(),
+                        ),
+                      ],
+                    ),
                   );
                 },
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: OutlinedButton.icon(
-              onPressed: _addItem,
-              icon: const Icon(Icons.add),
-              label: const Text('Add Another Item'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: scheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: .05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -4),
-                )
-              ],
+              border: Border(top: BorderSide(color: scheme.outlineVariant)),
             ),
             child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              child: Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Grand Total',
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: scheme.onSurface)),
-                      Text('₹${_grandTotal.toStringAsFixed(2)}',
-                          style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: scheme.secondary)),
+                      Text('Grand Total', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: scheme.onSurface.withValues(alpha: .7))),
+                      Text('₹${_grandTotal.toStringAsFixed(2)}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: scheme.onSurface)),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const Spacer(),
                   SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: FilledButton.icon(
+                    height: 44,
+                    width: 140,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF365FF4),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
                       onPressed: _isProcessing ? null : _beginCheckout,
-                      icon: _isProcessing
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.lock_outline),
-                      label: Text(_isProcessing ? 'Processing...' : 'Checkout'),
+                      child: _isProcessing
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Checkout', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                     ),
                   ),
                 ],
