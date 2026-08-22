@@ -5,6 +5,7 @@ import '../../widgets/ui_breakpoints.dart';
 import '../../widgets/workspace_ui.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
+import '../billing/manual_billing_view.dart';
 
 class DashboardView extends StatefulWidget {
   const DashboardView({Key? key}) : super(key: key);
@@ -144,7 +145,14 @@ class _DashboardViewState extends State<DashboardView> {
                     subtitle: 'Create a normal bill',
                     icon: Icons.add_rounded,
                     colors: const [Color(0xFF2563EB), Color(0xFF104FC7)],
-                    onTap: () => provider.setNavIndex(1)),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ManualBillingView(),
+                        ),
+                      );
+                    }),
                 _actionCard(
                     width: width,
                     title: 'Quick bill',

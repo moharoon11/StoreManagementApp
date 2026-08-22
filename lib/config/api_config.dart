@@ -20,6 +20,7 @@ class ApiConfig {
   static const String products = '/products';
   static const String favourites = '/favourites';
   static const String checkout = '/billing/checkout';
+  static const String manualCheckout = '/billing/manual-checkout';
   static const String invoices = '/invoices';
   static const String stockMovements = '/stock/movements';
   static const String stockAdjust = '/stock/adjust';
