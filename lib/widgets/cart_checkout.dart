@@ -287,16 +287,10 @@ Future<void> showCustomerDetailsDialog(BuildContext context) async {
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.name],
                   decoration: const InputDecoration(
-                    labelText: 'Customer name',
+                    labelText: 'Customer name (Optional)',
                     hintText: 'Enter customer name',
                     prefixIcon: Icon(Icons.person_outline),
                   ),
-                  validator: (value) {
-                    if ((value ?? '').trim().isEmpty) {
-                      return 'Customer name is required.';
-                    }
-                    return null;
-                  },
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
