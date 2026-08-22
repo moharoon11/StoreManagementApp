@@ -246,14 +246,39 @@ class CartPanel extends StatelessWidget {
 Future<void> showCustomerDetailsDialog(BuildContext context) async {
   final provider = context.read<AppProvider>();
   if (provider.cartItems.isEmpty) return;
-  final scheme = Theme.of(context).colorScheme;
-  final formKey = GlobalKey<FormState>();
-  final nameController = TextEditingController();
-  final mobileController = TextEditingController();
 
   await showDialog<void>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
+    builder: (dialogContext) => _CustomerDetailsDialog(pageContext: context),
+  );
+}
+
+class _CustomerDetailsDialog extends StatefulWidget {
+  const _CustomerDetailsDialog({required this.pageContext});
+  final BuildContext pageContext;
+
+  @override
+  State<_CustomerDetailsDialog> createState() => _CustomerDetailsDialogState();
+}
+
+class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _mobileController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _mobileController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = widget.pageContext.read<AppProvider>();
+    final scheme = Theme.of(context).colorScheme;
+
+    return AlertDialog(
       title: Row(children: [
         Icon(Icons.receipt_long_outlined, color: scheme.primary, size: 20),
         const SizedBox(width: 8),
@@ -269,7 +294,7 @@ Future<void> showCustomerDetailsDialog(BuildContext context) async {
         width: 400,
         child: SingleChildScrollView(
           child: Form(
-            key: formKey,
+            key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -280,7 +305,7 @@ Future<void> showCustomerDetailsDialog(BuildContext context) async {
                         fontSize: 12)),
                 const SizedBox(height: 14),
                 TextFormField(
-                  controller: nameController,
+                  controller: _nameController,
                   autofocus: true,
                   maxLength: 150,
                   textCapitalization: TextCapitalization.words,
@@ -294,7 +319,7 @@ Future<void> showCustomerDetailsDialog(BuildContext context) async {
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
-                  controller: mobileController,
+                  controller: _mobileController,
                   maxLength: 20,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.done,
@@ -337,26 +362,24 @@ Future<void> showCustomerDetailsDialog(BuildContext context) async {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
+          onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
         FilledButton.icon(
           onPressed: () async {
-            if (!(formKey.currentState?.validate() ?? false)) return;
-            final name = nameController.text.trim();
-            final mobile = mobileController.text.trim();
-            Navigator.of(dialogContext).pop();
-            await processCheckout(context,
+            if (!(_formKey.currentState?.validate() ?? false)) return;
+            final name = _nameController.text.trim();
+            final mobile = _mobileController.text.trim();
+            Navigator.of(context).pop();
+            await processCheckout(widget.pageContext,
                 customerName: name, customerMobile: mobile);
           },
           icon: const Icon(Icons.lock_outline_rounded, size: 18),
           label: const Text('Complete checkout'),
         ),
       ],
-    ),
-  );
-  nameController.dispose();
-  mobileController.dispose();
+    );
+  }
 }
 
 /// Posts the cart to the checkout API and shows the invoice result with
