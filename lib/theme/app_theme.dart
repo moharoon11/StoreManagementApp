@@ -54,11 +54,44 @@ abstract final class AppTheme {
             const Color(0xFFFFF7F0)),
       };
 
+  /// Scales down every style that carries an explicit font size, keeping the
+  /// type ramp compact. Styles without a fixed size are left untouched, which
+  /// keeps [TextStyle.apply]'s assertions happy.
+  static TextTheme _scaleDown(TextTheme theme, double factor) => TextTheme(
+        displayLarge: _sized(theme.displayLarge, factor),
+        displayMedium: _sized(theme.displayMedium, factor),
+        displaySmall: _sized(theme.displaySmall, factor),
+        headlineLarge: _sized(theme.headlineLarge, factor),
+        headlineMedium: _sized(theme.headlineMedium, factor),
+        headlineSmall: _sized(theme.headlineSmall, factor),
+        titleLarge: _sized(theme.titleLarge, factor),
+        titleMedium: _sized(theme.titleMedium, factor),
+        titleSmall: _sized(theme.titleSmall, factor),
+        bodyLarge: _sized(theme.bodyLarge, factor),
+        bodyMedium: _sized(theme.bodyMedium, factor),
+        bodySmall: _sized(theme.bodySmall, factor),
+        labelLarge: _sized(theme.labelLarge, factor),
+        labelMedium: _sized(theme.labelMedium, factor),
+        labelSmall: _sized(theme.labelSmall, factor),
+      );
+
+  static TextStyle? _sized(TextStyle? style, double factor) {
+    if (style == null) return null;
+    final size = style.fontSize;
+    return size == null ? style : style.copyWith(fontSize: size * factor);
+  }
+
   static ThemeData _build(ColorScheme colorScheme, Color canvas) {
-    final textTheme = GoogleFonts.plusJakartaSansTextTheme(
-      ThemeData.light().textTheme,
-    ).apply(
-        bodyColor: colorScheme.onSurface, displayColor: colorScheme.onSurface);
+    // Slightly scaled-down type ramp keeps the whole app feeling compact on
+    // every device size.
+    final textTheme = _scaleDown(
+      GoogleFonts.plusJakartaSansTextTheme(
+        ThemeData.light().textTheme,
+      ).apply(
+          bodyColor: colorScheme.onSurface,
+          displayColor: colorScheme.onSurface),
+      .94,
+    );
 
     final radius = BorderRadius.circular(16);
     final outline = OutlineInputBorder(
@@ -93,7 +126,7 @@ abstract final class AppTheme {
         filled: true,
         fillColor: colorScheme.surface,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         isDense: true,
         labelStyle:
             TextStyle(color: colorScheme.onSurface.withValues(alpha: .66)),
@@ -111,9 +144,22 @@ abstract final class AppTheme {
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          minimumSize: const Size(0, 36),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle:
+              textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
+          minimumSize: const Size(0, 36),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle:
               textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
@@ -122,22 +168,58 @@ abstract final class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: colorScheme.onSurface,
           side: BorderSide(color: colorScheme.outlineVariant),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          minimumSize: const Size(0, 36),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: colorScheme.primary,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          minimumSize: const Size(0, 34),
+          textStyle:
+              textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: colorScheme.surface,
+        selectedColor: colorScheme.primary.withValues(alpha: .14),
+        labelStyle: TextStyle(color: colorScheme.onSurface, fontSize: 12),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        side: BorderSide(color: colorScheme.outlineVariant),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+      ),
+      listTileTheme: ListTileThemeData(
+        dense: true,
+        iconColor: colorScheme.onSurface.withValues(alpha: .75),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
       dividerTheme:
           DividerThemeData(color: colorScheme.outlineVariant, space: 1),
       navigationBarTheme: NavigationBarThemeData(
           backgroundColor: colorScheme.surface,
           indicatorColor: colorScheme.primary.withValues(alpha: .14),
+          height: 60,
           labelTextStyle: WidgetStatePropertyAll(
-              TextStyle(color: colorScheme.onSurface, fontSize: 11))),
+              TextStyle(color: colorScheme.onSurface, fontSize: 10))),
+      navigationRailTheme: NavigationRailThemeData(
+          backgroundColor: Colors.transparent,
+          indicatorColor: colorScheme.primary.withValues(alpha: .14),
+          selectedIconTheme: IconThemeData(color: colorScheme.primary),
+          unselectedIconTheme:
+              IconThemeData(color: colorScheme.onSurface.withValues(alpha: .6)),
+          selectedLabelTextStyle:
+              TextStyle(color: colorScheme.primary, fontSize: 11),
+          unselectedLabelTextStyle: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: .6),
+              fontSize: 11)),
       bottomSheetTheme: BottomSheetThemeData(
           backgroundColor: colorScheme.surface,
           modalBackgroundColor: colorScheme.surface,

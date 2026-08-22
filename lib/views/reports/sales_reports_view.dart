@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
+import '../../widgets/ui_breakpoints.dart';
 
 class SalesReportsView extends StatefulWidget {
   const SalesReportsView({Key? key}) : super(key: key);
@@ -49,19 +50,20 @@ class _SalesReportsViewState extends State<SalesReportsView> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 700;
 
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.all(20.0),
+      padding: Ui.pagePadding(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text('Sales Reports',
                     style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF172033),
+                        fontSize: Ui.headingSize(context),
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurface,
                         letterSpacing: -0.5),
                     overflow: TextOverflow.ellipsis),
               ),
@@ -73,13 +75,15 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                     child: ChoiceChip(
                       label: Text(period.toUpperCase(),
                           style: const TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.bold)),
+                              fontSize: 11, fontWeight: FontWeight.w700)),
                       selected: isSelected,
-                      selectedColor: const Color(0xFF365FF4),
+                      selectedColor: scheme.primary,
+                      showCheckmark: false,
+                      visualDensity: VisualDensity.compact,
                       labelStyle: TextStyle(
                           color: isSelected
-                              ? Colors.white
-                              : const Color(0xFF6C7486)),
+                              ? scheme.onPrimary
+                              : scheme.onSurface.withValues(alpha: .6)),
                       onSelected: (selected) {
                         if (selected) {
                           setState(() => _selectedPeriod = period);
@@ -92,7 +96,7 @@ class _SalesReportsViewState extends State<SalesReportsView> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           if (_isLoading)
             const Expanded(
                 child: Center(
@@ -133,7 +137,7 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                                   Icons.payments,
                                   const Color(0xFF12A594),
                                   const Color(0xFFEAF9F6))),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 10),
                           Expanded(
                               child: _buildReportMetric(
                                   'Total Invoices',
@@ -141,7 +145,7 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                                   Icons.receipt_long,
                                   const Color(0xFF365FF4),
                                   const Color(0xFFEEF0FF))),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 10),
                           Expanded(
                               child: _buildReportMetric(
                                   'Products Sold',
@@ -152,7 +156,7 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                         ],
                       ),
                     ],
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     if (isMobile) ...[
                       _buildTableCard('Top Sold Products', topSoldProducts,
                           (p) {
@@ -170,8 +174,8 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                                   fontWeight: FontWeight.bold)),
                         );
                       }),
-                      const SizedBox(height: 16),
-                      _buildTableCard('Sales by Category', salesByCategory,
+                       const SizedBox(height: 12),
+                       _buildTableCard('Sales by Category', salesByCategory,
                           (c) {
                         return ListTile(
                           dense: true,
@@ -210,11 +214,11 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                                         fontWeight: FontWeight.bold)),
                               );
                             }),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildTableCard(
-                                'Sales by Category', salesByCategory, (c) {
+                           ),
+                           const SizedBox(width: 12),
+                           Expanded(
+                             child: _buildTableCard(
+                                 'Sales by Category', salesByCategory, (c) {
                               return ListTile(
                                 dense: true,
                                 title: Text(c['categoryName'] ?? '',
@@ -246,46 +250,44 @@ class _SalesReportsViewState extends State<SalesReportsView> {
 
   Widget _buildReportMetric(
       String title, String value, IconData icon, Color color, Color bgColor) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE6E8EF)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(10),
+              color: bgColor.withValues(alpha: .8),
+              borderRadius: BorderRadius.circular(9),
             ),
-            child: Icon(icon, color: color, size: 24),
+            child: Icon(icon, color: color, size: 19),
           ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: const TextStyle(
-                      color: Color(0xFF6C7486),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500)),
-              const SizedBox(height: 2),
-              Text(value,
-                  style: const TextStyle(
-                      color: Color(0xFF172033),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold)),
-            ],
+          const SizedBox(width: 10),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: scheme.onSurface.withValues(alpha: .55),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(value,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: scheme.onSurface,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800)),
+              ],
+            ),
           ),
         ],
       ),
@@ -294,36 +296,32 @@ class _SalesReportsViewState extends State<SalesReportsView> {
 
   Widget _buildTableCard(
       String title, List<dynamic> items, Widget Function(dynamic) itemBuilder) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE6E8EF)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(13, 11, 13, 9),
             child: Text(title,
-                style: const TextStyle(
-                    color: Color(0xFF172033),
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: scheme.onSurface,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800)),
           ),
-          const Divider(height: 1, color: Color(0xFFE6E8EF)),
+          Divider(height: 1, color: scheme.outlineVariant),
           items.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.all(16),
+              ? Padding(
+                  padding: const EdgeInsets.all(13),
                   child: Text('No data recorded for this period.',
-                      style: TextStyle(color: Color(0xFF6C7486), fontSize: 13)))
+                      style: TextStyle(
+                          color: scheme.onSurface.withValues(alpha: .55),
+                          fontSize: 12)))
               : Column(
                   children: items.map((item) => itemBuilder(item)).toList()),
         ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
+import '../../widgets/ui_breakpoints.dart';
 
 class StockManagementView extends StatefulWidget {
   const StockManagementView({Key? key}) : super(key: key);
@@ -61,13 +62,13 @@ class _StockManagementViewState extends State<StockManagementView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
+          final scheme = Theme.of(context).colorScheme;
           return AlertDialog(
-            backgroundColor: Colors.white,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Text('Adjust Product Stock',
+            title: Text('Adjust Product Stock',
                 style: TextStyle(
-                    color: Color(0xFF172033), fontWeight: FontWeight.bold)),
+                    color: scheme.onSurface, fontWeight: FontWeight.w800)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -116,8 +117,9 @@ class _StockManagementViewState extends State<StockManagementView> {
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel',
-                      style: TextStyle(color: Color(0xFF6C7486)))),
+                  child: Text('Cancel',
+                      style: TextStyle(
+                          color: scheme.onSurface.withValues(alpha: .6)))),
               ElevatedButton(
                 onPressed: () async {
                   final qty = int.tryParse(qtyController.text) ?? 0;
@@ -131,9 +133,6 @@ class _StockManagementViewState extends State<StockManagementView> {
                   });
                   _loadData();
                 },
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF365FF4),
-                    foregroundColor: Colors.white),
                 child: const Text('Submit Adjustment'),
               ),
             ],
@@ -150,42 +149,38 @@ class _StockManagementViewState extends State<StockManagementView> {
           child: CircularProgressIndicator(color: Color(0xFF365FF4)));
     }
 
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.all(20.0),
+      padding: Ui.pagePadding(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text('Stock Movements',
                     style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF172033),
+                        fontSize: Ui.headingSize(context),
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurface,
                         letterSpacing: -0.5),
                     overflow: TextOverflow.ellipsis),
               ),
+              const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: _showAdjustStockDialog,
-                icon: const Icon(Icons.edit_note, size: 18),
+                icon: const Icon(Icons.edit_note, size: 17),
                 label: const Text('Adjust Stock'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF365FF4),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Expanded(
             child: _movements.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text('No stock movement records found.',
-                        style: TextStyle(color: Color(0xFF6C7486))))
+                        style:
+                            TextStyle(color: scheme.onSurface.withValues(alpha: .6))))
                 : ListView.builder(
                     itemCount: _movements.length,
                     itemBuilder: (context, index) {
@@ -193,49 +188,45 @@ class _StockManagementViewState extends State<StockManagementView> {
                       final isAddition = (m['quantityChanged'] as int) > 0;
 
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE6E8EF)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          color: scheme.surface,
+                          borderRadius: BorderRadius.circular(11),
+                          border: Border.all(color: scheme.outlineVariant),
                         ),
                         child: ListTile(
+                          dense: true,
                           leading: CircleAvatar(
+                            radius: 16,
                             backgroundColor: isAddition
-                                ? const Color(0xFFEAF9F6)
-                                : const Color(0xFFFFF0F0),
+                                ? scheme.secondary.withValues(alpha: .12)
+                                : scheme.error.withValues(alpha: .1),
                             child: Icon(
                               isAddition ? Icons.add : Icons.remove,
-                              color: isAddition
-                                  ? const Color(0xFF12A594)
-                                  : const Color(0xFFE75C5C),
-                              size: 20,
+                              color: isAddition ? scheme.secondary : scheme.error,
+                              size: 18,
                             ),
                           ),
                           title: Text(m['productName'] ?? '',
-                              style: const TextStyle(
-                                  color: Color(0xFF172033),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  color: scheme.onSurface,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13)),
                           subtitle: Text(
                               'Prev: ${m['previousQuantity']} → New: ${m['newQuantity']}  (${m['reason']})',
-                              style: const TextStyle(
-                                  color: Color(0xFF6C7486), fontSize: 12)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  color: scheme.onSurface.withValues(alpha: .55),
+                                  fontSize: 11)),
                           trailing: Text(
                             '${isAddition ? '+' : ''}${m['quantityChanged']}',
                             style: TextStyle(
-                              color: isAddition
-                                  ? const Color(0xFF12A594)
-                                  : const Color(0xFFE75C5C),
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              color: isAddition ? scheme.secondary : scheme.error,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),

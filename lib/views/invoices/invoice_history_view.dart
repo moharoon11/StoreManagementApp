@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
 import '../../services/invoice_pdf_service.dart';
+import '../../widgets/ui_breakpoints.dart';
 
 class InvoiceHistoryView extends StatefulWidget {
   const InvoiceHistoryView({Key? key}) : super(key: key);
@@ -60,10 +61,10 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   void _showInvoiceDetail(Map<String, dynamic> invoice) {
     final items = (invoice['items'] as List?) ?? [];
 
+    final scheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -71,14 +72,13 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Invoice ${invoice['invoiceNumber']}',
-                  style: const TextStyle(
-                      color: Color(0xFF172033),
+                  style: TextStyle(
+                      color: scheme.onSurface,
                       fontSize: 14,
-                      fontWeight: FontWeight.bold)),
+                      fontWeight: FontWeight.w800)),
               const SizedBox(width: 8),
               IconButton(
-                icon:
-                    const Icon(Icons.picture_as_pdf, color: Color(0xFFE75C5C)),
+                icon: Icon(Icons.picture_as_pdf, color: scheme.error),
                 onPressed: () => _downloadPdf(invoice['id']),
                 tooltip: 'Download PDF Invoice',
               ),
@@ -96,34 +96,36 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Grand Total: ₹${invoice['grandTotal']}',
-                        style: const TextStyle(
-                            color: Color(0xFF12A594),
+                        style: TextStyle(
+                            color: scheme.secondary,
                             fontSize: 14,
-                            fontWeight: FontWeight.bold)),
+                            fontWeight: FontWeight.w800)),
                     const SizedBox(width: 12),
                     Text('${invoice['createdAt']?.toString().split('T').first}',
-                        style: const TextStyle(
-                            color: Color(0xFF6C7486), fontSize: 12)),
+                        style: TextStyle(
+                            color: scheme.onSurface.withValues(alpha: .55),
+                            fontSize: 12)),
                   ],
                 ),
               ),
-              const Divider(color: Color(0xFFE6E8EF)),
+              Divider(color: scheme.outlineVariant),
               const SizedBox(height: 4),
               ...items.map((item) {
                 return ListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   title: Text(item['productName'] ?? '',
-                      style: const TextStyle(
-                          color: Color(0xFF172033),
+                      style: TextStyle(
+                          color: scheme.onSurface,
                           fontWeight: FontWeight.w600)),
                   subtitle: Text(
                       'Qty: ${item['quantity']} × ₹${item['sellingPrice']}',
-                      style: const TextStyle(color: Color(0xFF6C7486))),
+                      style: TextStyle(
+                          color: scheme.onSurface.withValues(alpha: .55))),
                   trailing: Text('₹${item['total']}',
-                      style: const TextStyle(
-                          color: Color(0xFF12A594),
-                          fontWeight: FontWeight.bold)),
+                      style: TextStyle(
+                          color: scheme.secondary,
+                          fontWeight: FontWeight.w800)),
                 );
               }).toList(),
             ],
@@ -135,13 +137,13 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
             icon: const Icon(Icons.picture_as_pdf, size: 18),
             label: const Text('Download PDF'),
             style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE75C5C),
+                backgroundColor: scheme.error,
                 foregroundColor: Colors.white),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child:
-                const Text('Close', style: TextStyle(color: Color(0xFF6C7486))),
+            child: Text('Close',
+                style: TextStyle(color: scheme.onSurface.withValues(alpha: .6))),
           ),
         ],
       ),
@@ -155,69 +157,68 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
           child: CircularProgressIndicator(color: Color(0xFF365FF4)));
     }
 
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.all(20.0),
+      padding: Ui.pagePadding(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Invoice History',
+          Text('Invoice History',
               style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF172033),
+                  fontSize: Ui.headingSize(context),
+                  fontWeight: FontWeight.w800,
+                  color: scheme.onSurface,
                   letterSpacing: -0.5)),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Expanded(
             child: _invoices.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text('No invoices generated yet.',
-                        style: TextStyle(color: Color(0xFF6C7486))))
+                        style:
+                            TextStyle(color: scheme.onSurface.withValues(alpha: .6))))
                 : ListView.builder(
                     itemCount: _invoices.length,
                     itemBuilder: (context, index) {
                       final inv = _invoices[index];
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE6E8EF)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          color: scheme.surface,
+                          borderRadius: BorderRadius.circular(11),
+                          border: Border.all(color: scheme.outlineVariant),
                         ),
                         child: ListTile(
                           onTap: () => _showInvoiceDetail(inv),
                           leading: CircleAvatar(
-                            backgroundColor: const Color(0xFFEEF0FF),
-                            child: const Icon(Icons.receipt_long,
-                                color: Color(0xFF365FF4), size: 20),
+                            backgroundColor:
+                                scheme.primary.withValues(alpha: .1),
+                            radius: 17,
+                            child: Icon(Icons.receipt_long,
+                                color: scheme.primary, size: 18),
                           ),
                           title: Text(inv['invoiceNumber'] ?? '',
-                              style: const TextStyle(
-                                  color: Color(0xFF172033),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14)),
+                              style: TextStyle(
+                                  color: scheme.onSurface,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13)),
                           subtitle: Text(
                               'Date: ${inv['createdAt']?.toString().replaceAll('T', ' ').substring(0, 16)}',
-                              style: const TextStyle(
-                                  color: Color(0xFF6C7486), fontSize: 12)),
+                              style: TextStyle(
+                                  color: scheme.onSurface.withValues(alpha: .55),
+                                  fontSize: 11)),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text('₹${inv['grandTotal']}',
-                                  style: const TextStyle(
-                                      color: Color(0xFF12A594),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold)),
-                              const SizedBox(width: 8),
+                                  style: TextStyle(
+                                      color: scheme.secondary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800)),
+                              const SizedBox(width: 4),
                               IconButton(
-                                icon: const Icon(Icons.picture_as_pdf,
-                                    color: Color(0xFFE75C5C), size: 20),
+                                visualDensity: VisualDensity.compact,
+                                icon: Icon(Icons.picture_as_pdf,
+                                    color: scheme.error, size: 19),
                                 onPressed: () => _downloadPdf(inv['id']),
                               ),
                             ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
+import '../../widgets/ui_breakpoints.dart';
 import '../../widgets/workspace_ui.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
@@ -133,10 +134,10 @@ class _DashboardViewState extends State<DashboardView> {
             onRefresh: _loadDashboard,
             child: ListView(children: [
               _dashboardGreeting(greeting, provider.username),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
               _salesHero(todaySales, todayInvoices, totalProducts),
-              const SizedBox(height: 18),
-              Wrap(spacing: 12, runSpacing: 12, children: [
+              const SizedBox(height: 12),
+              Wrap(spacing: 10, runSpacing: 10, children: [
                 _actionCard(
                     width: width,
                     title: 'New bill',
@@ -152,9 +153,9 @@ class _DashboardViewState extends State<DashboardView> {
                     colors: const [Color(0xFFFF9D00), Color(0xFFE66B00)],
                     onTap: () => provider.setNavIndex(1)),
               ]),
-              const SizedBox(height: 22),
+              const SizedBox(height: 16),
               _recentBills(recentInvoices, provider),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               if (width < 800) ...[
                 _buildActivityPanel(
                     'Stock to review',
@@ -162,7 +163,7 @@ class _DashboardViewState extends State<DashboardView> {
                     Icons.inventory_rounded,
                     const Color(0xFFE4A331),
                     _buildLowStockContent(lowStockProducts)),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _buildActivityPanel(
                     'Customer favourites',
                     'What is selling best',
@@ -178,7 +179,7 @@ class _DashboardViewState extends State<DashboardView> {
                           Icons.inventory_rounded,
                           const Color(0xFFE4A331),
                           _buildLowStockContent(lowStockProducts))),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                       child: _buildActivityPanel(
                           'Customer favourites',
@@ -199,38 +200,45 @@ class _DashboardViewState extends State<DashboardView> {
         Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('STORE MANAGEMENT',
+          Text('STORE MANAGEMENT',
               style: TextStyle(
-                  color: Color(0xFF172033),
-                  fontSize: 22,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: Ui.headingSize(context),
                   letterSpacing: -1,
                   fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text('$greeting${username.isEmpty ? '' : ', $username'}',
-              style: const TextStyle(color: Color(0xFF6C7486), fontSize: 14))
+              style: TextStyle(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: .62),
+                  fontSize: 13))
         ])),
         IconButton(
             onPressed: _loadDashboard,
             tooltip: 'Refresh dashboard',
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF365FF4)))
+            visualDensity: VisualDensity.compact,
+            icon: Icon(Icons.refresh_rounded,
+                size: 21, color: Theme.of(context).colorScheme.primary))
       ]);
 
   Widget _salesHero(dynamic sales, dynamic invoices, dynamic products) =>
       Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 15 : 18),
           decoration: BoxDecoration(
               gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [Color(0xFF3A86F7), Color(0xFF1556C0)]),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(color: const Color(0x66FFFFFF)),
               boxShadow: const [
                 BoxShadow(
                     color: Color(0x3D1556C0),
-                    blurRadius: 26,
+                    blurRadius: 20,
                     spreadRadius: 1,
-                    offset: Offset(0, 12))
+                    offset: Offset(0, 9))
               ]),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -239,28 +247,28 @@ class _DashboardViewState extends State<DashboardView> {
                   style: TextStyle(
                       color: Colors.white.withValues(alpha: .85),
                       fontWeight: FontWeight.w800,
-                      fontSize: 13)),
+                      fontSize: 11)),
               const Spacer(),
               Icon(Icons.auto_graph_rounded,
-                  color: Colors.white.withValues(alpha: .7))
+                  size: 19, color: Colors.white.withValues(alpha: .7))
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text('₹$sales',
                 style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 32,
-                    letterSpacing: -1.5,
+                    fontSize: 26,
+                    letterSpacing: -1.2,
                     fontWeight: FontWeight.w800)),
-            const SizedBox(height: 18),
+            const SizedBox(height: 13),
             Container(height: 1, color: Colors.white.withValues(alpha: .25)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Row(children: [
               _heroStat(
                   Icons.receipt_long_outlined, '$invoices', 'TOTAL BILLS'),
               Container(
-                  height: 38,
+                  height: 34,
                   width: 1,
-                  margin: const EdgeInsets.symmetric(horizontal: 22),
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
                   color: Colors.white.withValues(alpha: .25)),
               _heroStat(Icons.inventory_2_outlined, '$products', 'PRODUCTS'),
             ])
@@ -301,29 +309,29 @@ class _DashboardViewState extends State<DashboardView> {
               : double.infinity,
           child: Material(
               color: Colors.transparent,
-              borderRadius: BorderRadius.circular(19),
+              borderRadius: BorderRadius.circular(16),
               child: InkWell(
                   onTap: onTap,
-                  borderRadius: BorderRadius.circular(19),
+                  borderRadius: BorderRadius.circular(16),
                   child: Ink(
-                      height: 96,
-                      padding: const EdgeInsets.all(16),
+                      height: 82,
+                      padding: const EdgeInsets.all(13),
                       decoration: BoxDecoration(
                           gradient: LinearGradient(colors: colors),
-                          borderRadius: BorderRadius.circular(19),
+                          borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
                                 color: colors.last.withValues(alpha: .27),
-                                blurRadius: 18,
-                                offset: const Offset(0, 8))
+                                blurRadius: 14,
+                                offset: const Offset(0, 6))
                           ]),
                       child: Row(children: [
                         Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(10),
                             decoration: const BoxDecoration(
                                 color: Colors.white, shape: BoxShape.circle),
-                            child: Icon(icon, color: colors.first, size: 25)),
-                        const SizedBox(width: 14),
+                            child: Icon(icon, color: colors.first, size: 21)),
+                        const SizedBox(width: 11),
                         Expanded(
                             child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -332,23 +340,25 @@ class _DashboardViewState extends State<DashboardView> {
                               Text(title.toUpperCase(),
                                   style: const TextStyle(
                                       color: Colors.white,
-                                      fontSize: 16,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w800)),
-                              const SizedBox(height: 3),
+                              const SizedBox(height: 2),
                               Text(subtitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                      color: Color(0xDFFFFFFF), fontSize: 12))
+                                      color: Color(0xDFFFFFFF), fontSize: 11))
                             ])),
                         const Icon(Icons.chevron_right_rounded,
-                            color: Colors.white, size: 28)
+                            color: Colors.white, size: 24)
                       ])))));
 
   Widget _recentBills(List invoices, AppProvider provider) => Container(
       decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: const [
             BoxShadow(
-                color: Color(0x140F2454), blurRadius: 18, offset: Offset(0, 8))
+                color: Color(0x140F2454), blurRadius: 14, offset: Offset(0, 6))
           ]),
       child: SurfacePanel(
           padding: EdgeInsets.zero,
@@ -398,12 +408,12 @@ class _DashboardViewState extends State<DashboardView> {
           Color color, Widget content) =>
       Container(
           decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
               boxShadow: const [
                 BoxShadow(
                     color: Color(0x120F2454),
-                    blurRadius: 16,
-                    offset: Offset(0, 7))
+                    blurRadius: 12,
+                    offset: Offset(0, 5))
               ]),
           child: SurfacePanel(
               padding: EdgeInsets.zero,
@@ -411,25 +421,32 @@ class _DashboardViewState extends State<DashboardView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                        padding: const EdgeInsets.all(18),
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
                         child: Row(children: [
                           Container(
-                              padding: const EdgeInsets.all(9),
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                  color: color.withOpacity(.12),
-                                  borderRadius: BorderRadius.circular(10)),
-                              child: Icon(icon, color: color, size: 18)),
-                          const SizedBox(width: 11),
+                                  color: color.withValues(alpha: .12),
+                                  borderRadius: BorderRadius.circular(9)),
+                              child: Icon(icon, color: color, size: 17)),
+                          const SizedBox(width: 10),
                           Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(title,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontWeight: FontWeight.w800,
-                                        color: Color(0xFF172033))),
+                                        fontSize: 13.5,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface)),
                                 Text(subtitle,
-                                    style: const TextStyle(
-                                        color: Color(0xFF6C7486), fontSize: 11))
+                                    style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: .6),
+                                        fontSize: 11))
                               ])
                         ])),
                     const Divider(),

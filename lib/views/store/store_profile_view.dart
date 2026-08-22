@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
+import '../../widgets/ui_breakpoints.dart';
 
 class StoreProfileView extends StatefulWidget {
   const StoreProfileView({Key? key}) : super(key: key);
@@ -162,41 +163,36 @@ class _StoreProfileViewState extends State<StoreProfileView> {
     final isMobile = MediaQuery.of(context).size.width < 700;
     if (!_showEditor) return _buildBusinessPage(isMobile);
 
+    final scheme = Theme.of(context).colorScheme;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: Ui.pagePadding(context),
       child: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 750),
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE6E8EF)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: scheme.outlineVariant),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Store & Business Profile',
                 style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF172033),
+                    fontSize: Ui.headingSize(context),
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurface,
                     letterSpacing: -0.5),
               ),
-              const SizedBox(height: 4),
-              const Text(
+              const SizedBox(height: 3),
+              Text(
                 'This information appears on generated invoice PDFs',
-                style: TextStyle(color: Color(0xFF6C7486), fontSize: 13),
+                style: TextStyle(
+                    color: scheme.onSurface.withValues(alpha: .6), fontSize: 12),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               // Logo Picker Row
               Center(
                 child: GestureDetector(
@@ -285,7 +281,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
               _buildResponsiveRow(
                 isMobile,
                 _buildTextField(
@@ -293,24 +289,24 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                 _buildTextField(
                     'Owner Name *', _ownerNameController, Icons.person),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               _buildResponsiveRow(
                 isMobile,
                 _buildTextField(
                     'GSTIN Number', _gstController, Icons.assignment_outlined),
                 _buildTextField('Phone Number', _phoneController, Icons.phone),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               _buildTextField('Email Address', _emailController, Icons.email),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               _buildTextField('Address', _addressController, Icons.location_on,
                   maxLines: 2),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               if (isMobile) ...[
                 _buildTextField('City', _cityController, Icons.location_city),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 _buildTextField('District', _districtController, Icons.map),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 _buildTextField('Pincode', _pincodeController, Icons.pin_drop),
               ] else ...[
                 Row(
@@ -318,40 +314,33 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                     Expanded(
                         child: _buildTextField(
                             'City', _cityController, Icons.location_city)),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 10),
                     Expanded(
                         child: _buildTextField(
                             'District', _districtController, Icons.map)),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 10),
                     Expanded(
                         child: _buildTextField(
                             'Pincode', _pincodeController, Icons.pin_drop)),
                   ],
                 ),
               ],
-              const SizedBox(height: 28),
+              const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
-                height: 48,
+                height: 42,
                 child: ElevatedButton(
                   onPressed:
                       (_isSaving || _isUploadingLogo) ? null : _saveProfile,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF365FF4),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
                   child: _isSaving
                       ? const SizedBox(
-                          width: 24,
-                          height: 24,
+                          width: 20,
+                          height: 20,
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2))
                       : const Text('Save Store Profile',
                           style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.bold)),
+                              fontSize: 14, fontWeight: FontWeight.w800)),
                 ),
               ),
             ],
@@ -369,50 +358,55 @@ class _StoreProfileViewState extends State<StoreProfileView> {
       _pincodeController.text
     ].where((part) => part.trim().isNotEmpty).join(', ');
     return SingleChildScrollView(
-      padding: EdgeInsets.all(isMobile ? 12 : 20),
+      padding: Ui.pagePadding(context),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 980),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              const Expanded(
+              Expanded(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                     Text('Business profile',
                         style: TextStyle(
-                            color: Color(0xFF172033),
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.w800,
-                            fontSize: 22)),
-                    SizedBox(height: 4),
+                            fontSize: Ui.headingSize(context),
+                            letterSpacing: -1)),
+                    const SizedBox(height: 3),
                     Text('The details your customers see on every invoice.',
-                        style:
-                            TextStyle(color: Color(0xFF6C7486), fontSize: 12))
+                        style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: .62),
+                            fontSize: 12))
                   ])),
               FilledButton.icon(
                   onPressed: () => setState(() => _showEditor = true),
-                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  icon: const Icon(Icons.edit_outlined, size: 17),
                   label: const Text('Edit details'))
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Container(
                 width: double.infinity,
-                padding: EdgeInsets.all(isMobile ? 18 : 24),
+                padding: EdgeInsets.all(isMobile ? 14 : 18),
                 decoration: BoxDecoration(
                     gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [Color(0xFF1D2B5C), Color(0xFF365FF4)]),
-                    borderRadius: BorderRadius.circular(24)),
+                    borderRadius: BorderRadius.circular(18)),
                 child: Wrap(
-                    spacing: 28,
-                    runSpacing: 20,
+                    spacing: 22,
+                    runSpacing: 16,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Container(
-                          width: 80,
-                          height: 80,
+                          width: 66,
+                          height: 66,
                           decoration: BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
@@ -427,7 +421,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                                       : null)),
                           child: _pickedLogoFile == null && _logoUrl.isEmpty
                               ? const Icon(Icons.storefront_rounded,
-                                  color: Color(0xFF365FF4), size: 42)
+                                  color: Color(0xFF365FF4), size: 34)
                               : null),
                       Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,33 +434,33 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                                 style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 24,
-                                    letterSpacing: -1)),
-                            const SizedBox(height: 7),
+                                    fontSize: 20,
+                                    letterSpacing: -.8)),
+                            const SizedBox(height: 5),
                             Text(
                                 _ownerNameController.text.isEmpty
                                     ? 'Independent business'
                                     : 'Founded and managed by ${_ownerNameController.text}',
                                 style: TextStyle(
                                     color: Colors.white.withOpacity(.78),
-                                    fontSize: 13)),
-                            const SizedBox(height: 16),
+                                    fontSize: 12)),
+                            const SizedBox(height: 12),
                             Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
+                                    horizontal: 9, vertical: 5),
                                 decoration: BoxDecoration(
                                     color: Colors.white.withOpacity(.14),
                                     borderRadius: BorderRadius.circular(99)),
                                 child: const Text('ABOUT OUR BUSINESS',
                                     style: TextStyle(
                                         color: Color(0xFF82E9DE),
-                                        fontSize: 10,
+                                        fontSize: 9.5,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: 1)))
                           ])
                     ])),
-            const SizedBox(height: 18),
-            Wrap(spacing: 14, runSpacing: 14, children: [
+            const SizedBox(height: 14),
+            Wrap(spacing: 10, runSpacing: 10, children: [
               _detailCard(Icons.location_on_outlined, 'Address',
                   location.isEmpty ? 'Add your business address' : location),
               _detailCard(
@@ -494,32 +488,35 @@ class _StoreProfileViewState extends State<StoreProfileView> {
     );
   }
 
-  Widget _detailCard(IconData icon, String label, String value) => SizedBox(
-      width: 220,
-      child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: const Color(0xFFE6E8EF)),
-              borderRadius: BorderRadius.circular(18)),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, color: const Color(0xFF365FF4), size: 21),
-            const SizedBox(height: 16),
-            Text(label,
-                style: const TextStyle(
-                    color: Color(0xFF6C7486),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700)),
-            const SizedBox(height: 5),
-            Text(value,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: Color(0xFF172033),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700))
-          ])));
+  Widget _detailCard(IconData icon, String label, String value) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+        width: 205,
+        child: Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+                color: scheme.surface,
+                border: Border.all(color: scheme.outlineVariant),
+                borderRadius: BorderRadius.circular(13)),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(icon, color: scheme.primary, size: 19),
+              const SizedBox(height: 10),
+              Text(label,
+                  style: TextStyle(
+                      color: scheme.onSurface.withValues(alpha: .55),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text(value,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      color: scheme.onSurface,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700))
+            ])));
+  }
 
   Widget _buildResponsiveRow(bool isMobile, Widget child1, Widget child2) {
     if (isMobile) {

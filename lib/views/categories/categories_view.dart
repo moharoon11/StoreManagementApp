@@ -3,9 +3,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 import '../../config/api_config.dart';
+import '../../providers/app_provider.dart';
 import '../../services/api_service.dart';
+import '../../widgets/cart_checkout.dart';
 
 class CategoriesView extends StatefulWidget {
   const CategoriesView({super.key});
@@ -336,6 +339,10 @@ class _CategoriesViewState extends State<CategoriesView> {
                     const SizedBox(width: 10),
                     Expanded(child: _productsPane())
                   ])),
+        if (!context.select<AppProvider, bool>((p) => p.cartItems.isEmpty)) ...[
+          const SizedBox(height: 10),
+          const CartSummaryBar(),
+        ],
       ]),
     );
   }
@@ -630,14 +637,18 @@ class _CategoriesViewState extends State<CategoriesView> {
 
   Widget _productCard(Map<String, dynamic> product) {
     final scheme = Theme.of(context).colorScheme;
+    final provider = context.watch<AppProvider>();
     final image = product['imageUrl'] as String? ?? '';
     final stock = _stockFor(product);
     final price = product['sellingPrice'];
+    final inCart = provider.cartItems.containsKey(product['id']);
     return Container(
       padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
           color: scheme.surface,
-          border: Border.all(color: scheme.outlineVariant),
+          border: Border.all(
+              color: inCart ? scheme.primary : scheme.outlineVariant,
+              width: inCart ? 1.6 : 1),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -664,16 +675,6 @@ class _CategoriesViewState extends State<CategoriesView> {
                         size: 34,
                         color: scheme.primary.withValues(alpha: .7))),
           )),
-          Positioned(
-              top: 5,
-              right: 5,
-              child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                      color: scheme.surface.withValues(alpha: .92),
-                      shape: BoxShape.circle),
-                  child: Icon(Icons.favorite_border_rounded,
-                      size: 15, color: scheme.primary)))
         ])),
         const SizedBox(height: 7),
         Text(product['name']?.toString() ?? 'Untitled product',
@@ -683,19 +684,50 @@ class _CategoriesViewState extends State<CategoriesView> {
                 fontSize: 12, height: 1.2, fontWeight: FontWeight.w800)),
         const SizedBox(height: 5),
         Row(children: [
-          Text('₹${price ?? '—'}',
-              style: TextStyle(
-                  fontSize: 14,
-                  color: scheme.secondary,
-                  fontWeight: FontWeight.w900)),
-          const Spacer(),
+          Expanded(
+              child: Text('₹${price ?? '—'}',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: scheme.secondary,
+                      fontWeight: FontWeight.w900))),
+          const SizedBox(width: 5),
           Text(stock > 0 ? '$stock left' : 'Out',
               style: TextStyle(
                   fontSize: 10,
                   color: stock > 0 ? scheme.primary : scheme.error,
-                  fontWeight: FontWeight.w700))
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(width: 6),
+          _addToCartButton(product, stock, inCart)
         ])
       ]),
+    );
+  }
+
+  Widget _addToCartButton(Map<String, dynamic> product, int stock, bool inCart) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: stock > 0
+          ? () => context.read<AppProvider>().addToCart(product)
+          : null,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 27,
+        height: 27,
+        decoration: BoxDecoration(
+          color: stock > 0
+              ? (inCart ? scheme.primary : scheme.primary.withValues(alpha: .1))
+              : scheme.surfaceContainerHighest.withValues(alpha: .5),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          inCart ? Icons.check_rounded : Icons.add_rounded,
+          size: 18,
+          color: stock > 0
+              ? (inCart ? scheme.onPrimary : scheme.primary)
+              : scheme.onSurface.withValues(alpha: .35),
+        ),
+      ),
     );
   }
 }

@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'ui_breakpoints.dart';
 
+/// Shared page scaffolding for every workspace view.
 class WorkspacePage extends StatelessWidget {
   const WorkspacePage(
-      {super.key,
-      required this.child,
-      this.padding = const EdgeInsets.all(20)});
+      {super.key, required this.child, this.padding, this.scroll = true});
   final Widget child;
-  final EdgeInsets padding;
+  final EdgeInsets? padding;
+
+  /// When true the page content scrolls and adapts its padding to the
+  /// available width.
+  final bool scroll;
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 760;
     return ColoredBox(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: compact ? const EdgeInsets.all(12) : padding,
+          padding: padding ?? Ui.pagePadding(context),
           child: child,
         ),
       ),
@@ -35,42 +37,45 @@ class PageIntro extends StatelessWidget {
   final String eyebrow, title, description;
   final Widget? action;
   @override
-  Widget build(BuildContext context) => Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.end,
-        runSpacing: 16,
-        children: [
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(eyebrow.toUpperCase(),
-                style: const TextStyle(
-                    color: AppColors.brand,
-                    fontSize: 10,
-                    letterSpacing: 1.4,
-                    fontWeight: FontWeight.w800)),
-            const SizedBox(height: 7),
-            Text(title,
-                style: const TextStyle(
-                    color: AppColors.ink,
-                    fontSize: 23,
-                    letterSpacing: -1.1,
-                    fontWeight: FontWeight.w800)),
-            const SizedBox(height: 6),
-            Text(description,
-                style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500)),
-          ]),
-          if (action != null) action!,
-        ],
-      );
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.end,
+      runSpacing: 12,
+      children: [
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(eyebrow.toUpperCase(),
+              style: TextStyle(
+                  color: scheme.primary,
+                  fontSize: 10,
+                  letterSpacing: 1.3,
+                  fontWeight: FontWeight.w800)),
+          const SizedBox(height: 5),
+          Text(title,
+              style: TextStyle(
+                  color: scheme.onSurface,
+                  fontSize: Ui.headingSize(context),
+                  letterSpacing: -1,
+                  fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(description,
+              style: TextStyle(
+                  color: scheme.onSurface.withValues(alpha: .62),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500)),
+        ]),
+        if (action != null) action!,
+      ],
+    );
+  }
 }
 
 class SurfacePanel extends StatelessWidget {
   const SurfacePanel(
       {super.key,
       required this.child,
-      this.padding = const EdgeInsets.all(16),
+      this.padding = const EdgeInsets.all(14),
       this.color});
   final Widget child;
   final EdgeInsets padding;
@@ -80,7 +85,7 @@ class SurfacePanel extends StatelessWidget {
         padding: padding,
         decoration: BoxDecoration(
             color: color ?? Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
                 color: Theme.of(context).colorScheme.outlineVariant)),
         child: child,
@@ -100,38 +105,44 @@ class StatTile extends StatelessWidget {
   final Color color;
   final String? note;
   @override
-  Widget build(BuildContext context) => SurfacePanel(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(label,
-                style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700)),
-            Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                    color: color.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(10)),
-                child: Icon(icon, size: 18, color: color))
-          ]),
-          const Spacer(),
-          Text(value,
-              style: const TextStyle(
-                  color: AppColors.ink,
-                  fontSize: 20,
-                  letterSpacing: -.8,
-                  fontWeight: FontWeight.w800)),
-          if (note != null) ...[
-            const SizedBox(height: 4),
-            Text(note!,
-                style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600))
-          ],
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SurfacePanel(
+      padding: const EdgeInsets.all(12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Expanded(
+              child: Text(label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      color: scheme.onSurface.withValues(alpha: .6),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700))),
+          Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                  color: color.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(9)),
+              child: Icon(icon, size: 16, color: color))
         ]),
-      );
+        const Spacer(),
+        Text(value,
+            style: TextStyle(
+                color: scheme.onSurface,
+                fontSize: 18,
+                letterSpacing: -.7,
+                fontWeight: FontWeight.w800)),
+        if (note != null) ...[
+          const SizedBox(height: 3),
+          Text(note!,
+              style: TextStyle(
+                  color: scheme.onSurface.withValues(alpha: .55),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600))
+        ],
+      ]),
+    );
+  }
 }
 
 class EmptyCanvas extends StatelessWidget {
@@ -143,20 +154,25 @@ class EmptyCanvas extends StatelessWidget {
   final IconData icon;
   final String title, detail;
   @override
-  Widget build(BuildContext context) => Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-            padding: const EdgeInsets.all(18),
-            decoration: const BoxDecoration(
-                color: AppColors.brandSoft, shape: BoxShape.circle),
-            child: Icon(icon, color: AppColors.brand, size: 30)),
-        const SizedBox(height: 16),
-        Text(title,
-            style: const TextStyle(
-                fontWeight: FontWeight.w800, color: AppColors.ink)),
-        const SizedBox(height: 5),
-        Text(detail,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.muted, fontSize: 12))
-      ]));
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: .1),
+              shape: BoxShape.circle),
+          child: Icon(icon, color: scheme.primary, size: 27)),
+      const SizedBox(height: 13),
+      Text(title,
+          style: TextStyle(
+              fontWeight: FontWeight.w800, color: scheme.onSurface)),
+      const SizedBox(height: 4),
+      Text(detail,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+              color: scheme.onSurface.withValues(alpha: .6), fontSize: 12))
+    ]));
+  }
 }

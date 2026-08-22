@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
+import '../../widgets/ui_breakpoints.dart';
 
 class ProductsView extends StatefulWidget {
   const ProductsView({Key? key}) : super(key: key);
@@ -367,78 +368,84 @@ class _ProductsViewState extends State<ProductsView> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final wide = constraints.maxWidth >= 760;
-      final catalogue = Column(children: [
-        TextField(
-            onChanged: (value) {
-              _searchTerm = value;
-              _fetchProducts();
-            },
-            decoration: const InputDecoration(
-                hintText: 'Search your catalogue',
-                prefixIcon: Icon(Icons.search_rounded))),
-        const SizedBox(height: 16),
+      return LayoutBuilder(builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 760;
+        final scheme = Theme.of(context).colorScheme;
+        final catalogue = Column(children: [
+          TextField(
+              onChanged: (value) {
+                _searchTerm = value;
+                _fetchProducts();
+              },
+              decoration: const InputDecoration(
+                  hintText: 'Search your catalogue',
+                  prefixIcon: Icon(Icons.search_rounded))),
+        const SizedBox(height: 10),
         Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _products.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text('Nothing matches this selection.',
-                            style: TextStyle(color: Color(0xFF6C7486))))
+                            style: TextStyle(
+                                color:
+                                    scheme.onSurface.withValues(alpha: .6))))
                     : GridView.builder(
                         gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: wide ? 260 : 190,
-                            childAspectRatio: .78,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 14),
+                            maxCrossAxisExtent: wide ? 225 : 165,
+                            childAspectRatio: .8,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10),
                         itemCount: _products.length,
                         itemBuilder: (_, index) =>
                             _productCard(_products[index]))),
       ]);
       return Padding(
-        padding: EdgeInsets.all(wide ? 20 : 12),
+        padding: EdgeInsets.all(wide ? 16 : 10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Wrap(
               alignment: WrapAlignment.spaceBetween,
               crossAxisAlignment: WrapCrossAlignment.center,
               runSpacing: 12,
               children: [
-                const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Catalogue',
-                          style: TextStyle(
-                              color: Color(0xFF172033),
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800)),
-                      SizedBox(height: 4),
-                      Text('Browse products by collection',
-                          style:
-                              TextStyle(color: Color(0xFF6C7486), fontSize: 12))
-                    ]),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Catalogue',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: Ui.headingSize(context),
+                          letterSpacing: -1,
+                          fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 3),
+                  Text('Browse products by collection',
+                      style: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: .62),
+                          fontSize: 12))
+                ]),
                 ElevatedButton.icon(
                     onPressed: _showAddProductModal,
-                    icon: const Icon(Icons.add_rounded),
+                    icon: const Icon(Icons.add_rounded, size: 18),
                     label: const Text('Add product'))
               ]),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Expanded(
               child: wide
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                          SizedBox(
-                              width: 184, child: _categoryMenu(vertical: true)),
-                          const SizedBox(width: 14),
-                          Expanded(child: catalogue)
-                        ])
-                  : Column(children: [
-                      SizedBox(
-                          height: 48, child: _categoryMenu(vertical: false)),
-                      const SizedBox(height: 16),
-                      Expanded(child: catalogue)
-                    ])),
+                   ? Row(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                           SizedBox(
+                               width: 168, child: _categoryMenu(vertical: true)),
+                           const SizedBox(width: 10),
+                           Expanded(child: catalogue)
+                         ])
+                   : Column(children: [
+                       SizedBox(
+                           height: 40, child: _categoryMenu(vertical: false)),
+                       const SizedBox(height: 10),
+                       Expanded(child: catalogue)
+                     ])),
         ]),
       );
     });
@@ -472,10 +479,12 @@ class _ProductsViewState extends State<ProductsView> {
               : !item.favourite &&
                   !_showFavouritesOnly &&
                   _selectedCategoryId == item.id;
+          final scheme = Theme.of(context).colorScheme;
           return Material(
-              color:
-                  selected ? const Color(0xFFEEF0FF) : const Color(0xFFF6F7FB),
-              borderRadius: BorderRadius.circular(13),
+              color: selected
+                  ? scheme.primary.withValues(alpha: .12)
+                  : scheme.surfaceContainerHighest.withValues(alpha: .45),
+              borderRadius: BorderRadius.circular(11),
               child: InkWell(
                   onTap: () {
                     setState(() {
@@ -484,22 +493,22 @@ class _ProductsViewState extends State<ProductsView> {
                     });
                     _fetchProducts();
                   },
-                  borderRadius: BorderRadius.circular(13),
+                  borderRadius: BorderRadius.circular(11),
                   child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                          horizontal: 10, vertical: 8),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         Icon(item.icon,
-                            size: 18,
+                            size: 17,
                             color: selected
-                                ? const Color(0xFF365FF4)
-                                : const Color(0xFF6C7486)),
-                        const SizedBox(width: 8),
+                                ? scheme.primary
+                                : scheme.onSurface.withValues(alpha: .55)),
+                        const SizedBox(width: 7),
                         Text(item.name,
                             style: TextStyle(
                                 color: selected
-                                    ? const Color(0xFF365FF4)
-                                    : const Color(0xFF172033),
+                                    ? scheme.primary
+                                    : scheme.onSurface,
                                 fontWeight: selected
                                     ? FontWeight.w800
                                     : FontWeight.w600,
@@ -509,17 +518,18 @@ class _ProductsViewState extends State<ProductsView> {
   }
 
   Widget _productCard(Map<String, dynamic> product) {
+    final scheme = Theme.of(context).colorScheme;
     final favourite =
         product['isFavourite'] == true || product['isFavourite'] == 1;
     final imageUrl = product['imageUrl'] as String? ?? '';
     final stock = product['stockQuantity'] as int? ?? 0;
     return Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(13),
         child: Container(
             decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFE6E8EF)),
-                borderRadius: BorderRadius.circular(18)),
+                border: Border.all(color: scheme.outlineVariant),
+                borderRadius: BorderRadius.circular(13)),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
@@ -527,64 +537,74 @@ class _ProductsViewState extends State<ProductsView> {
                 Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                        color: const Color(0xFFF2F3F8),
+                        color: scheme.surfaceContainerHighest
+                            .withValues(alpha: .5),
                         borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(18)),
+                            top: Radius.circular(13)),
                         image: imageUrl.isEmpty
                             ? null
                             : DecorationImage(
                                 image: NetworkImage(imageUrl),
                                 fit: BoxFit.cover)),
                     child: imageUrl.isEmpty
-                        ? const Icon(Icons.inventory_2_outlined,
-                            color: Color(0xFFA1A8B7), size: 36)
+                        ? Icon(Icons.inventory_2_outlined,
+                            color: scheme.onSurface.withValues(alpha: .35),
+                            size: 32)
                         : null),
                 Positioned(
-                    top: 8,
-                    right: 8,
+                    top: 6,
+                    right: 6,
                     child: IconButton(
                         onPressed: () =>
                             _toggleFavourite(product['id'], favourite),
+                        visualDensity: VisualDensity.compact,
+                        constraints:
+                            const BoxConstraints(minWidth: 30, minHeight: 30),
+                        padding: EdgeInsets.zero,
                         style:
-                            IconButton.styleFrom(backgroundColor: Colors.white),
+                            IconButton.styleFrom(backgroundColor: scheme.surface),
                         icon: Icon(
                             favourite
                                 ? Icons.star_rounded
                                 : Icons.star_border_rounded,
                             color: const Color(0xFFE4A331),
-                            size: 19)))
+                            size: 18)))
               ])),
               Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(product['categoryName'] ?? 'Uncategorised',
-                            style: const TextStyle(
-                                color: Color(0xFF365FF4),
-                                fontSize: 10,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                color: scheme.primary,
+                                fontSize: 9.5,
                                 fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 2),
                         Text(product['name'] ?? '',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: Color(0xFF172033),
-                                fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 10),
+                            style: TextStyle(
+                                color: scheme.onSurface,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13)),
+                        const SizedBox(height: 7),
                         Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text('₹${product['sellingPrice']}',
-                                  style: const TextStyle(
-                                      color: Color(0xFF12A594),
-                                      fontSize: 15,
+                                  style: TextStyle(
+                                      color: scheme.secondary,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w800)),
                               Text('$stock in stock',
                                   style: TextStyle(
                                       color: stock <= 5
-                                          ? const Color(0xFFE75C5C)
-                                          : const Color(0xFF6C7486),
+                                          ? scheme.error
+                                          : scheme.onSurface
+                                              .withValues(alpha: .55),
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700))
                             ])

@@ -187,14 +187,14 @@ class _AuthForm extends StatelessWidget {
   Widget build(BuildContext context) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const _Brand(),
-        const SizedBox(height: 58),
+        const SizedBox(height: 44),
         Text(register ? 'Start your workspace' : 'Welcome back',
             style: const TextStyle(
-                fontSize: 30,
+                fontSize: 26,
                 fontWeight: FontWeight.w800,
-                letterSpacing: -1.3,
+                letterSpacing: -1.2,
                 color: AppColors.ink)),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Text(
             register
                 ? 'Set up your store command centre in moments.'
@@ -203,7 +203,7 @@ class _AuthForm extends StatelessWidget {
                 color: AppColors.muted,
                 height: 1.5,
                 fontWeight: FontWeight.w500)),
-        const SizedBox(height: 34),
+        const SizedBox(height: 26),
         TextField(
             controller: usernameController,
             textInputAction: TextInputAction.next,
@@ -224,17 +224,17 @@ class _AuthForm extends StatelessWidget {
                   icon: Icon(obscurePassword
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined),
-                  onPressed: onTogglePassword)),
+                   onPressed: onTogglePassword)),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
         SizedBox(
             width: double.infinity,
             child: ElevatedButton(
                 onPressed: loading ? null : onSubmit,
                 child: loading
                     ? const SizedBox(
-                        width: 22,
-                        height: 22,
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(
                             color: Colors.white, strokeWidth: 2.5))
                     : Row(
@@ -246,7 +246,7 @@ class _AuthForm extends StatelessWidget {
                             const SizedBox(width: 8),
                             const Icon(Icons.arrow_forward_rounded, size: 18)
                           ]))),
-        const SizedBox(height: 22),
+        const SizedBox(height: 18),
         Center(
             child: TextButton(
                 onPressed: loading ? null : onSwitchMode,

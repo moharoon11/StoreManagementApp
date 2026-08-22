@@ -66,24 +66,24 @@ class WorkdayWelcome extends StatelessWidget {
                                             size: 17),
                                         label: const Text('Skip to workspace'))
                                   ]),
-                                  SizedBox(height: compact ? 40 : 100),
+                                  SizedBox(height: compact ? 28 : 72),
                                   Text(
                                       'Welcome${user.isEmpty ? '' : ', $user'}.',
                                       style: TextStyle(
                                           color: AppColors.ink,
                                           fontWeight: FontWeight.w800,
-                                          fontSize: compact ? 33 : 48,
-                                          letterSpacing: -2)),
-                                  const SizedBox(height: 12),
+                                          fontSize: compact ? 29 : 42,
+                                          letterSpacing: -1.8)),
+                                  const SizedBox(height: 10),
                                   const Text('What would make today a win?',
                                       style: TextStyle(
                                           color: AppColors.muted,
-                                          fontSize: 16,
+                                          fontSize: 15,
                                           fontWeight: FontWeight.w500)),
-                                  const SizedBox(height: 30),
-                                  Wrap(spacing: 16, runSpacing: 16, children: [
+                                  const SizedBox(height: 24),
+                                  Wrap(spacing: 12, runSpacing: 12, children: [
                                     _JourneyCard(
-                                        width: compact ? double.infinity : 290,
+                                        width: compact ? double.infinity : 280,
                                         index: '01',
                                         icon: Icons.point_of_sale_rounded,
                                         color: const Color(0xFF12A594),
@@ -97,7 +97,7 @@ class WorkdayWelcome extends StatelessWidget {
                                           onContinue();
                                         }),
                                     _JourneyCard(
-                                        width: compact ? double.infinity : 290,
+                                        width: compact ? double.infinity : 280,
                                         index: '02',
                                         icon: Icons.inventory_2_rounded,
                                         color: const Color(0xFF365FF4),
@@ -111,7 +111,7 @@ class WorkdayWelcome extends StatelessWidget {
                                           onContinue();
                                         }),
                                     _JourneyCard(
-                                        width: compact ? double.infinity : 290,
+                                        width: compact ? double.infinity : 280,
                                         index: '03',
                                         icon: Icons.auto_graph_rounded,
                                         color: const Color(0xFF8D63D8),
@@ -162,16 +162,16 @@ class _JourneyCard extends StatelessWidget {
       width: width,
       child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           child: Container(
-            height: 222,
-            padding: const EdgeInsets.all(22),
+            height: 192,
+            padding: const EdgeInsets.all(17),
             decoration: BoxDecoration(
                 border: Border.all(color: AppColors.line),
-                borderRadius: BorderRadius.circular(22)),
+                borderRadius: BorderRadius.circular(18)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
