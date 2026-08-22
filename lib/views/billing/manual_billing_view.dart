@@ -83,6 +83,7 @@ class _ManualBillingViewState extends State<ManualBillingView> {
     showDialog(
       context: context,
       builder: (ctx) => _ManualCustomerDetailsDialog(
+        items: _items,
         total: _grandTotal,
         onCheckout: (name, mobile) {
           _processCheckout(name, mobile);
@@ -447,10 +448,12 @@ class _ManualBillingViewState extends State<ManualBillingView> {
 }
 
 class _ManualCustomerDetailsDialog extends StatefulWidget {
+  final List<ManualBillingItemModel> items;
   final double total;
   final void Function(String name, String mobile) onCheckout;
 
   const _ManualCustomerDetailsDialog({
+    required this.items,
     required this.total,
     required this.onCheckout,
   });
@@ -475,12 +478,18 @@ class _ManualCustomerDetailsDialogState extends State<_ManualCustomerDetailsDial
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
+    final validItems = widget.items.where((item) {
+      final rate = double.tryParse(item.rateController.text) ?? 0;
+      final qty = int.tryParse(item.qtyController.text) ?? 0;
+      return rate > 0 && qty > 0;
+    }).toList();
+
     return AlertDialog(
       title: Row(children: [
         Icon(Icons.receipt_long_outlined, color: scheme.primary, size: 20),
         const SizedBox(width: 8),
         Expanded(
-          child: Text('Customer details',
+          child: Text('Review & Checkout',
               style: TextStyle(
                   color: scheme.onSurface,
                   fontSize: 16,
@@ -496,11 +505,78 @@ class _ManualCustomerDetailsDialogState extends State<_ManualCustomerDetailsDial
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Add these details to complete the invoice.',
+                Text('Order Summary',
                     style: TextStyle(
-                        color: scheme.onSurface.withValues(alpha: .65),
-                        fontSize: 12)),
-                const SizedBox(height: 14),
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest.withValues(alpha: .3),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: scheme.outlineVariant),
+                  ),
+                  child: Column(
+                    children: [
+                      ...validItems.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final item = entry.value;
+                        final rate = double.tryParse(item.rateController.text) ?? 0;
+                        final qty = int.tryParse(item.qtyController.text) ?? 0;
+                        final itemTotal = rate * qty;
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${idx + 1}. ₹${rate.toStringAsFixed(2)} × $qty',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onSurface.withValues(alpha: .8),
+                                ),
+                              ),
+                              Text(
+                                '₹${itemTotal.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Grand Total',
+                              style: TextStyle(
+                                  color: scheme.onSurface,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13)),
+                          Text('₹${widget.total.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                  color: Color(0xFF16834B),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('Customer Information',
+                    style: TextStyle(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13)),
+                const SizedBox(height: 8),
                 TextFormField(
                   controller: _nameController,
                   autofocus: true,
@@ -512,6 +588,7 @@ class _ManualCustomerDetailsDialogState extends State<_ManualCustomerDetailsDial
                     labelText: 'Customer name (Optional)',
                     hintText: 'Enter customer name',
                     prefixIcon: Icon(Icons.person_outline),
+                    isDense: true,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -525,6 +602,7 @@ class _ManualCustomerDetailsDialogState extends State<_ManualCustomerDetailsDial
                     labelText: 'Customer mobile number',
                     hintText: 'e.g. +91 98765 43210',
                     prefixIcon: Icon(Icons.phone_outlined),
+                    isDense: true,
                   ),
                   validator: (value) {
                     final mobile = (value ?? '').trim();
@@ -536,21 +614,6 @@ class _ManualCustomerDetailsDialogState extends State<_ManualCustomerDetailsDial
                     }
                     return null;
                   },
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Invoice total',
-                        style: TextStyle(
-                            color: scheme.onSurface,
-                            fontWeight: FontWeight.w700)),
-                    Text('₹${widget.total.toStringAsFixed(2)}',
-                        style: TextStyle(
-                            color: scheme.secondary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800)),
-                  ],
                 ),
               ],
             ),
