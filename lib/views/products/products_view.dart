@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
 import '../../widgets/ui_breakpoints.dart';
+import 'product_edit_view.dart';
 
 class ProductsView extends StatefulWidget {
   const ProductsView({Key? key}) : super(key: key);
@@ -526,10 +527,26 @@ class _ProductsViewState extends State<ProductsView> {
     return Material(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(13),
-        child: Container(
-            decoration: BoxDecoration(
-                border: Border.all(color: scheme.outlineVariant),
-                borderRadius: BorderRadius.circular(13)),
+        child: InkWell(
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProductEditView(
+                    product: product,
+                    categories: _categories,
+                  ),
+                ),
+              );
+              if (result == true) {
+                _fetchProducts();
+              }
+            },
+            borderRadius: BorderRadius.circular(13),
+            child: Container(
+                decoration: BoxDecoration(
+                    border: Border.all(color: scheme.outlineVariant),
+                    borderRadius: BorderRadius.circular(13)),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
@@ -609,7 +626,7 @@ class _ProductsViewState extends State<ProductsView> {
                                       fontWeight: FontWeight.w700))
                             ])
                       ]))
-            ])));
+            ]))));
   }
 }
 

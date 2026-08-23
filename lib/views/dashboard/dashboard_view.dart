@@ -4,6 +4,7 @@ import '../../config/api_config.dart';
 import '../../widgets/ui_breakpoints.dart';
 import '../../widgets/workspace_ui.dart';
 import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../providers/app_provider.dart';
 import '../billing/manual_billing_view.dart';
 
@@ -95,6 +96,7 @@ class _DashboardViewState extends State<DashboardView> {
     final mostSoldProducts =
         (_dashboardData?['mostSoldProducts'] as List?) ?? [];
     final recentInvoices = (_dashboardData?['recentInvoices'] as List?) ?? [];
+    final salesTrend = (_dashboardData?['salesTrend'] as List?) ?? [];
 
     final width = MediaQuery.sizeOf(context).width;
     final provider = context.watch<AppProvider>();
@@ -162,6 +164,10 @@ class _DashboardViewState extends State<DashboardView> {
                     onTap: () => provider.setNavIndex(1)),
               ]),
               const SizedBox(height: 16),
+              if (salesTrend.isNotEmpty) ...[
+                _salesTrendChart(salesTrend),
+                const SizedBox(height: 16),
+              ],
               _recentBills(recentInvoices, provider),
               const SizedBox(height: 16),
               if (width < 800) ...[
@@ -537,6 +543,145 @@ class _DashboardViewState extends State<DashboardView> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _salesTrendChart(List salesTrend) {
+    if (salesTrend.isEmpty) return const SizedBox.shrink();
+
+    List<FlSpot> spots = [];
+    double maxY = 0;
+    
+    for (int i = 0; i < salesTrend.length; i++) {
+      double y = (salesTrend[i]['totalSales'] ?? 0).toDouble();
+      if (y > maxY) maxY = y;
+      spots.add(FlSpot(i.toDouble(), y));
+    }
+
+    if (maxY == 0) maxY = 100;
+    maxY = maxY * 1.2;
+
+    return Container(
+      height: 240,
+      padding: const EdgeInsets.fromLTRB(16, 16, 22, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120F2454),
+            blurRadius: 12,
+            offset: Offset(0, 5)
+          )
+        ]
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF365FF4).withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(9)
+                ),
+                child: const Icon(Icons.show_chart_rounded, color: Color(0xFF365FF4), size: 17),
+              ),
+              const SizedBox(width: 10),
+              const Text('7-Day Sales Trend',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13.5,
+                  color: Color(0xFF172033),
+                )
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: LineChart(
+              LineChartData(
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: maxY > 0 ? maxY / 4 : 1,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: const Color(0xFFE5E7EB),
+                    strokeWidth: 1,
+                    dashArray: [5, 5],
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 22,
+                      interval: 1,
+                      getTitlesWidget: (value, meta) {
+                        int index = value.toInt();
+                        if (index >= 0 && index < salesTrend.length) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              salesTrend[index]['dateLabel'] ?? '',
+                              style: const TextStyle(color: Color(0xFF6C7486), fontSize: 10),
+                            ),
+                          );
+                        }
+                        return const Text('');
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      interval: maxY > 0 ? maxY / 4 : 1,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          value >= 1000 ? '${(value/1000).toStringAsFixed(1)}k' : value.toInt().toString(),
+                          style: const TextStyle(color: Color(0xFF6C7486), fontSize: 10),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                minX: 0,
+                maxX: (salesTrend.length - 1).toDouble(),
+                minY: 0,
+                maxY: maxY,
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    color: const Color(0xFF365FF4),
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                        radius: 4,
+                        color: Colors.white,
+                        strokeWidth: 2,
+                        strokeColor: const Color(0xFF365FF4),
+                      ),
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: const Color(0xFF365FF4).withValues(alpha: 0.1),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
