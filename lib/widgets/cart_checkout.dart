@@ -265,11 +265,14 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _mobileController = TextEditingController();
+  final _amountReceivedController = TextEditingController();
+  bool _isReceived = true;
 
   @override
   void dispose() {
     _nameController.dispose();
     _mobileController.dispose();
+    _amountReceivedController.dispose();
     super.dispose();
   }
 
@@ -277,13 +280,16 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
   Widget build(BuildContext context) {
     final provider = widget.pageContext.read<AppProvider>();
     final scheme = Theme.of(context).colorScheme;
+    final total = provider.cartTotal;
+    final amountRec = double.tryParse(_amountReceivedController.text) ?? (_isReceived ? total : 0.0);
+    final balanceDue = (total - amountRec).clamp(0.0, double.infinity);
 
     return AlertDialog(
       title: Row(children: [
         Icon(Icons.receipt_long_outlined, color: scheme.primary, size: 20),
         const SizedBox(width: 8),
         Expanded(
-          child: Text('Customer details',
+          child: Text('Customer details & Payment',
               style: TextStyle(
                   color: scheme.onSurface,
                   fontSize: 16,
@@ -299,7 +305,7 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Add these details to complete the invoice.',
+                Text('Add details to complete sale & record balance due.',
                     style: TextStyle(
                         color: scheme.onSurface.withValues(alpha: .65),
                         fontSize: 12)),
@@ -310,10 +316,9 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
                   maxLength: 150,
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
-                  autofillHints: const [AutofillHints.name],
                   decoration: const InputDecoration(
-                    labelText: 'Customer name (Optional)',
-                    hintText: 'Enter customer name',
+                    labelText: 'Customer Name (Optional)',
+                    hintText: 'e.g. Ishak',
                     prefixIcon: Icon(Icons.person_outline),
                   ),
                 ),
@@ -323,10 +328,9 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
                   maxLength: 20,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.done,
-                  autofillHints: const [AutofillHints.telephoneNumber],
                   decoration: const InputDecoration(
-                    labelText: 'Customer mobile number',
-                    hintText: 'e.g. +91 98765 43210',
+                    labelText: 'Customer Mobile Number',
+                    hintText: 'e.g. 9360984711',
                     prefixIcon: Icon(Icons.phone_outlined),
                   ),
                   validator: (value) {
@@ -340,20 +344,75 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Invoice total',
-                        style: TextStyle(
-                            color: scheme.onSurface,
-                            fontWeight: FontWeight.w700)),
-                    Text('₹${provider.cartTotal.toStringAsFixed(2)}',
-                        style: TextStyle(
-                            color: scheme.secondary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800)),
-                  ],
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total Amount', style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text('₹${total.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16)),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _isReceived,
+                            activeColor: const Color(0xFF2563EB),
+                            onChanged: (val) {
+                              setState(() {
+                                _isReceived = val ?? true;
+                                if (_isReceived) {
+                                  _amountReceivedController.text = total.toStringAsFixed(2);
+                                } else {
+                                  _amountReceivedController.text = '0.00';
+                                }
+                              });
+                            },
+                          ),
+                          const Text('Received', style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14)),
+                          const Spacer(),
+                          SizedBox(
+                            width: 110,
+                            height: 38,
+                            child: TextField(
+                              controller: _amountReceivedController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14),
+                              onChanged: (v) => setState(() {}),
+                              decoration: const InputDecoration(
+                                prefixText: '₹',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Balance Due', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 13)),
+                          Text(
+                            '₹${balanceDue.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              color: balanceDue > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -370,12 +429,19 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
             if (!(_formKey.currentState?.validate() ?? false)) return;
             final name = _nameController.text.trim();
             final mobile = _mobileController.text.trim();
+            final recAmount = double.tryParse(_amountReceivedController.text) ?? (_isReceived ? total : 0.0);
+
             Navigator.of(context).pop();
-            await processCheckout(widget.pageContext,
-                customerName: name, customerMobile: mobile);
+            await processCheckout(
+              widget.pageContext,
+              customerName: name,
+              customerMobile: mobile,
+              isReceived: _isReceived,
+              amountReceived: recAmount,
+            );
           },
           icon: const Icon(Icons.lock_outline_rounded, size: 18),
-          label: const Text('Complete checkout'),
+          label: const Text('Complete Checkout'),
         ),
       ],
     );
@@ -388,6 +454,8 @@ Future<void> processCheckout(
   BuildContext context, {
   required String customerName,
   required String customerMobile,
+  bool isReceived = true,
+  double? amountReceived,
 }) async {
   final provider = context.read<AppProvider>();
   if (provider.cartItems.isEmpty || _isProcessing) return;
@@ -405,6 +473,8 @@ Future<void> processCheckout(
     final res = await ApiService.post(ApiConfig.checkout, {
       'customerName': customerName,
       'customerMobileNumber': customerMobile,
+      'isReceived': isReceived,
+      'amountReceived': amountReceived,
       'items': items,
     });
 
