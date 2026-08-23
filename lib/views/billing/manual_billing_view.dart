@@ -3,6 +3,7 @@ import 'package:printing/printing.dart';
 import '../../config/api_config.dart';
 import '../../services/api_service.dart';
 import '../../services/invoice_pdf_service.dart';
+import 'checkout_screen.dart';
 
 class ManualBillingItemModel {
   final TextEditingController rateController = TextEditingController();
@@ -80,14 +81,25 @@ class _ManualBillingViewState extends State<ManualBillingView> {
       return;
     }
 
-    showDialog(
-      context: context,
-      builder: (ctx) => _ManualCustomerDetailsDialog(
-        items: _items,
-        total: _grandTotal,
-        onCheckout: (name, mobile) {
-          _processCheckout(name, mobile);
-        },
+    final validItems = <Map<String, dynamic>>[];
+    for (var item in _items) {
+      final rate = double.tryParse(item.rateController.text) ?? 0;
+      final qty = int.tryParse(item.qtyController.text) ?? 0;
+      if (rate > 0 && qty > 0) {
+        validItems.add({
+          'rate': rate,
+          'quantity': qty,
+        });
+      }
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(
+          isManual: true,
+          manualItems: validItems,
+          manualTotal: _grandTotal,
+        ),
       ),
     );
   }

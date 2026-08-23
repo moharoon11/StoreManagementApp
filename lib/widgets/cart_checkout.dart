@@ -6,6 +6,7 @@ import '../config/api_config.dart';
 import '../providers/app_provider.dart';
 import '../services/api_service.dart';
 import '../services/invoice_pdf_service.dart';
+import '../views/billing/checkout_screen.dart';
 
 /// Shared cart + checkout building blocks used by both the Sell page and the
 /// Categories page, so every entry point offers the identical billing flow.
@@ -238,7 +239,9 @@ class CartPanel extends StatelessWidget {
 
   void _beginCheckout() {
     if (closeOverlayOnCheckout) Navigator.of(pageContext).pop();
-    showCustomerDetailsDialog(pageContext);
+    Navigator.of(pageContext).push(
+      MaterialPageRoute(builder: (_) => const CheckoutScreen()),
+    );
   }
 }
 
@@ -247,9 +250,8 @@ Future<void> showCustomerDetailsDialog(BuildContext context) async {
   final provider = context.read<AppProvider>();
   if (provider.cartItems.isEmpty) return;
 
-  await showDialog<void>(
-    context: context,
-    builder: (dialogContext) => _CustomerDetailsDialog(pageContext: context),
+  await Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const CheckoutScreen()),
   );
 }
 
