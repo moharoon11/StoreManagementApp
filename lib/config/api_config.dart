@@ -27,4 +27,6 @@ class ApiConfig {
   static const String salesReports = '/reports/sales';
   static const String dashboard = '/dashboard';
   static const String uploadImage = '/upload/image';
+  static const String extractBill = '/inventory/extract-bill';
+  static const String processBill = '/inventory/process-bill';
 }

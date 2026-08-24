@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
 import '../../widgets/ui_breakpoints.dart';
+import 'upload_bill_view.dart';
 
 class StockManagementView extends StatefulWidget {
   const StockManagementView({Key? key}) : super(key: key);
@@ -165,6 +166,20 @@ class _StockManagementViewState extends State<StockManagementView> {
                         color: scheme.onSurface,
                         letterSpacing: -0.5),
                     overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const UploadBillView()),
+                  );
+                  if (result == true) {
+                    _loadData();
+                  }
+                },
+                icon: const Icon(Icons.receipt_long, size: 17),
+                label: const Text('Upload Bill'),
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(

@@ -52,6 +52,9 @@ class AppProvider extends ChangeNotifier {
 
   AppProvider() {
     checkAuth();
+    ApiService.onUnauthorized = () {
+      logout();
+    };
   }
 
   Future<void> checkAuth() async {

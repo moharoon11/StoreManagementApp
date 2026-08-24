@@ -5,6 +5,17 @@ import '../config/api_config.dart';
 import 'storage_service.dart';
 
 class ApiService {
+  static void Function()? onUnauthorized;
+
+  static dynamic _safeJsonDecode(String body) {
+    if (body.trim().isEmpty) return null;
+    try {
+      return jsonDecode(body);
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<Map<String, String>> _getHeaders({bool isJson = true}) async {
     final token = await StorageService.getToken();
     final headers = <String, String>{};
@@ -87,14 +98,24 @@ class ApiService {
       request.files.add(await http.MultipartFile.fromPath('file', filePath));
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 401) {
+        onUnauthorized?.call();
+        throw Exception('Session expired. Please log in again.');
+      }
+
+      final data = _safeJsonDecode(response.body);
 
       if (response.statusCode >= 200 &&
           response.statusCode < 300 &&
+          data != null &&
           data['success'] == true) {
         return data['data']['url'] as String?;
       } else {
-        throw Exception(data['message'] ?? 'Failed to upload image');
+        final message = (data != null && data is Map && data.containsKey('message'))
+            ? data['message']
+            : 'Failed to upload image (Status ${response.statusCode})';
+        throw Exception(message);
       }
     } catch (e) {
       rethrow;
@@ -102,12 +123,18 @@ class ApiService {
   }
 
   static dynamic _processResponse(http.Response response) {
-    final body = jsonDecode(response.body);
+    if (response.statusCode == 401) {
+      onUnauthorized?.call();
+      throw Exception('Session expired. Please log in again.');
+    }
+
+    final body = _safeJsonDecode(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return body;
+      return body ?? response.body;
     } else {
-      final message = body['message'] ??
-          'An error occurred (Status ${response.statusCode})';
+      final message = (body != null && body is Map && body.containsKey('message'))
+          ? body['message']
+          : 'An error occurred (Status ${response.statusCode})';
       throw Exception(message);
     }
   }
