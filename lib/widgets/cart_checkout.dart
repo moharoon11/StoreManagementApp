@@ -124,41 +124,95 @@ Future<void> openCart(BuildContext context) async {
 
 Future<void> _editCartQuantity(BuildContext context, AppProvider provider,
     Map<String, dynamic> product, double currentQuantity) async {
-  final controller =
-      TextEditingController(text: formatQuantity(currentQuantity));
   final unit = productUnit(product);
   final stock = quantityValue(product['stockQuantity']);
-  await showDialog<void>(
+  // Return the new value from the dialog before notifying the cart provider.
+  // Updating the provider while this route is being removed can rebuild the
+  // bottom sheet beneath it with active inherited dependents still attached.
+  final selectedQuantity = await showDialog<double>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text('Quantity ($unit)'),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: InputDecoration(
-          labelText: 'Quantity',
-          helperText: 'Available: ${formatQuantity(stock)} $unit',
-        ),
-      ),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel')),
-        FilledButton(
-          onPressed: () {
-            final quantity = double.tryParse(controller.text);
-            if (quantity != null && quantity > 0 && quantity <= stock) {
-              provider.setCartQuantity(product['id'] as int, quantity);
-              Navigator.pop(dialogContext);
-            }
-          },
-          child: const Text('Save'),
-        ),
-      ],
+    builder: (_) => _CartQuantityDialog(
+      unit: unit,
+      stock: stock,
+      initialQuantity: currentQuantity,
     ),
   );
-  controller.dispose();
+  if (selectedQuantity != null) {
+    provider.setCartQuantity(product['id'] as int, selectedQuantity);
+  }
+}
+
+/// Owns its controller for the entire lifetime of the route. Disposing an
+/// externally-created controller immediately after Navigator.pop can race the
+/// dialog's exit animation and leave the TextField with a disposed controller.
+class _CartQuantityDialog extends StatefulWidget {
+  const _CartQuantityDialog({
+    required this.unit,
+    required this.stock,
+    required this.initialQuantity,
+  });
+
+  final String unit;
+  final double stock;
+  final double initialQuantity;
+
+  @override
+  State<_CartQuantityDialog> createState() => _CartQuantityDialogState();
+}
+
+class _CartQuantityDialogState extends State<_CartQuantityDialog> {
+  late final TextEditingController _controller;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        TextEditingController(text: formatQuantity(widget.initialQuantity));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final quantity = double.tryParse(_controller.text);
+    if (quantity == null || quantity <= 0 || quantity > widget.stock) {
+      setState(() {
+        _errorText = 'Enter a quantity from 0.001 to '
+            '${formatQuantity(widget.stock)} ${widget.unit}.';
+      });
+      return;
+    }
+    Navigator.pop(context, quantity);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text('Quantity (${widget.unit})'),
+        content: TextField(
+          controller: _controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          onChanged: (_) {
+            if (_errorText != null) setState(() => _errorText = null);
+          },
+          decoration: InputDecoration(
+            labelText: 'Quantity',
+            helperText:
+                'Available: ${formatQuantity(widget.stock)} ${widget.unit}',
+            errorText: _errorText,
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
+          FilledButton(onPressed: _save, child: const Text('Save')),
+        ],
+      );
 }
 
 /// Full cart contents: line items with quantity controls, total and the
