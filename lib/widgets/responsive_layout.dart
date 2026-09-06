@@ -12,6 +12,7 @@ import '../views/stock/stock_management_view.dart';
 import '../views/store/store_profile_view.dart';
 import 'cart_checkout.dart';
 import 'ui_breakpoints.dart';
+import '../utils/quantity_utils.dart';
 
 /// All navigation destinations, shared by the bottom bar, More sheet and
 /// the desktop side rail.
@@ -250,8 +251,10 @@ class _SideRail extends StatelessWidget {
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 4),
               itemCount: _navItems.length,
-              itemBuilder: (context, index) =>
-                  _RailItem(item: _navItems[index], selected: index == selectedIndex, onTap: () => onSelect(index)),
+              itemBuilder: (context, index) => _RailItem(
+                  item: _navItems[index],
+                  selected: index == selectedIndex,
+                  onTap: () => onSelect(index)),
             ),
           ),
           Padding(
@@ -271,8 +274,7 @@ class _SideRail extends StatelessWidget {
               IconButton(
                 tooltip: 'Sign out',
                 onPressed: provider.logout,
-                icon: Icon(Icons.logout_rounded,
-                    color: scheme.error, size: 19),
+                icon: Icon(Icons.logout_rounded, color: scheme.error, size: 19),
               ),
             ]),
           ),
@@ -370,7 +372,7 @@ class _TopBar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final compact = MediaQuery.sizeOf(context).width < Ui.compactMax;
     final cartCount =
-        context.select<AppProvider, int>((provider) => provider.cartCount);
+        context.select<AppProvider, double>((provider) => provider.cartCount);
     return Container(
       height: compact ? 54 : 62,
       padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 16),
@@ -389,8 +391,7 @@ class _TopBar extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-                color: scheme.primary,
-                borderRadius: BorderRadius.circular(10)),
+                color: scheme.primary, borderRadius: BorderRadius.circular(10)),
             child: const Icon(Icons.auto_graph_rounded,
                 color: Colors.white, size: 18)),
         const SizedBox(width: 10),
@@ -420,7 +421,7 @@ class _TopBar extends StatelessWidget {
           visualDensity: VisualDensity.compact,
           icon: Badge(
             isLabelVisible: cartCount > 0,
-            label: Text('$cartCount'),
+            label: Text(formatQuantity(cartCount)),
             backgroundColor: scheme.primary,
             textColor: scheme.onPrimary,
             child: Icon(Icons.shopping_bag_outlined,

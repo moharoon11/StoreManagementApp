@@ -3,6 +3,7 @@ import '../../services/api_service.dart';
 import '../../config/api_config.dart';
 import '../../widgets/ui_breakpoints.dart';
 import 'upload_bill_view.dart';
+import '../../utils/quantity_utils.dart';
 
 class StockManagementView extends StatefulWidget {
   const StockManagementView({Key? key}) : super(key: key);
@@ -82,8 +83,8 @@ class _StockManagementViewState extends State<StockManagementView> {
                     items: _products.map<DropdownMenuItem<int>>((p) {
                       return DropdownMenuItem<int>(
                         value: p['id'],
-                        child:
-                            Text('${p['name']} (Stock: ${p['stockQuantity']})'),
+                        child: Text(
+                            '${p['name']} (Stock: ${formatProductQuantity(p['stockQuantity'], p)})'),
                       );
                     }).toList(),
                     onChanged: (val) =>
@@ -92,7 +93,8 @@ class _StockManagementViewState extends State<StockManagementView> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: qtyController,
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true, signed: true),
                     style: const TextStyle(color: Color(0xFF172033)),
                     decoration: const InputDecoration(
                         labelText: 'Quantity Change (+ add, - reduce)'),
@@ -123,7 +125,7 @@ class _StockManagementViewState extends State<StockManagementView> {
                           color: scheme.onSurface.withValues(alpha: .6)))),
               ElevatedButton(
                 onPressed: () async {
-                  final qty = int.tryParse(qtyController.text) ?? 0;
+                  final qty = double.tryParse(qtyController.text) ?? 0;
                   if (qty == 0) return;
 
                   Navigator.pop(ctx);
@@ -194,13 +196,15 @@ class _StockManagementViewState extends State<StockManagementView> {
             child: _movements.isEmpty
                 ? Center(
                     child: Text('No stock movement records found.',
-                        style:
-                            TextStyle(color: scheme.onSurface.withValues(alpha: .6))))
+                        style: TextStyle(
+                            color: scheme.onSurface.withValues(alpha: .6))))
                 : ListView.builder(
                     itemCount: _movements.length,
                     itemBuilder: (context, index) {
                       final m = _movements[index];
-                      final isAddition = (m['quantityChanged'] as int) > 0;
+                      final isAddition =
+                          quantityValue(m['quantityChanged']) > 0;
+                      final unit = (m['unit'] ?? 'Piece').toString();
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
@@ -218,7 +222,8 @@ class _StockManagementViewState extends State<StockManagementView> {
                                 : scheme.error.withValues(alpha: .1),
                             child: Icon(
                               isAddition ? Icons.add : Icons.remove,
-                              color: isAddition ? scheme.secondary : scheme.error,
+                              color:
+                                  isAddition ? scheme.secondary : scheme.error,
                               size: 18,
                             ),
                           ),
@@ -230,16 +235,18 @@ class _StockManagementViewState extends State<StockManagementView> {
                                   fontWeight: FontWeight.w800,
                                   fontSize: 13)),
                           subtitle: Text(
-                              'Prev: ${m['previousQuantity']} → New: ${m['newQuantity']}  (${m['reason']})',
+                              'Prev: ${formatQuantity(m['previousQuantity'])} $unit → New: ${formatQuantity(m['newQuantity'])} $unit  (${m['reason']})',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                  color: scheme.onSurface.withValues(alpha: .55),
+                                  color:
+                                      scheme.onSurface.withValues(alpha: .55),
                                   fontSize: 11)),
                           trailing: Text(
-                            '${isAddition ? '+' : ''}${m['quantityChanged']}',
+                            '${isAddition ? '+' : ''}${formatQuantity(m['quantityChanged'])} $unit',
                             style: TextStyle(
-                              color: isAddition ? scheme.secondary : scheme.error,
+                              color:
+                                  isAddition ? scheme.secondary : scheme.error,
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
                             ),

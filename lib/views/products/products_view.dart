@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
 import '../../widgets/ui_breakpoints.dart';
+import '../../utils/quantity_utils.dart';
 import 'product_edit_view.dart';
 
 class ProductsView extends StatefulWidget {
@@ -89,6 +90,7 @@ class _ProductsViewState extends State<ProductsView> {
     int? selectedCategory =
         _categories.isNotEmpty ? _categories.first['id'] : null;
     bool createNewCategory = false;
+    String selectedUnit = 'Piece';
     String productImageUrl = '';
     bool isUploading = false;
     File? pickedImageFile;
@@ -279,7 +281,9 @@ class _ProductsViewState extends State<ProductsView> {
                           Expanded(
                             child: TextField(
                               controller: costPriceController,
-                              keyboardType: TextInputType.number,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
                               style: const TextStyle(color: Color(0xFF172033)),
                               decoration: const InputDecoration(
                                   labelText: 'Cost Price (₹)'),
@@ -300,10 +304,22 @@ class _ProductsViewState extends State<ProductsView> {
                       const SizedBox(height: 12),
                       TextField(
                         controller: stockController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         style: const TextStyle(color: Color(0xFF172033)),
                         decoration: const InputDecoration(
                             labelText: 'Initial Stock Quantity *'),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: selectedUnit,
+                        decoration: const InputDecoration(labelText: 'Unit *'),
+                        items: productUnits
+                            .map((unit) => DropdownMenuItem(
+                                value: unit, child: Text(unit)))
+                            .toList(),
+                        onChanged: (unit) =>
+                            setModalState(() => selectedUnit = unit!),
                       ),
                       const SizedBox(height: 20),
                       SizedBox(
@@ -326,7 +342,9 @@ class _ProductsViewState extends State<ProductsView> {
                                             sellingPriceController.text) ??
                                         0.0,
                                     'stockQuantity':
-                                        int.tryParse(stockController.text) ?? 0,
+                                        double.tryParse(stockController.text) ??
+                                            0,
+                                    'unit': selectedUnit,
                                     'imageUrl': productImageUrl,
                                   };
 
@@ -369,18 +387,18 @@ class _ProductsViewState extends State<ProductsView> {
 
   @override
   Widget build(BuildContext context) {
-      return LayoutBuilder(builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 760;
-        final scheme = Theme.of(context).colorScheme;
-        final catalogue = Column(children: [
-          TextField(
-              onChanged: (value) {
-                _searchTerm = value;
-                _fetchProducts();
-              },
-              decoration: const InputDecoration(
-                  hintText: 'Search your catalogue',
-                  prefixIcon: Icon(Icons.search_rounded))),
+    return LayoutBuilder(builder: (context, constraints) {
+      final wide = constraints.maxWidth >= 760;
+      final scheme = Theme.of(context).colorScheme;
+      final catalogue = Column(children: [
+        TextField(
+            onChanged: (value) {
+              _searchTerm = value;
+              _fetchProducts();
+            },
+            decoration: const InputDecoration(
+                hintText: 'Search your catalogue',
+                prefixIcon: Icon(Icons.search_rounded))),
         const SizedBox(height: 10),
         Expanded(
             child: _isLoading
@@ -389,8 +407,7 @@ class _ProductsViewState extends State<ProductsView> {
                     ? Center(
                         child: Text('Nothing matches this selection.',
                             style: TextStyle(
-                                color:
-                                    scheme.onSurface.withValues(alpha: .6))))
+                                color: scheme.onSurface.withValues(alpha: .6))))
                     : GridView.builder(
                         gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                             maxCrossAxisExtent: wide ? 225 : 165,
@@ -433,20 +450,20 @@ class _ProductsViewState extends State<ProductsView> {
           const SizedBox(height: 12),
           Expanded(
               child: wide
-                   ? Row(
-                       crossAxisAlignment: CrossAxisAlignment.start,
-                       children: [
-                           SizedBox(
-                               width: 168, child: _categoryMenu(vertical: true)),
-                           const SizedBox(width: 10),
-                           Expanded(child: catalogue)
-                         ])
-                   : Column(children: [
-                       SizedBox(
-                           height: 40, child: _categoryMenu(vertical: false)),
-                       const SizedBox(height: 10),
-                       Expanded(child: catalogue)
-                     ])),
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                          SizedBox(
+                              width: 168, child: _categoryMenu(vertical: true)),
+                          const SizedBox(width: 10),
+                          Expanded(child: catalogue)
+                        ])
+                  : Column(children: [
+                      SizedBox(
+                          height: 40, child: _categoryMenu(vertical: false)),
+                      const SizedBox(height: 10),
+                      Expanded(child: catalogue)
+                    ])),
         ]),
       );
     });
@@ -523,7 +540,7 @@ class _ProductsViewState extends State<ProductsView> {
     final favourite =
         product['isFavourite'] == true || product['isFavourite'] == 1;
     final imageUrl = product['imageUrl'] as String? ?? '';
-    final stock = product['stockQuantity'] as int? ?? 0;
+    final stock = quantityValue(product['stockQuantity']);
     return Material(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(13),
@@ -547,86 +564,90 @@ class _ProductsViewState extends State<ProductsView> {
                 decoration: BoxDecoration(
                     border: Border.all(color: scheme.outlineVariant),
                     borderRadius: BorderRadius.circular(13)),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
-                  child: Stack(children: [
-                Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                        color: scheme.surfaceContainerHighest
-                            .withValues(alpha: .5),
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(13)),
-                        image: imageUrl.isEmpty
-                            ? null
-                            : DecorationImage(
-                                image: NetworkImage(imageUrl),
-                                fit: BoxFit.cover)),
-                    child: imageUrl.isEmpty
-                        ? Icon(Icons.inventory_2_outlined,
-                            color: scheme.onSurface.withValues(alpha: .35),
-                            size: 32)
-                        : null),
-                Positioned(
-                    top: 6,
-                    right: 6,
-                    child: IconButton(
-                        onPressed: () =>
-                            _toggleFavourite(product['id'], favourite),
-                        visualDensity: VisualDensity.compact,
-                        constraints:
-                            const BoxConstraints(minWidth: 30, minHeight: 30),
-                        padding: EdgeInsets.zero,
-                        style:
-                            IconButton.styleFrom(backgroundColor: scheme.surface),
-                        icon: Icon(
-                            favourite
-                                ? Icons.star_rounded
-                                : Icons.star_border_rounded,
-                            color: const Color(0xFFE4A331),
-                            size: 18)))
-              ])),
-              Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(product['categoryName'] ?? 'Uncategorised',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                color: scheme.primary,
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 2),
-                        Text(product['name'] ?? '',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                color: scheme.onSurface,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13)),
-                        const SizedBox(height: 7),
-                        Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('₹${product['sellingPrice']}',
-                                  style: TextStyle(
-                                      color: scheme.secondary,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800)),
-                              Text('$stock in stock',
-                                  style: TextStyle(
-                                      color: stock <= 5
-                                          ? scheme.error
-                                          : scheme.onSurface
-                                              .withValues(alpha: .55),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700))
-                            ])
-                      ]))
-            ]))));
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                          child: Stack(children: [
+                        Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                                color: scheme.surfaceContainerHighest
+                                    .withValues(alpha: .5),
+                                borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(13)),
+                                image: imageUrl.isEmpty
+                                    ? null
+                                    : DecorationImage(
+                                        image: NetworkImage(imageUrl),
+                                        fit: BoxFit.cover)),
+                            child: imageUrl.isEmpty
+                                ? Icon(Icons.inventory_2_outlined,
+                                    color:
+                                        scheme.onSurface.withValues(alpha: .35),
+                                    size: 32)
+                                : null),
+                        Positioned(
+                            top: 6,
+                            right: 6,
+                            child: IconButton(
+                                onPressed: () =>
+                                    _toggleFavourite(product['id'], favourite),
+                                visualDensity: VisualDensity.compact,
+                                constraints: const BoxConstraints(
+                                    minWidth: 30, minHeight: 30),
+                                padding: EdgeInsets.zero,
+                                style: IconButton.styleFrom(
+                                    backgroundColor: scheme.surface),
+                                icon: Icon(
+                                    favourite
+                                        ? Icons.star_rounded
+                                        : Icons.star_border_rounded,
+                                    color: const Color(0xFFE4A331),
+                                    size: 18)))
+                      ])),
+                      Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(product['categoryName'] ?? 'Uncategorised',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        color: scheme.primary,
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w800)),
+                                const SizedBox(height: 2),
+                                Text(product['name'] ?? '',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        color: scheme.onSurface,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13)),
+                                const SizedBox(height: 7),
+                                Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('₹${product['sellingPrice']}',
+                                          style: TextStyle(
+                                              color: scheme.secondary,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w800)),
+                                      Text(
+                                          '${formatProductQuantity(stock, product)} in stock',
+                                          style: TextStyle(
+                                              color: stock <= 5
+                                                  ? scheme.error
+                                                  : scheme.onSurface
+                                                      .withValues(alpha: .55),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700))
+                                    ])
+                              ]))
+                    ]))));
   }
 }
 

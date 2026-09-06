@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../config/api_config.dart';
+import '../utils/quantity_utils.dart';
 
 enum AppThemeOption { light, nightOwl, evergreen }
 
@@ -36,16 +37,16 @@ class AppProvider extends ChangeNotifier {
     double total = 0.0;
     _cartItems.forEach((key, item) {
       final price = (item['product']['sellingPrice'] as num).toDouble();
-      final qty = item['quantity'] as int;
+      final qty = quantityValue(item['quantity']);
       total += price * qty;
     });
     return total;
   }
 
-  int get cartCount {
-    int count = 0;
+  double get cartCount {
+    double count = 0;
     _cartItems.forEach((key, item) {
-      count += item['quantity'] as int;
+      count += quantityValue(item['quantity']);
     });
     return count;
   }
@@ -176,18 +177,18 @@ class AppProvider extends ChangeNotifier {
   // Cart operations
   void addToCart(Map<String, dynamic> product) {
     final id = product['id'] as int;
-    final availableStock = product['stockQuantity'] as int;
+    final availableStock = quantityValue(product['stockQuantity']);
 
     if (_cartItems.containsKey(id)) {
-      final currentQty = _cartItems[id]!['quantity'] as int;
-      if (currentQty < availableStock) {
+      final currentQty = quantityValue(_cartItems[id]!['quantity']);
+      if (currentQty + 1 <= availableStock) {
         _cartItems[id]!['quantity'] = currentQty + 1;
       }
     } else {
       if (availableStock > 0) {
         _cartItems[id] = {
           'product': product,
-          'quantity': 1,
+          'quantity': availableStock < 1 ? availableStock : 1.0,
         };
       }
     }
@@ -196,12 +197,27 @@ class AppProvider extends ChangeNotifier {
 
   void removeFromCart(int productId) {
     if (_cartItems.containsKey(productId)) {
-      final currentQty = _cartItems[productId]!['quantity'] as int;
+      final currentQty = quantityValue(_cartItems[productId]!['quantity']);
       if (currentQty > 1) {
         _cartItems[productId]!['quantity'] = currentQty - 1;
       } else {
         _cartItems.remove(productId);
       }
+    }
+    notifyListeners();
+  }
+
+  /// Sets an exact quantity so weighed and measured products can be sold in
+  /// fractional amounts (for example, 1.5 KG).
+  void setCartQuantity(int productId, double quantity) {
+    final item = _cartItems[productId];
+    if (item == null) return;
+
+    final availableStock = quantityValue(item['product']['stockQuantity']);
+    if (quantity <= 0) {
+      _cartItems.remove(productId);
+    } else if (quantity <= availableStock) {
+      item['quantity'] = quantity;
     }
     notifyListeners();
   }

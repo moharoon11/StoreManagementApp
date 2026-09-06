@@ -7,6 +7,7 @@ import '../providers/app_provider.dart';
 import '../services/api_service.dart';
 import '../services/invoice_pdf_service.dart';
 import '../views/billing/checkout_screen.dart';
+import '../utils/quantity_utils.dart';
 
 /// Shared cart + checkout building blocks used by both the Sell page and the
 /// Categories page, so every entry point offers the identical billing flow.
@@ -47,7 +48,7 @@ class CartSummaryBar extends StatelessWidget {
           ),
           child: Row(children: [
             Badge(
-              label: Text('${provider.cartCount}'),
+              label: Text(formatQuantity(provider.cartCount)),
               backgroundColor: scheme.primary,
               textColor: scheme.onPrimary,
               child: Icon(Icons.shopping_bag_outlined,
@@ -56,7 +57,7 @@ class CartSummaryBar extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                  '${provider.cartCount} item${provider.cartCount == 1 ? '' : 's'} · tap to review',
+                  '${formatQuantity(provider.cartCount)} item${provider.cartCount == 1 ? '' : 's'} · tap to review',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -90,8 +91,7 @@ Future<void> openCart(BuildContext context) async {
       context: context,
       builder: (dialogContext) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding:
-            const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400, maxHeight: 560),
           child: Container(
@@ -100,8 +100,8 @@ Future<void> openCart(BuildContext context) async {
               borderRadius: BorderRadius.circular(20),
             ),
             padding: const EdgeInsets.all(14),
-            child: CartPanel(
-                pageContext: context, closeOverlayOnCheckout: true),
+            child:
+                CartPanel(pageContext: context, closeOverlayOnCheckout: true),
           ),
         ),
       ),
@@ -115,12 +115,50 @@ Future<void> openCart(BuildContext context) async {
         height: MediaQuery.sizeOf(context).height * .72,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-          child: CartPanel(
-              pageContext: context, closeOverlayOnCheckout: true),
+          child: CartPanel(pageContext: context, closeOverlayOnCheckout: true),
         ),
       ),
     );
   }
+}
+
+Future<void> _editCartQuantity(BuildContext context, AppProvider provider,
+    Map<String, dynamic> product, double currentQuantity) async {
+  final controller =
+      TextEditingController(text: formatQuantity(currentQuantity));
+  final unit = productUnit(product);
+  final stock = quantityValue(product['stockQuantity']);
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text('Quantity ($unit)'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: InputDecoration(
+          labelText: 'Quantity',
+          helperText: 'Available: ${formatQuantity(stock)} $unit',
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel')),
+        FilledButton(
+          onPressed: () {
+            final quantity = double.tryParse(controller.text);
+            if (quantity != null && quantity > 0 && quantity <= stock) {
+              provider.setCartQuantity(product['id'] as int, quantity);
+              Navigator.pop(dialogContext);
+            }
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
 }
 
 /// Full cart contents: line items with quantity controls, total and the
@@ -171,7 +209,7 @@ class CartPanel extends StatelessWidget {
                 itemBuilder: (_, index) {
                   final item = provider.cartItems.values.elementAt(index);
                   final product = item['product'];
-                  final qty = item['quantity'] as int;
+                  final qty = quantityValue(item['quantity']);
                   return ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
@@ -182,7 +220,8 @@ class CartPanel extends StatelessWidget {
                             color: scheme.onSurface,
                             fontWeight: FontWeight.w700,
                             fontSize: 13)),
-                    subtitle: Text('₹${product['sellingPrice']}',
+                    subtitle: Text(
+                        '₹${product['sellingPrice']} · ${formatProductQuantity(qty, product)}',
                         style: TextStyle(
                             color: scheme.onSurface.withValues(alpha: .6),
                             fontSize: 12)),
@@ -193,10 +232,14 @@ class CartPanel extends StatelessWidget {
                         icon: const Icon(Icons.remove_circle_outline_rounded,
                             size: 20),
                       ),
-                      Text('$qty',
-                          style: TextStyle(
-                              color: scheme.onSurface,
-                              fontWeight: FontWeight.w800)),
+                      TextButton(
+                        onPressed: () => _editCartQuantity(context, provider,
+                            Map<String, dynamic>.from(product as Map), qty),
+                        child: Text(formatProductQuantity(qty, product),
+                            style: TextStyle(
+                                color: scheme.onSurface,
+                                fontWeight: FontWeight.w800)),
+                      ),
                       IconButton(
                         onPressed: () => provider.addToCart(
                             Map<String, dynamic>.from(product as Map)),
@@ -231,7 +274,7 @@ class CartPanel extends StatelessWidget {
           icon: const Icon(Icons.lock_outline_rounded, size: 18),
           label: Text(_isProcessing
               ? 'Processing...'
-              : 'Checkout ${provider.cartCount} item${provider.cartCount == 1 ? '' : 's'}'),
+              : 'Checkout ${formatQuantity(provider.cartCount)} item${provider.cartCount == 1 ? '' : 's'}'),
         ),
       ),
     ]);
@@ -283,7 +326,8 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
     final provider = widget.pageContext.read<AppProvider>();
     final scheme = Theme.of(context).colorScheme;
     final total = provider.cartTotal;
-    final amountRec = double.tryParse(_amountReceivedController.text) ?? (_isReceived ? total : 0.0);
+    final amountRec = double.tryParse(_amountReceivedController.text) ??
+        (_isReceived ? total : 0.0);
     final balanceDue = (total - amountRec).clamp(0.0, double.infinity);
 
     return AlertDialog(
@@ -359,8 +403,16 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Total Amount', style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14)),
-                          Text('₹${total.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16)),
+                          const Text('Total Amount',
+                              style: TextStyle(
+                                  color: Color(0xFF0F172A),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14)),
+                          Text('₹${total.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                  color: Color(0xFF0F172A),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16)),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -373,26 +425,37 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
                               setState(() {
                                 _isReceived = val ?? true;
                                 if (_isReceived) {
-                                  _amountReceivedController.text = total.toStringAsFixed(2);
+                                  _amountReceivedController.text =
+                                      total.toStringAsFixed(2);
                                 } else {
                                   _amountReceivedController.text = '0.00';
                                 }
                               });
                             },
                           ),
-                          const Text('Received', style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14)),
+                          const Text('Received',
+                              style: TextStyle(
+                                  color: Color(0xFF0F172A),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14)),
                           const Spacer(),
                           SizedBox(
                             width: 110,
                             height: 38,
                             child: TextField(
                               controller: _amountReceivedController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                              style: const TextStyle(
+                                  color: Color(0xFF0F172A),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14),
                               onChanged: (v) => setState(() {}),
                               decoration: const InputDecoration(
                                 prefixText: '₹',
-                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 8),
                               ),
                             ),
                           ),
@@ -402,11 +465,17 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Balance Due', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 13)),
+                          const Text('Balance Due',
+                              style: TextStyle(
+                                  color: Color(0xFF64748B),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13)),
                           Text(
                             '₹${balanceDue.toStringAsFixed(2)}',
                             style: TextStyle(
-                              color: balanceDue > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                              color: balanceDue > 0
+                                  ? const Color(0xFFEF4444)
+                                  : const Color(0xFF10B981),
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
                             ),
@@ -431,7 +500,8 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
             if (!(_formKey.currentState?.validate() ?? false)) return;
             final name = _nameController.text.trim();
             final mobile = _mobileController.text.trim();
-            final recAmount = double.tryParse(_amountReceivedController.text) ?? (_isReceived ? total : 0.0);
+            final recAmount = double.tryParse(_amountReceivedController.text) ??
+                (_isReceived ? total : 0.0);
 
             Navigator.of(context).pop();
             await processCheckout(
@@ -487,13 +557,12 @@ Future<void> processCheckout(
       _showInvoiceSuccess(context, invoice);
     } else {
       messenger.showSnackBar(SnackBar(
-          content:
-              Text((res['message'] ?? 'Checkout failed.').toString())));
+          content: Text((res['message'] ?? 'Checkout failed.').toString())));
     }
   } catch (e) {
     messenger.showSnackBar(SnackBar(
-      content: Text(
-          'Checkout Error: ${e.toString().replaceAll('Exception: ', '')}'),
+      content:
+          Text('Checkout Error: ${e.toString().replaceAll('Exception: ', '')}'),
       backgroundColor: errorColor,
     ));
   } finally {
@@ -542,10 +611,10 @@ void _showInvoiceSuccess(BuildContext context, dynamic invoice) {
             ],
           ),
           const SizedBox(height: 8),
-          Text('${(invoice['items'] as List?)?.length ?? 0} item types processed.',
+          Text(
+              '${(invoice['items'] as List?)?.length ?? 0} item types processed.',
               style: TextStyle(
-                  color: scheme.onSurface.withValues(alpha: .6),
-                  fontSize: 12)),
+                  color: scheme.onSurface.withValues(alpha: .6), fontSize: 12)),
           const SizedBox(height: 12),
           const Divider(),
           const SizedBox(height: 4),
@@ -553,8 +622,7 @@ void _showInvoiceSuccess(BuildContext context, dynamic invoice) {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(
-                icon: Icon(Icons.picture_as_pdf,
-                    color: scheme.error, size: 26),
+                icon: Icon(Icons.picture_as_pdf, color: scheme.error, size: 26),
                 tooltip: 'Download PDF',
                 onPressed: () async {
                   try {
@@ -562,8 +630,8 @@ void _showInvoiceSuccess(BuildContext context, dynamic invoice) {
                     final wasSaved =
                         await InvoicePdfService.save(bytes, pdfFilename);
                     if (ctx.mounted && wasSaved) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                          const SnackBar(content: Text('PDF saved successfully.')));
+                      ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                          content: Text('PDF saved successfully.')));
                     }
                   } catch (e) {
                     if (ctx.mounted) {
@@ -574,8 +642,8 @@ void _showInvoiceSuccess(BuildContext context, dynamic invoice) {
                 },
               ),
               IconButton(
-                icon: const Icon(Icons.share,
-                    color: Color(0xFF25D366), size: 26),
+                icon:
+                    const Icon(Icons.share, color: Color(0xFF25D366), size: 26),
                 tooltip: 'Share on WhatsApp',
                 onPressed: () async {
                   try {

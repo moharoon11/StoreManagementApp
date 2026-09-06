@@ -7,6 +7,7 @@ import '../../config/api_config.dart';
 import '../../providers/app_provider.dart';
 import '../../services/api_service.dart';
 import '../../widgets/cart_checkout.dart';
+import '../../utils/quantity_utils.dart';
 
 class PosCheckoutView extends StatefulWidget {
   const PosCheckoutView({Key? key}) : super(key: key);
@@ -181,11 +182,10 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
       itemBuilder: (_, index) {
         if (index == products.length) {
           return Center(
-              child:
-                  CircularProgressIndicator(color: scheme.primary));
+              child: CircularProgressIndicator(color: scheme.primary));
         }
         final product = products[index];
-        final stock = product['stockQuantity'] as int? ?? 0;
+        final stock = quantityValue(product['stockQuantity']);
         final inCart = provider.cartItems.containsKey(product['id']);
         final imageUrl = product['imageUrl'] as String? ?? '';
         return Material(
@@ -200,9 +200,8 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
                     padding: EdgeInsets.all(wide ? 11 : 9),
                     decoration: BoxDecoration(
                         border: Border.all(
-                            color: inCart
-                                ? scheme.primary
-                                : scheme.outlineVariant,
+                            color:
+                                inCart ? scheme.primary : scheme.outlineVariant,
                             width: inCart ? 1.6 : 1),
                         borderRadius: BorderRadius.circular(13)),
                     child: wide
@@ -214,7 +213,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
   }
 
   Widget _wideProductCard(
-          dynamic product, String imageUrl, int stock, bool inCart) =>
+          dynamic product, String imageUrl, double stock, bool inCart) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(child: _productImage(imageUrl, double.infinity)),
         const SizedBox(height: 8),
@@ -238,7 +237,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
       ]);
 
   Widget _compactProductCard(
-          dynamic product, String imageUrl, int stock, bool inCart) =>
+          dynamic product, String imageUrl, double stock, bool inCart) =>
       Row(children: [
         _productImage(imageUrl, 48),
         const SizedBox(width: 8),
@@ -269,23 +268,23 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
           borderRadius: BorderRadius.circular(10)),
       child: imageUrl.isEmpty
           ? Icon(Icons.inventory_2_outlined,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .4),
+              color:
+                  Theme.of(context).colorScheme.onSurface.withValues(alpha: .4),
               size: 28)
           : Image.network(imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Icon(
-                  Icons.inventory_2_outlined,
+              errorBuilder: (_, __, ___) => Icon(Icons.inventory_2_outlined,
                   color: Theme.of(context)
                       .colorScheme
                       .onSurface
                       .withValues(alpha: .4),
                   size: 28)));
 
-  Widget _productPriceRow(dynamic product, int stock, bool inCart,
+  Widget _productPriceRow(dynamic product, double stock, bool inCart,
           {bool compact = false}) =>
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Expanded(
-            child: Text('₹${product['sellingPrice']}',
+            child: Text('₹${product['sellingPrice']} / ${productUnit(product)}',
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                     color: stock > 0
@@ -327,9 +326,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
                   fontWeight: FontWeight.w700,
                   fontSize: 12),
               side: BorderSide(
-                  color: selected
-                      ? scheme.primary
-                      : scheme.outlineVariant),
+                  color: selected ? scheme.primary : scheme.outlineVariant),
               backgroundColor: scheme.surface,
             );
           },

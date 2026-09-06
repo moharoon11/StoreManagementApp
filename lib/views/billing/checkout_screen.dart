@@ -5,6 +5,7 @@ import '../../config/api_config.dart';
 import '../../providers/app_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/invoice_pdf_service.dart';
+import '../../utils/quantity_utils.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final bool isManual;
@@ -40,7 +41,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final provider = Provider.of<AppProvider>(context, listen: false);
       total = provider.cartTotal;
     }
-    _amountReceivedController = TextEditingController(text: total.toStringAsFixed(2));
+    _amountReceivedController =
+        TextEditingController(text: total.toStringAsFixed(2));
   }
 
   @override
@@ -70,7 +72,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         grandTotal = provider.cartTotal;
       }
 
-      final recAmount = double.tryParse(_amountReceivedController.text) ?? (_isReceived ? grandTotal : 0.0);
+      final recAmount = double.tryParse(_amountReceivedController.text) ??
+          (_isReceived ? grandTotal : 0.0);
 
       Map<String, dynamic> response;
       if (widget.isManual) {
@@ -108,13 +111,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _showInvoiceSuccessDialog(context, invoice);
       } else {
         messenger.showSnackBar(
-          SnackBar(content: Text((response['message'] ?? 'Checkout failed.').toString())),
+          SnackBar(
+              content:
+                  Text((response['message'] ?? 'Checkout failed.').toString())),
         );
       }
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Checkout Error: ${e.toString().replaceAll('Exception: ', '')}'),
+          content: Text(
+              'Checkout Error: ${e.toString().replaceAll('Exception: ', '')}'),
           backgroundColor: const Color(0xFFEF4444),
         ),
       );
@@ -148,23 +154,35 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Invoice #: ${invoice['invoiceNumber']}',
-                style: TextStyle(color: scheme.onSurface, fontWeight: FontWeight.w800)),
+                style: TextStyle(
+                    color: scheme.onSurface, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Grand Total:', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
-                Text('₹${invoice['grandTotal']}', style: const TextStyle(color: Color(0xFF2563EB), fontSize: 17, fontWeight: FontWeight.w800)),
+                const Text('Grand Total:',
+                    style: TextStyle(
+                        color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                Text('₹${invoice['grandTotal']}',
+                    style: const TextStyle(
+                        color: Color(0xFF2563EB),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800)),
               ],
             ),
             const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Balance Due:', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                const Text('Balance Due:',
+                    style: TextStyle(
+                        color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
                 Text('₹${invoice['balanceDue'] ?? '0.00'}',
                     style: TextStyle(
-                      color: ((invoice['balanceDue'] as num?)?.toDouble() ?? 0) > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                      color:
+                          ((invoice['balanceDue'] as num?)?.toDouble() ?? 0) > 0
+                              ? const Color(0xFFEF4444)
+                              : const Color(0xFF10B981),
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                     )),
@@ -177,24 +195,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.picture_as_pdf, color: Color(0xFFEF4444), size: 26),
+                  icon: const Icon(Icons.picture_as_pdf,
+                      color: Color(0xFFEF4444), size: 26),
                   tooltip: 'Download PDF',
                   onPressed: () async {
                     try {
                       final bytes = await InvoicePdfService.fetch(invoiceId);
-                      final wasSaved = await InvoicePdfService.save(bytes, pdfFilename);
+                      final wasSaved =
+                          await InvoicePdfService.save(bytes, pdfFilename);
                       if (ctx.mounted && wasSaved) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('PDF saved successfully.')));
+                        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                            content: Text('PDF saved successfully.')));
                       }
                     } catch (e) {
                       if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error downloading PDF: $e')));
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                            content: Text('Error downloading PDF: $e')));
                       }
                     }
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.share, color: Color(0xFF25D366), size: 26),
+                  icon: const Icon(Icons.share,
+                      color: Color(0xFF25D366), size: 26),
                   tooltip: 'Share PDF',
                   onPressed: () async {
                     try {
@@ -203,25 +226,30 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         bytes: bytes,
                         filename: pdfFilename,
                         subject: 'Invoice ${invoice['invoiceNumber']}',
-                        body: 'Invoice #${invoice['invoiceNumber']} - Total: ₹${invoice['grandTotal']}',
+                        body:
+                            'Invoice #${invoice['invoiceNumber']} - Total: ₹${invoice['grandTotal']}',
                       );
                     } catch (e) {
                       if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error sharing PDF: $e')));
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('Error sharing PDF: $e')));
                       }
                     }
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.print, color: Color(0xFF2563EB), size: 26),
+                  icon: const Icon(Icons.print,
+                      color: Color(0xFF2563EB), size: 26),
                   tooltip: 'Print Invoice',
                   onPressed: () async {
                     try {
                       final bytes = await InvoicePdfService.fetch(invoiceId);
-                      await Printing.layoutPdf(onLayout: (format) async => bytes, name: pdfFilename);
+                      await Printing.layoutPdf(
+                          onLayout: (format) async => bytes, name: pdfFilename);
                     } catch (e) {
                       if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error printing: $e')));
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('Error printing: $e')));
                       }
                     }
                   },
@@ -233,7 +261,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Done', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+            child: const Text('Done',
+                style: TextStyle(
+                    color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -253,18 +283,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       grandTotal = provider.cartTotal;
       itemsList = provider.cartItems.values.map((item) {
         final product = item['product'];
-        final qty = item['quantity'] as int;
+        final qty = quantityValue(item['quantity']);
         final price = (product['sellingPrice'] as num).toDouble();
         return {
           'name': product['name'] ?? '',
           'price': price,
           'qty': qty,
+          'unit': productUnit(product),
           'total': price * qty,
         };
       }).toList();
     }
 
-    final amtRec = double.tryParse(_amountReceivedController.text) ?? (_isReceived ? grandTotal : 0.0);
+    final amtRec = double.tryParse(_amountReceivedController.text) ??
+        (_isReceived ? grandTotal : 0.0);
     final balanceDue = (grandTotal - amtRec).clamp(0.0, double.infinity);
 
     return Scaffold(
@@ -278,7 +310,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
         title: const Text(
           'Checkout & Payment',
-          style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+              color: Color(0xFF0F172A),
+              fontWeight: FontWeight.bold,
+              fontSize: 18),
         ),
       ),
       body: SafeArea(
@@ -303,7 +338,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Customer Details', style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 15)),
+                            const Text('Customer Details',
+                                style: TextStyle(
+                                    color: Color(0xFF0F172A),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15)),
                             const SizedBox(height: 12),
                             TextFormField(
                               controller: _nameController,
@@ -313,7 +352,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 hintText: 'e.g. Ishak',
                                 prefixIcon: Icon(Icons.person_outline),
                                 border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 12),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -325,12 +365,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 hintText: 'e.g. 9360984711',
                                 prefixIcon: Icon(Icons.phone_outlined),
                                 border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 12),
                               ),
                               validator: (value) {
                                 final mobile = (value ?? '').trim();
-                                if (mobile.isEmpty) return 'Customer mobile number is required.';
-                                if (!RegExp(r'^[0-9+\-\s()]{7,20}$').hasMatch(mobile)) {
+                                if (mobile.isEmpty)
+                                  return 'Customer mobile number is required.';
+                                if (!RegExp(r'^[0-9+\-\s()]{7,20}$')
+                                    .hasMatch(mobile)) {
                                   return 'Enter a valid mobile number.';
                                 }
                                 return null;
@@ -351,18 +394,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
                               decoration: const BoxDecoration(
                                 color: Color(0xFF60A5FA),
-                                borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
+                                borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(11)),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                                  const Icon(Icons.check_circle,
+                                      color: Colors.white, size: 18),
                                   const SizedBox(width: 8),
                                   Text(
                                     'Billed Items (${itemsList.length})',
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14),
                                   ),
                                 ],
                               ),
@@ -370,37 +419,65 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ...itemsList.asMap().entries.map((entry) {
                               final idx = entry.key + 1;
                               final item = entry.value;
-                              final name = widget.isManual ? 'Manual Item #$idx' : (item['name'] ?? '');
-                              final price = widget.isManual ? ((item['rate'] as num).toDouble()) : ((item['price'] as num).toDouble());
-                              final qty = (item['quantity'] ?? item['qty'] as num).toInt();
+                              final name = widget.isManual
+                                  ? 'Manual Item #$idx'
+                                  : (item['name'] ?? '');
+                              final price = widget.isManual
+                                  ? ((item['rate'] as num).toDouble())
+                                  : ((item['price'] as num).toDouble());
+                              final qty = quantityValue(
+                                  item['quantity'] ?? item['qty']);
+                              final unit = widget.isManual
+                                  ? ''
+                                  : ' ${item['unit'] ?? 'Piece'}';
                               final total = price * qty;
 
                               return Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: const BoxDecoration(
-                                  border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+                                  border: Border(
+                                      bottom:
+                                          BorderSide(color: Color(0xFFF1F5F9))),
                                 ),
                                 child: Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFF1F5F9),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
-                                      child: Text('#$idx', style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 12)),
+                                      child: Text('#$idx',
+                                          style: const TextStyle(
+                                              color: Color(0xFF64748B),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12)),
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Text(name, style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14)),
-                                          Text('$qty × ₹${price.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                                          Text(name,
+                                              style: const TextStyle(
+                                                  color: Color(0xFF0F172A),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14)),
+                                          Text(
+                                              '${formatQuantity(qty)}$unit × ₹${price.toStringAsFixed(2)}',
+                                              style: const TextStyle(
+                                                  color: Color(0xFF64748B),
+                                                  fontSize: 12)),
                                         ],
                                       ),
                                     ),
-                                    Text('₹${total.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14)),
+                                    Text('₹${total.toStringAsFixed(2)}',
+                                        style: const TextStyle(
+                                            color: Color(0xFF0F172A),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14)),
                                   ],
                                 ),
                               );
@@ -422,8 +499,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Total Amount', style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 15)),
-                                Text('₹${grandTotal.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 18)),
+                                const Text('Total Amount',
+                                    style: TextStyle(
+                                        color: Color(0xFF0F172A),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15)),
+                                Text('₹${grandTotal.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                        color: Color(0xFF0F172A),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18)),
                               ],
                             ),
                             const Divider(height: 24),
@@ -436,26 +521,37 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     setState(() {
                                       _isReceived = val ?? true;
                                       if (_isReceived) {
-                                        _amountReceivedController.text = grandTotal.toStringAsFixed(2);
+                                        _amountReceivedController.text =
+                                            grandTotal.toStringAsFixed(2);
                                       } else {
                                         _amountReceivedController.text = '0.00';
                                       }
                                     });
                                   },
                                 ),
-                                const Text('Received', style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 15)),
+                                const Text('Received',
+                                    style: TextStyle(
+                                        color: Color(0xFF0F172A),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15)),
                                 const Spacer(),
                                 SizedBox(
                                   width: 130,
                                   child: TextField(
                                     controller: _amountReceivedController,
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                    style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 15),
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
+                                    style: const TextStyle(
+                                        color: Color(0xFF0F172A),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15),
                                     onChanged: (_) => setState(() {}),
                                     decoration: const InputDecoration(
                                       prefixText: '₹ ',
                                       border: OutlineInputBorder(),
-                                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 10),
                                     ),
                                   ),
                                 ),
@@ -465,11 +561,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Balance Due', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 14)),
+                                const Text('Balance Due',
+                                    style: TextStyle(
+                                        color: Color(0xFF64748B),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14)),
                                 Text(
                                   '₹${balanceDue.toStringAsFixed(2)}',
                                   style: TextStyle(
-                                    color: balanceDue > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                                    color: balanceDue > 0
+                                        ? const Color(0xFFEF4444)
+                                        : const Color(0xFF10B981),
                                     fontWeight: FontWeight.bold,
                                     fontSize: 18,
                                   ),
@@ -500,14 +602,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2563EB),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                   icon: _isProcessing
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
                       : const Icon(Icons.check_circle_outline, size: 20),
                   label: Text(
-                    _isProcessing ? 'Processing Checkout...' : 'Complete Checkout',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    _isProcessing
+                        ? 'Processing Checkout...'
+                        : 'Complete Checkout',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
               ),

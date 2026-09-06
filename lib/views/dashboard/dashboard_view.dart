@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
 import '../../widgets/ui_breakpoints.dart';
+import '../../utils/quantity_utils.dart';
 import '../../widgets/workspace_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -239,7 +240,8 @@ class _DashboardViewState extends State<DashboardView> {
 
   Widget _salesHero(dynamic sales, dynamic invoices, dynamic products) =>
       Container(
-          padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 15 : 18),
+          padding:
+              EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 15 : 18),
           decoration: BoxDecoration(
               gradient: const LinearGradient(
                   begin: Alignment.topLeft,
@@ -498,7 +500,7 @@ class _DashboardViewState extends State<DashboardView> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              '${p['stockQuantity']} left',
+              '${formatQuantity(p['stockQuantity'])} ${p['unit'] ?? 'Piece'} left',
               style: const TextStyle(
                   color: Color(0xFFE75C5C),
                   fontWeight: FontWeight.bold,
@@ -532,7 +534,8 @@ class _DashboardViewState extends State<DashboardView> {
                   color: Color(0xFF172033),
                   fontWeight: FontWeight.w600,
                   fontSize: 13)),
-          subtitle: Text('${p['totalQuantitySold']} units sold',
+          subtitle: Text(
+              '${formatQuantity(p['totalQuantitySold'])} ${p['unit'] ?? 'units'} sold',
               style: const TextStyle(color: Color(0xFF6C7486), fontSize: 12)),
           trailing: Text(
             '₹${p['totalRevenue']}',
@@ -551,7 +554,7 @@ class _DashboardViewState extends State<DashboardView> {
 
     List<FlSpot> spots = [];
     double maxY = 0;
-    
+
     for (int i = 0; i < salesTrend.length; i++) {
       double y = (salesTrend[i]['totalSales'] ?? 0).toDouble();
       if (y > maxY) maxY = y;
@@ -565,16 +568,12 @@ class _DashboardViewState extends State<DashboardView> {
       height: 240,
       padding: const EdgeInsets.fromLTRB(16, 16, 22, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120F2454),
-            blurRadius: 12,
-            offset: Offset(0, 5)
-          )
-        ]
-      ),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+                color: Color(0x120F2454), blurRadius: 12, offset: Offset(0, 5))
+          ]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -583,19 +582,18 @@ class _DashboardViewState extends State<DashboardView> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF365FF4).withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(9)
-                ),
-                child: const Icon(Icons.show_chart_rounded, color: Color(0xFF365FF4), size: 17),
+                    color: const Color(0xFF365FF4).withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(9)),
+                child: const Icon(Icons.show_chart_rounded,
+                    color: Color(0xFF365FF4), size: 17),
               ),
               const SizedBox(width: 10),
               const Text('7-Day Sales Trend',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13.5,
-                  color: Color(0xFF172033),
-                )
-              ),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5,
+                    color: Color(0xFF172033),
+                  )),
             ],
           ),
           const SizedBox(height: 24),
@@ -614,8 +612,10 @@ class _DashboardViewState extends State<DashboardView> {
                 ),
                 titlesData: FlTitlesData(
                   show: true,
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -628,7 +628,8 @@ class _DashboardViewState extends State<DashboardView> {
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
                               salesTrend[index]['dateLabel'] ?? '',
-                              style: const TextStyle(color: Color(0xFF6C7486), fontSize: 10),
+                              style: const TextStyle(
+                                  color: Color(0xFF6C7486), fontSize: 10),
                             ),
                           );
                         }
@@ -643,8 +644,11 @@ class _DashboardViewState extends State<DashboardView> {
                       interval: maxY > 0 ? maxY / 4 : 1,
                       getTitlesWidget: (value, meta) {
                         return Text(
-                          value >= 1000 ? '${(value/1000).toStringAsFixed(1)}k' : value.toInt().toString(),
-                          style: const TextStyle(color: Color(0xFF6C7486), fontSize: 10),
+                          value >= 1000
+                              ? '${(value / 1000).toStringAsFixed(1)}k'
+                              : value.toInt().toString(),
+                          style: const TextStyle(
+                              color: Color(0xFF6C7486), fontSize: 10),
                         );
                       },
                     ),
@@ -664,7 +668,8 @@ class _DashboardViewState extends State<DashboardView> {
                     isStrokeCapRound: true,
                     dotData: FlDotData(
                       show: true,
-                      getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                      getDotPainter: (spot, percent, barData, index) =>
+                          FlDotCirclePainter(
                         radius: 4,
                         color: Colors.white,
                         strokeWidth: 2,

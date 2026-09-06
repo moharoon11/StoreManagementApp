@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
 import '../../widgets/ui_breakpoints.dart';
+import '../../utils/quantity_utils.dart';
 
 class SalesReportsView extends StatefulWidget {
   const SalesReportsView({Key? key}) : super(key: key);
@@ -166,7 +167,8 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                               style: const TextStyle(
                                   color: Color(0xFF172033),
                                   fontWeight: FontWeight.w600)),
-                          subtitle: Text('${p['totalQuantitySold']} units sold',
+                          subtitle: Text(
+                              '${formatQuantity(p['totalQuantitySold'])} ${p['unit'] ?? 'units'} sold',
                               style: const TextStyle(color: Color(0xFF6C7486))),
                           trailing: Text('₹${p['totalRevenue']}',
                               style: const TextStyle(
@@ -174,8 +176,8 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                                   fontWeight: FontWeight.bold)),
                         );
                       }),
-                       const SizedBox(height: 12),
-                       _buildTableCard('Sales by Category', salesByCategory,
+                      const SizedBox(height: 12),
+                      _buildTableCard('Sales by Category', salesByCategory,
                           (c) {
                         return ListTile(
                           dense: true,
@@ -205,7 +207,7 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                                         color: Color(0xFF172033),
                                         fontWeight: FontWeight.w600)),
                                 subtitle: Text(
-                                    '${p['totalQuantitySold']} units sold',
+                                    '${formatQuantity(p['totalQuantitySold'])} ${p['unit'] ?? 'units'} sold',
                                     style: const TextStyle(
                                         color: Color(0xFF6C7486))),
                                 trailing: Text('₹${p['totalRevenue']}',
@@ -214,11 +216,11 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                                         fontWeight: FontWeight.bold)),
                               );
                             }),
-                           ),
-                           const SizedBox(width: 12),
-                           Expanded(
-                             child: _buildTableCard(
-                                 'Sales by Category', salesByCategory, (c) {
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildTableCard(
+                                'Sales by Category', salesByCategory, (c) {
                               return ListTile(
                                 dense: true,
                                 title: Text(c['categoryName'] ?? '',

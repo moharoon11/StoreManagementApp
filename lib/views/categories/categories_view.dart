@@ -9,6 +9,7 @@ import '../../config/api_config.dart';
 import '../../providers/app_provider.dart';
 import '../../services/api_service.dart';
 import '../../widgets/cart_checkout.dart';
+import '../../utils/quantity_utils.dart';
 
 class CategoriesView extends StatefulWidget {
   const CategoriesView({super.key});
@@ -538,8 +539,8 @@ class _CategoriesViewState extends State<CategoriesView> {
     );
   }
 
-  int _stockFor(Map<String, dynamic> product) =>
-      (product['stockQuantity'] as num?)?.toInt() ?? 0;
+  double _stockFor(Map<String, dynamic> product) =>
+      quantityValue(product['stockQuantity']);
 
   Widget _filterButton({
     required IconData icon,
@@ -692,7 +693,10 @@ class _CategoriesViewState extends State<CategoriesView> {
                       color: scheme.secondary,
                       fontWeight: FontWeight.w900))),
           const SizedBox(width: 5),
-          Text(stock > 0 ? '$stock left' : 'Out',
+          Text(
+              stock > 0
+                  ? '${formatProductQuantity(stock, product)} left'
+                  : 'Out',
               style: TextStyle(
                   fontSize: 10,
                   color: stock > 0 ? scheme.primary : scheme.error,
@@ -704,7 +708,8 @@ class _CategoriesViewState extends State<CategoriesView> {
     );
   }
 
-  Widget _addToCartButton(Map<String, dynamic> product, int stock, bool inCart) {
+  Widget _addToCartButton(
+      Map<String, dynamic> product, double stock, bool inCart) {
     final scheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: stock > 0

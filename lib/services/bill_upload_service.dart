@@ -7,12 +7,13 @@ import 'api_service.dart';
 class ExtractedBillItem {
   int? productId;
   String productName;
-  int quantity;
+  double quantity;
   double costPrice;
   double sellingPrice;
   double totalAmount;
   bool isNewProduct;
   int? categoryId;
+  String unit;
 
   ExtractedBillItem({
     this.productId,
@@ -23,17 +24,21 @@ class ExtractedBillItem {
     required this.totalAmount,
     required this.isNewProduct,
     this.categoryId,
+    this.unit = 'Piece',
   });
 
   factory ExtractedBillItem.fromJson(Map<String, dynamic> json) {
     return ExtractedBillItem(
       productId: json['productId'],
       productName: json['productName'] ?? '',
-      quantity: json['quantity'] ?? 0,
+      quantity: (json['quantity'] as num?)?.toDouble() ?? 0,
       costPrice: (json['costPrice'] ?? 0).toDouble(),
       sellingPrice: (json['sellingPrice'] ?? 0).toDouble(),
       totalAmount: (json['totalAmount'] ?? 0).toDouble(),
       isNewProduct: json['isNewProduct'] ?? false,
+      unit: json['unit']?.toString().isNotEmpty == true
+          ? json['unit'].toString()
+          : 'Piece',
     );
   }
 
@@ -45,6 +50,7 @@ class ExtractedBillItem {
       'costPrice': costPrice,
       'sellingPrice': sellingPrice,
       'categoryId': categoryId,
+      'unit': unit,
     };
   }
 }
@@ -76,13 +82,17 @@ class BillUploadService {
         }
       } catch (_) {}
 
-      if (response.statusCode >= 200 && response.statusCode < 300 && body != null && body['success'] == true) {
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          body != null &&
+          body['success'] == true) {
         List<dynamic> dataList = body['data'];
         return dataList.map((e) => ExtractedBillItem.fromJson(e)).toList();
       } else {
-        final message = (body != null && body is Map && body.containsKey('message'))
-            ? body['message']
-            : 'Failed to extract bill data (Status ${response.statusCode})';
+        final message =
+            (body != null && body is Map && body.containsKey('message'))
+                ? body['message']
+                : 'Failed to extract bill data (Status ${response.statusCode})';
         throw Exception(message);
       }
     } catch (e) {
@@ -122,12 +132,16 @@ class BillUploadService {
       }
     } catch (_) {}
 
-    if (response.statusCode >= 200 && response.statusCode < 300 && body != null && body['success'] == true) {
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300 &&
+        body != null &&
+        body['success'] == true) {
       return;
     } else {
-      final message = (body != null && body is Map && body.containsKey('message'))
-          ? body['message']
-          : 'Failed to process bill (Status ${response.statusCode})';
+      final message =
+          (body != null && body is Map && body.containsKey('message'))
+              ? body['message']
+              : 'Failed to process bill (Status ${response.statusCode})';
       throw Exception(message);
     }
   }
