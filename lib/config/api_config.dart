@@ -1,7 +1,20 @@
 import 'package:flutter/foundation.dart';
 
 class ApiConfig {
+  /// Set this once at release build time to point the app to the hosted API.
+  /// Example:
+  /// flutter build apk --dart-define=API_BASE_URL=https://api.example.com/api
+  ///
+  /// It intentionally includes `/api`, because every endpoint below is
+  /// relative to that API root. Leaving it blank retains local development
+  /// addresses, so no code needs changing between environments.
+  static const String _configuredBaseUrl =
+      String.fromEnvironment('API_BASE_URL', defaultValue: '');
+
   static String get baseUrl {
+    if (_configuredBaseUrl.isNotEmpty) {
+      return _configuredBaseUrl.replaceFirst(RegExp(r'/+$'), '');
+    }
     if (kIsWeb) {
       return 'http://localhost:5009/api';
     } else if (defaultTargetPlatform == TargetPlatform.android) {
