@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import '../../config/api_config.dart';
@@ -28,6 +29,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _nameController = TextEditingController();
   final _mobileController = TextEditingController();
   late TextEditingController _amountReceivedController;
+  DateTime _invoiceDate = DateTime.now();
   bool _isReceived = true;
   bool _isProcessing = false;
 
@@ -64,6 +66,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     try {
       final customerName = _nameController.text.trim();
       final customerMobile = _mobileController.text.trim();
+      // Send a date-only value. This avoids a timezone shift changing the
+      // invoice day between the phone and the API server.
+      final invoiceDate = DateFormat('yyyy-MM-dd').format(_invoiceDate);
 
       double grandTotal = 0.0;
       if (widget.isManual) {
@@ -82,6 +87,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           'customerMobileNumber': customerMobile,
           'isReceived': _isReceived,
           'amountReceived': recAmount,
+          'invoiceDate': invoiceDate,
           'items': widget.manualItems,
         });
       } else {
@@ -97,6 +103,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           'customerMobileNumber': customerMobile,
           'isReceived': _isReceived,
           'amountReceived': recAmount,
+          'invoiceDate': invoiceDate,
           'items': items,
         });
       }
@@ -108,7 +115,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
         if (!mounted) return;
         Navigator.pop(context); // close CheckoutScreen
-        _showInvoiceSuccessDialog(context, invoice);
+        _showInvoiceSuccessDialog(context, invoice, _invoiceDate);
       } else {
         messenger.showSnackBar(
           SnackBar(
@@ -129,7 +136,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _showInvoiceSuccessDialog(BuildContext context, dynamic invoice) {
+  Future<void> _selectInvoiceDate() async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _invoiceDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: 'Select invoice date',
+    );
+    if (selected != null && mounted) {
+      setState(() => _invoiceDate = selected);
+    }
+  }
+
+  void _showInvoiceSuccessDialog(
+      BuildContext context, dynamic invoice, DateTime invoiceDate) {
     final scheme = Theme.of(context).colorScheme;
     final invoiceId = invoice['id'] as int;
     final pdfFilename = 'Invoice_${invoice['invoiceNumber']}.pdf';
@@ -156,6 +177,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Text('Invoice #: ${invoice['invoiceNumber']}',
                 style: TextStyle(
                     color: scheme.onSurface, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text(
+                'Invoice date: ${DateFormat('dd MMM yyyy').format(invoiceDate)}',
+                style: const TextStyle(
+                    color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -378,6 +404,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 }
                                 return null;
                               },
+                            ),
+                            const SizedBox(height: 12),
+                            Semantics(
+                              button: true,
+                              label:
+                                  'Invoice date: ${DateFormat('dd MMMM yyyy').format(_invoiceDate)}',
+                              child: InkWell(
+                                onTap: _selectInvoiceDate,
+                                borderRadius: BorderRadius.circular(8),
+                                child: InputDecorator(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Invoice Date',
+                                    prefixIcon:
+                                        Icon(Icons.calendar_today_outlined),
+                                    suffixIcon:
+                                        Icon(Icons.edit_calendar_outlined),
+                                    border: OutlineInputBorder(),
+                                    contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 12),
+                                  ),
+                                  child: Text(
+                                    DateFormat('dd MMM yyyy')
+                                        .format(_invoiceDate),
+                                    style: const TextStyle(
+                                      color: Color(0xFF0F172A),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),

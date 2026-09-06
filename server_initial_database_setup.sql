@@ -1,0 +1,136 @@
+-- Store Management API: first-time server database setup
+-- MySQL 8.0+
+-- Creates the database and all tables. It does not delete existing data.
+
+CREATE DATABASE IF NOT EXISTS `store_management_db`
+    DEFAULT CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+
+USE `store_management_db`;
+
+CREATE TABLE IF NOT EXISTS `Users` (
+    `Id` INT AUTO_INCREMENT PRIMARY KEY,
+    `Username` VARCHAR(100) NOT NULL UNIQUE,
+    `PasswordHash` VARCHAR(255) NOT NULL,
+    `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `UpdatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `StoreProfiles` (
+    `Id` INT AUTO_INCREMENT PRIMARY KEY,
+    `UserId` INT NOT NULL UNIQUE,
+    `StoreName` VARCHAR(150) NOT NULL,
+    `OwnerName` VARCHAR(150) NOT NULL,
+    `LogoUrl` VARCHAR(500) DEFAULT NULL,
+    `Address` TEXT DEFAULT NULL,
+    `City` VARCHAR(100) DEFAULT NULL,
+    `District` VARCHAR(100) DEFAULT NULL,
+    `Pincode` VARCHAR(20) DEFAULT NULL,
+    `Email` VARCHAR(150) DEFAULT NULL,
+    `GstNumber` VARCHAR(50) DEFAULT NULL,
+    `Phone` VARCHAR(20) DEFAULT NULL,
+    `AlternatePhone` VARCHAR(20) DEFAULT NULL,
+    `AboutUs` TEXT DEFAULT NULL,
+    `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `UpdatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_storeprofiles_user`
+        FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `Categories` (
+    `Id` INT AUTO_INCREMENT PRIMARY KEY,
+    `UserId` INT NOT NULL,
+    `Name` VARCHAR(100) NOT NULL,
+    `ImageUrl` VARCHAR(500) DEFAULT NULL,
+    `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `UpdatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_categories_user`
+        FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
+    INDEX `idx_categories_user` (`UserId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `Products` (
+    `Id` INT AUTO_INCREMENT PRIMARY KEY,
+    `UserId` INT NOT NULL,
+    `CategoryId` INT NOT NULL,
+    `Name` VARCHAR(150) NOT NULL,
+    `ImageUrl` VARCHAR(500) DEFAULT NULL,
+    `CostPrice` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+    `SellingPrice` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+    `StockQuantity` DECIMAL(18,3) NOT NULL DEFAULT 0.000,
+    `SoldsCount` DECIMAL(18,3) NOT NULL DEFAULT 0.000,
+    `Unit` VARCHAR(20) NOT NULL DEFAULT 'Piece',
+    `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `UpdatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_products_user`
+        FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_products_category`
+        FOREIGN KEY (`CategoryId`) REFERENCES `Categories` (`Id`) ON DELETE RESTRICT,
+    INDEX `idx_products_user` (`UserId`),
+    INDEX `idx_products_category` (`CategoryId`),
+    INDEX `idx_products_name` (`Name`),
+    INDEX `idx_products_solds` (`SoldsCount` DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `Favourites` (
+    `UserId` INT NOT NULL,
+    `ProductId` INT NOT NULL,
+    `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`UserId`, `ProductId`),
+    CONSTRAINT `fk_favourites_user`
+        FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_favourites_product`
+        FOREIGN KEY (`ProductId`) REFERENCES `Products` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `Invoices` (
+    `Id` INT AUTO_INCREMENT PRIMARY KEY,
+    `UserId` INT NOT NULL,
+    `InvoiceNumber` VARCHAR(50) NOT NULL UNIQUE,
+    `CustomerName` VARCHAR(150) NOT NULL,
+    `CustomerMobileNumber` VARCHAR(20) NOT NULL,
+    `Subtotal` DECIMAL(18,2) NOT NULL,
+    `GrandTotal` DECIMAL(18,2) NOT NULL,
+    `IsReceived` TINYINT(1) NOT NULL DEFAULT 1,
+    `AmountReceived` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+    `BalanceDue` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+    -- The calendar day of the sale. The checkout API supplies this as
+    -- `invoiceDate` (YYYY-MM-DD); CreatedAt remains the audit timestamp.
+    `InvoiceDate` DATE DEFAULT NULL,
+    `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_invoices_user`
+        FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
+    INDEX `idx_invoices_user_date` (`UserId`, `InvoiceDate`),
+    INDEX `idx_invoices_created_at` (`UserId`, `CreatedAt`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `InvoiceItems` (
+    `Id` INT AUTO_INCREMENT PRIMARY KEY,
+    `InvoiceId` INT NOT NULL,
+    `ProductId` INT NULL,
+    `ProductName` VARCHAR(150) NULL,
+    `Quantity` DECIMAL(18,3) NOT NULL,
+    `Unit` VARCHAR(20) NOT NULL DEFAULT 'Piece',
+    `SellingPrice` DECIMAL(18,2) NOT NULL,
+    `Total` DECIMAL(18,2) NOT NULL,
+    CONSTRAINT `fk_invoiceitems_invoice`
+        FOREIGN KEY (`InvoiceId`) REFERENCES `Invoices` (`Id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_invoiceitems_product`
+        FOREIGN KEY (`ProductId`) REFERENCES `Products` (`Id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `StockMovements` (
+    `Id` INT AUTO_INCREMENT PRIMARY KEY,
+    `UserId` INT NOT NULL,
+    `ProductId` INT NOT NULL,
+    `PreviousQuantity` DECIMAL(18,3) NOT NULL,
+    `QuantityChanged` DECIMAL(18,3) NOT NULL,
+    `NewQuantity` DECIMAL(18,3) NOT NULL,
+    `Reason` ENUM('SALE', 'STOCK_ADDED', 'MANUAL_ADJUSTMENT', 'RETURN', 'BILL_UPLOAD') NOT NULL,
+    `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_stockmovements_user`
+        FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_stockmovements_product`
+        FOREIGN KEY (`ProductId`) REFERENCES `Products` (`Id`) ON DELETE CASCADE,
+    INDEX `idx_stockmovements_user` (`UserId`, `ProductId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

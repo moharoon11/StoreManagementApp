@@ -203,7 +203,11 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                                 (inv['grandTotal'] as num?)?.toDouble() ?? 0.0;
                             final balDue =
                                 (inv['balanceDue'] as num?)?.toDouble() ?? 0.0;
-                            final dateStr = (inv['createdAt'] ?? '').toString();
+                            // New invoices expose the selected invoice date;
+                            // keep the audit timestamp as a fallback for older records.
+                            final dateStr =
+                                (inv['invoiceDate'] ?? inv['createdAt'] ?? '')
+                                    .toString();
                             final dateFormatted = dateStr.contains('T')
                                 ? dateStr.split('T').first
                                 : dateStr;

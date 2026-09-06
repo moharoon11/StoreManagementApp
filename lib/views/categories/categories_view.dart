@@ -301,8 +301,11 @@ class _CategoriesViewState extends State<CategoriesView> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 520;
+    // On the smallest phones, reserve just enough room for the category rail
+    // and let the product pane keep the useful width.
+    final extraCompact = width < 380;
     return Padding(
-      padding: EdgeInsets.all(compact ? 10 : 18),
+      padding: EdgeInsets.all(extraCompact ? 8 : (compact ? 10 : 18)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(
@@ -324,10 +327,12 @@ class _CategoriesViewState extends State<CategoriesView> {
           FilledButton.icon(
               style: FilledButton.styleFrom(
                   minimumSize: const Size(0, 38),
-                  padding: const EdgeInsets.symmetric(horizontal: 12)),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: extraCompact ? 10 : 12)),
               onPressed: () => _showCategoryDialog(),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: Text(compact ? 'Add' : 'Add category'))
+              label: Text(
+                  extraCompact ? 'Add' : (compact ? 'Add' : 'Add category')))
         ]),
         const SizedBox(height: 14),
         Expanded(
@@ -335,9 +340,11 @@ class _CategoriesViewState extends State<CategoriesView> {
                 ? _emptyCategories(context)
                 : Row(children: [
                     SizedBox(
-                        width: compact ? 88 : (width < 760 ? 108 : 136),
+                        width: extraCompact
+                            ? 72
+                            : (compact ? 88 : (width < 760 ? 108 : 136)),
                         child: _categoryRail()),
-                    const SizedBox(width: 10),
+                    SizedBox(width: extraCompact ? 8 : 10),
                     Expanded(child: _productsPane())
                   ])),
         if (!context.select<AppProvider, bool>((p) => p.cartItems.isEmpty)) ...[
@@ -446,97 +453,105 @@ class _CategoriesViewState extends State<CategoriesView> {
                 _stockFor(Map<String, dynamic>.from(product as Map)) > 0)
             .toList()
         : _products;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-      decoration: BoxDecoration(
-          color: scheme.surface.withValues(alpha: .94),
-          border: Border.all(color: scheme.outlineVariant),
-          borderRadius: BorderRadius.circular(14)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
+    return LayoutBuilder(builder: (context, paneConstraints) {
+      final tightPane = paneConstraints.maxWidth < 230;
+      return Container(
+        padding:
+            EdgeInsets.fromLTRB(tightPane ? 7 : 10, 8, tightPane ? 7 : 10, 10),
+        decoration: BoxDecoration(
+            color: scheme.surface.withValues(alpha: .94),
+            border: Border.all(color: scheme.outlineVariant),
+            borderRadius: BorderRadius.circular(14)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(
+                child: Text(category['name'] ?? 'Category',
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontSize: 18, fontWeight: FontWeight.w800))),
+            PopupMenuButton<String>(
+                tooltip: 'Category actions',
+                onSelected: (action) => action == 'edit'
+                    ? _showCategoryDialog(category: category)
+                    : _deleteCategory(category),
+                itemBuilder: (_) => const [
+                      PopupMenuItem(
+                          value: 'edit',
+                          child: ListTile(
+                              leading: Icon(Icons.edit_outlined),
+                              title: Text('Edit category'),
+                              contentPadding: EdgeInsets.zero)),
+                      PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                              leading: Icon(Icons.delete_outline_rounded,
+                                  color: Colors.redAccent),
+                              title: Text('Delete category',
+                                  style: TextStyle(color: Colors.redAccent)),
+                              contentPadding: EdgeInsets.zero)),
+                    ])
+          ]),
+          const SizedBox(height: 6),
+          LayoutBuilder(builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 390;
+            return Wrap(spacing: 7, runSpacing: 7, children: [
+              _filterButton(
+                  icon: Icons.tune_rounded,
+                  label: narrow ? null : 'Filters',
+                  onTap: _showProductFilters),
+              _filterButton(
+                  icon: Icons.search_rounded,
+                  label: 'Search',
+                  onTap: _showSearchSheet),
+              _filterButton(
+                  icon: Icons.inventory_2_outlined,
+                  label: _inStockOnly ? 'In stock' : 'All products',
+                  selected: _inStockOnly,
+                  onTap: () => setState(() => _inStockOnly = !_inStockOnly)),
+            ]);
+          }),
+          const SizedBox(height: 10),
           Expanded(
-              child: Text(category['name'] ?? 'Category',
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontSize: 18, fontWeight: FontWeight.w800))),
-          PopupMenuButton<String>(
-              tooltip: 'Category actions',
-              onSelected: (action) => action == 'edit'
-                  ? _showCategoryDialog(category: category)
-                  : _deleteCategory(category),
-              itemBuilder: (_) => const [
-                    PopupMenuItem(
-                        value: 'edit',
-                        child: ListTile(
-                            leading: Icon(Icons.edit_outlined),
-                            title: Text('Edit category'),
-                            contentPadding: EdgeInsets.zero)),
-                    PopupMenuItem(
-                        value: 'delete',
-                        child: ListTile(
-                            leading: Icon(Icons.delete_outline_rounded,
-                                color: Colors.redAccent),
-                            title: Text('Delete category',
-                                style: TextStyle(color: Colors.redAccent)),
-                            contentPadding: EdgeInsets.zero)),
-                  ])
+              child: _isLoadingProducts
+                  ? const Center(child: CircularProgressIndicator())
+                  : visibleProducts.isEmpty
+                      ? Center(
+                          child: Text(
+                              _inStockOnly
+                                  ? 'No products in stock.'
+                                  : 'No products in this category yet.',
+                              style: TextStyle(
+                                  color:
+                                      scheme.onSurface.withValues(alpha: .62))))
+                      : GridView.builder(
+                          controller: _productsController,
+                          gridDelegate:
+                              SliverGridDelegateWithMaxCrossAxisExtent(
+                                  // A narrow pane has one generous, legible card
+                                  // rather than a card forced past its available width.
+                                  maxCrossAxisExtent: tightPane ? 220 : 180,
+                                  mainAxisSpacing: 10,
+                                  crossAxisSpacing: 10,
+                                  childAspectRatio: tightPane ? .74 : .61),
+                          itemCount:
+                              visibleProducts.length + (_isLoadingMore ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == visibleProducts.length) {
+                              return const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: Center(
+                                      child: CircularProgressIndicator()));
+                            }
+                            return _productCard(
+                                Map<String, dynamic>.from(
+                                    visibleProducts[index] as Map),
+                                compact: tightPane);
+                          }))
         ]),
-        const SizedBox(height: 6),
-        LayoutBuilder(builder: (context, constraints) {
-          final narrow = constraints.maxWidth < 390;
-          return Wrap(spacing: 7, runSpacing: 7, children: [
-            _filterButton(
-                icon: Icons.tune_rounded,
-                label: narrow ? null : 'Filters',
-                onTap: _showProductFilters),
-            _filterButton(
-                icon: Icons.search_rounded,
-                label: 'Search',
-                onTap: _showSearchSheet),
-            _filterButton(
-                icon: Icons.inventory_2_outlined,
-                label: _inStockOnly ? 'In stock' : 'All products',
-                selected: _inStockOnly,
-                onTap: () => setState(() => _inStockOnly = !_inStockOnly)),
-          ]);
-        }),
-        const SizedBox(height: 10),
-        Expanded(
-            child: _isLoadingProducts
-                ? const Center(child: CircularProgressIndicator())
-                : visibleProducts.isEmpty
-                    ? Center(
-                        child: Text(
-                            _inStockOnly
-                                ? 'No products in stock.'
-                                : 'No products in this category yet.',
-                            style: TextStyle(
-                                color:
-                                    scheme.onSurface.withValues(alpha: .62))))
-                    : GridView.builder(
-                        controller: _productsController,
-                        gridDelegate:
-                            const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 180,
-                                mainAxisSpacing: 10,
-                                crossAxisSpacing: 10,
-                                childAspectRatio: .61),
-                        itemCount:
-                            visibleProducts.length + (_isLoadingMore ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index == visibleProducts.length) {
-                            return const Padding(
-                                padding: EdgeInsets.all(12),
-                                child:
-                                    Center(child: CircularProgressIndicator()));
-                          }
-                          return _productCard(Map<String, dynamic>.from(
-                              visibleProducts[index] as Map));
-                        }))
-      ]),
-    );
+      );
+    });
   }
 
   double _stockFor(Map<String, dynamic> product) =>
@@ -636,7 +651,7 @@ class _CategoriesViewState extends State<CategoriesView> {
     controller.dispose();
   }
 
-  Widget _productCard(Map<String, dynamic> product) {
+  Widget _productCard(Map<String, dynamic> product, {bool compact = false}) {
     final scheme = Theme.of(context).colorScheme;
     final provider = context.watch<AppProvider>();
     final image = product['imageUrl'] as String? ?? '';
@@ -679,13 +694,14 @@ class _CategoriesViewState extends State<CategoriesView> {
         ])),
         const SizedBox(height: 7),
         Text(product['name']?.toString() ?? 'Untitled product',
-            maxLines: 2,
+            maxLines: compact ? 1 : 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
                 fontSize: 12, height: 1.2, fontWeight: FontWeight.w800)),
         const SizedBox(height: 5),
         Row(children: [
           Expanded(
+              flex: 3,
               child: Text('₹${price ?? '—'}',
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -693,14 +709,19 @@ class _CategoriesViewState extends State<CategoriesView> {
                       color: scheme.secondary,
                       fontWeight: FontWeight.w900))),
           const SizedBox(width: 5),
-          Text(
-              stock > 0
-                  ? '${formatProductQuantity(stock, product)} left'
-                  : 'Out',
-              style: TextStyle(
-                  fontSize: 10,
-                  color: stock > 0 ? scheme.primary : scheme.error,
-                  fontWeight: FontWeight.w700)),
+          Expanded(
+            flex: 4,
+            child: Text(
+                stock > 0
+                    ? '${formatProductQuantity(stock, product)} left'
+                    : 'Out',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 10,
+                    color: stock > 0 ? scheme.primary : scheme.error,
+                    fontWeight: FontWeight.w700)),
+          ),
           const SizedBox(width: 6),
           _addToCartButton(product, stock, inCart)
         ])
