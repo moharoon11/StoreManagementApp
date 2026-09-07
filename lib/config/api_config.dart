@@ -8,20 +8,23 @@ class ApiConfig {
   /// It intentionally includes `/api`, because every endpoint below is
   /// relative to that API root. Leaving it blank retains local development
   /// addresses, so no code needs changing between environments.
+  /// 
+  static const API_URL = "http://easybilling.runasp.net/api";
+  static const Local_URL = "http://localhost:5009/api";
   static const String _configuredBaseUrl =
-      String.fromEnvironment('API_BASE_URL', defaultValue: '');
+      String.fromEnvironment('API_BASE_URL', defaultValue: Local_URL);
 
   static String get baseUrl {
     if (_configuredBaseUrl.isNotEmpty) {
       return _configuredBaseUrl.replaceFirst(RegExp(r'/+$'), '');
     }
     if (kIsWeb) {
-      return 'http://localhost:5009/api';
+      return Local_URL;
     } else if (defaultTargetPlatform == TargetPlatform.android) {
       // 127.0.0.1 works seamlessly with `adb reverse tcp:5009 tcp:5009` over USB
-      return 'http://127.0.0.1:5009/api';
+      return Local_URL;
     } else {
-      return 'http://localhost:5009/api';
+      return Local_URL;
     }
   }
 
