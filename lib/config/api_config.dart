@@ -12,19 +12,19 @@ class ApiConfig {
   static const API_URL = "http://easybilling.runasp.net/api";
   static const Local_URL = "http://localhost:5009/api";
   static const String _configuredBaseUrl =
-      String.fromEnvironment('API_BASE_URL', defaultValue: Local_URL);
+      String.fromEnvironment('API_BASE_URL', defaultValue: API_URL);
 
   static String get baseUrl {
     if (_configuredBaseUrl.isNotEmpty) {
       return _configuredBaseUrl.replaceFirst(RegExp(r'/+$'), '');
     }
     if (kIsWeb) {
-      return Local_URL;
+      return API_URL;
     } else if (defaultTargetPlatform == TargetPlatform.android) {
       // 127.0.0.1 works seamlessly with `adb reverse tcp:5009 tcp:5009` over USB
-      return Local_URL;
+      return API_URL;
     } else {
-      return Local_URL;
+      return API_URL;
     }
   }
 
