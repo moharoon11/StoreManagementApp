@@ -9,8 +9,8 @@ class ApiConfig {
   /// relative to that API root. Leaving it blank retains local development
   /// addresses, so no code needs changing between environments.
   /// 
-  static const API_URL = "http://easybilling.runasp.net/api";
-  static const Local_URL = "http://localhost:5009/api";
+  static const API_URL = "https://easybilling.runasp.net/api";
+  // static const Local_URL = "http://localhost:5009/api";
   static const String _configuredBaseUrl =
       String.fromEnvironment('API_BASE_URL', defaultValue: API_URL);
 
