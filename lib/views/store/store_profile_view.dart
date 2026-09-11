@@ -230,7 +230,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                   identity,
                   const SizedBox(height: 18),
                   AdaptiveWrapGrid(
-                    minItemWidth: compact ? 150 : 200,
+                    minItemWidth: compact ? 200 : 200,
                     children: [
                       _DetailCard(
                         icon: Icons.location_on_outlined,

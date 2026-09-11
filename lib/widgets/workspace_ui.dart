@@ -17,6 +17,7 @@ class WorkspaceBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final background = Theme.of(context).scaffoldBackgroundColor;
+    final compact = Ui.isCompact(context);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -24,42 +25,45 @@ class WorkspaceBackdrop extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            _blend(background, scheme.primary, .025),
-            _blend(background, scheme.secondary, .035),
-            _blend(background, scheme.surface, .01),
+            _blend(background, scheme.primary, compact ? .012 : .025),
+            _blend(background, scheme.secondary, compact ? .016 : .035),
+            _blend(background, scheme.surface, .008),
           ],
         ),
       ),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _BackdropGridPainter(
-                color: scheme.onSurface.withValues(
-                  alpha: Theme.of(context).brightness == Brightness.dark
-                      ? .055
-                      : .03,
+          if (!compact)
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _BackdropGridPainter(
+                  color: scheme.onSurface.withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? .055
+                        : .03,
+                  ),
                 ),
               ),
             ),
-          ),
-          Positioned(
-            top: -120,
-            right: -80,
-            child: _BackdropGlow(
-              size: 320,
-              color: scheme.primary.withValues(alpha: .18),
+          if (!compact)
+            Positioned(
+              top: -120,
+              right: -80,
+              child: _BackdropGlow(
+                size: 320,
+                color: scheme.primary.withValues(alpha: .18),
+              ),
             ),
-          ),
-          Positioned(
-            bottom: -140,
-            left: -90,
-            child: _BackdropGlow(
-              size: 360,
-              color: scheme.secondary.withValues(alpha: .12),
+          if (!compact)
+            Positioned(
+              bottom: -140,
+              left: -90,
+              child: _BackdropGlow(
+                size: 360,
+                color: scheme.secondary.withValues(alpha: .12),
+              ),
             ),
-          ),
           if (child != null) child!,
         ],
       ),
@@ -140,12 +144,21 @@ class WorkspacePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final maxWidth = width < Ui.phoneMax
+        ? 392.0
+        : width < 560
+            ? 428.0
+            : width < Ui.compactMax
+                ? 520.0
+                : Ui.maxContentWidth;
+
     return SafeArea(
       top: false,
       child: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Ui.maxContentWidth),
+          constraints: BoxConstraints(maxWidth: maxWidth),
           child: Padding(
             padding: padding ?? Ui.pagePadding(context),
             child: child,
@@ -230,7 +243,7 @@ class PageIntro extends StatelessWidget {
         children: [
           introCopy,
           if (action != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             action!,
           ],
         ],
@@ -270,29 +283,45 @@ class SurfacePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final panelColor = color ?? scheme.surface;
+    final phone = Ui.isPhone(context);
     final compact = Ui.isCompact(context);
-    final radius = compact ? 22.0 : 28.0;
+    final radius = phone
+        ? 18.0
+        : compact
+            ? 22.0
+            : 28.0;
+    final resolvedPadding = padding == const EdgeInsets.all(18)
+        ? EdgeInsets.all(phone
+            ? 12
+            : compact
+                ? 14
+                : 18)
+        : padding;
 
     return Container(
-      padding: padding,
+      padding: resolvedPadding,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: scheme.outlineVariant),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: phone ? .78 : 1),
+        ),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
             panelColor,
-            _blend(panelColor, scheme.primary, .018),
+            _blend(panelColor, scheme.primary, phone ? .008 : .018),
           ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withValues(alpha: compact ? .05 : .08),
-            blurRadius: compact ? 18 : 30,
-            offset: Offset(0, compact ? 8 : 16),
-          ),
-        ],
+        boxShadow: phone
+            ? const []
+            : [
+                BoxShadow(
+                  color: scheme.shadow.withValues(alpha: compact ? .05 : .08),
+                  blurRadius: compact ? 18 : 30,
+                  offset: Offset(0, compact ? 8 : 16),
+                ),
+              ],
       ),
       child: child,
     );
@@ -319,11 +348,18 @@ class SectionPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final phone = Ui.isPhone(context);
     final compact = Ui.isCompact(context);
-    final radius = compact ? 22.0 : 28.0;
-    final resolvedPadding = compact
-        ? const EdgeInsets.symmetric(horizontal: 14, vertical: 14)
-        : padding;
+    final radius = phone
+        ? 18.0
+        : compact
+            ? 22.0
+            : 28.0;
+    final resolvedPadding = phone
+        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 12)
+        : compact
+            ? const EdgeInsets.symmetric(horizontal: 14, vertical: 14)
+            : padding;
 
     return SurfacePanel(
       padding: EdgeInsets.zero,
@@ -338,7 +374,7 @@ class SectionPanel extends StatelessWidget {
               Container(
                 padding: resolvedPadding,
                 decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: .06),
+                  color: scheme.primary.withValues(alpha: phone ? .04 : .06),
                   borderRadius: BorderRadius.vertical(
                     top: Radius.circular(radius),
                   ),
@@ -538,8 +574,12 @@ class StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = Ui.isCompact(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 12,
+        vertical: compact ? 6 : 8,
+      ),
       decoration: BoxDecoration(
         color: background ?? color.withValues(alpha: .11),
         borderRadius: BorderRadius.circular(999),

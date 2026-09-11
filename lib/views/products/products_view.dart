@@ -609,7 +609,7 @@ class _ProductsViewState extends State<ProductsView> {
                     : Column(
                         children: [
                           SizedBox(
-                            height: 44,
+                            height: 40,
                             child: _FilterStrip(
                               categories: _categories,
                               selectedCategoryId: _selectedCategoryId,

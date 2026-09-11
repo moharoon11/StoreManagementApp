@@ -437,7 +437,7 @@ class _CompactWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
       child: Column(
         children: [
           _CompactHeader(
@@ -475,76 +475,68 @@ class _CompactHeader extends StatelessWidget {
     final provider = context.watch<AppProvider>();
     final phone = Ui.isPhone(context);
 
-    return SurfacePanel(
-      padding: EdgeInsets.all(phone ? 12 : 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: EdgeInsets.fromLTRB(phone ? 2 : 4, 2, phone ? 2 : 4, 2),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: phone ? 40 : 44,
-                height: phone ? 40 : 44,
-                decoration: BoxDecoration(
-                  color: scheme.primary,
-                  borderRadius: BorderRadius.circular(phone ? 14 : 16),
-                ),
-                child: Icon(Icons.auto_graph_rounded,
-                    color: Colors.white, size: phone ? 20 : 22),
-              ),
-              SizedBox(width: phone ? 10 : 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Nexora Commerce',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: phone
-                          ? Theme.of(context).textTheme.titleSmall
-                          : Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _formatToday(DateTime.now()).toUpperCase(),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: scheme.primary,
-                            letterSpacing: phone ? 1.2 : 1.6,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              _HeaderActionIcon(
-                onPressed: onOpenCart,
-                tooltip: 'Current sale',
-                child: Badge(
-                  isLabelVisible: provider.cartCount > 0,
-                  label: Text(formatQuantity(provider.cartCount)),
-                  backgroundColor: scheme.primary,
-                  textColor: scheme.onPrimary,
-                  child: Icon(
-                    Icons.shopping_bag_outlined,
-                    color: scheme.onSurface.withValues(alpha: .82),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              _HeaderActionIcon(
-                onPressed: onShowMore,
-                tooltip: 'Menu',
-                child: const Icon(Icons.tune_rounded),
-              ),
-            ],
+          Container(
+            width: phone ? 36 : 40,
+            height: phone ? 36 : 40,
+            decoration: BoxDecoration(
+              color: scheme.primary,
+              borderRadius: BorderRadius.circular(phone ? 12 : 14),
+            ),
+            child: Icon(
+              Icons.auto_graph_rounded,
+              color: Colors.white,
+              size: phone ? 18 : 20,
+            ),
           ),
-          SizedBox(height: phone ? 10 : 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              StatusPill(label: active.title, color: scheme.primary),
-            ],
+          SizedBox(width: phone ? 10 : 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Nexora Commerce',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: phone
+                      ? Theme.of(context).textTheme.titleSmall
+                      : Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${active.title} · ${_formatToday(DateTime.now())}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurface.withValues(alpha: .62),
+                      ),
+                ),
+              ],
+            ),
+          ),
+          _HeaderActionIcon(
+            onPressed: onOpenCart,
+            tooltip: 'Current sale',
+            child: Badge(
+              isLabelVisible: provider.cartCount > 0,
+              label: Text(formatQuantity(provider.cartCount)),
+              backgroundColor: scheme.primary,
+              textColor: scheme.onPrimary,
+              child: Icon(
+                Icons.shopping_bag_outlined,
+                color: scheme.onSurface.withValues(alpha: .82),
+                size: phone ? 18 : 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          _HeaderActionIcon(
+            onPressed: onShowMore,
+            tooltip: 'Menu',
+            child: Icon(Icons.tune_rounded, size: phone ? 18 : 20),
           ),
         ],
       ),
@@ -624,7 +616,40 @@ class _ContentViewport extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final radius = compact ? 22.0 : 28.0;
+    final radius = compact ? 18.0 : 28.0;
+
+    if (compact) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: _blend(scheme.surface, scheme.primary, .006),
+          ),
+          child: Column(
+            children: [
+              Container(
+                height: 3,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      scheme.primary,
+                      scheme.secondary,
+                      scheme.tertiary,
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ColoredBox(
+                  color: _blend(scheme.surface, scheme.primary, .006),
+                  child: child,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return SurfacePanel(
       padding: EdgeInsets.zero,
@@ -682,14 +707,14 @@ class _BottomWorkspaceBar extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: scheme.shadow.withValues(alpha: .05),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
+              color: scheme.shadow.withValues(alpha: .035),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
             ),
           ],
         ),
         child: NavigationBar(
-          height: phone ? 64 : 68,
+          height: phone ? 60 : 64,
           selectedIndex: selectedIndex,
           onDestinationSelected: onSelect,
           destinations: const [
@@ -981,12 +1006,15 @@ class _HeaderActionIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final phone = Ui.isPhone(context);
 
     return IconButton(
       onPressed: onPressed,
       tooltip: tooltip,
       style: IconButton.styleFrom(
-        backgroundColor: scheme.surface.withValues(alpha: .92),
+        backgroundColor: scheme.surface.withValues(alpha: .88),
+        minimumSize: Size.square(phone ? 40 : 44),
+        padding: EdgeInsets.zero,
         side: BorderSide(color: scheme.outlineVariant),
       ),
       icon: child,

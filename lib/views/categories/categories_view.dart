@@ -436,7 +436,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                     : Column(
                         children: [
                           SizedBox(
-                            height: 94,
+                            height: 82,
                             child: _MobileCategoryStrip(
                               categories: _categories,
                               selectedCategoryId: _selectedCategoryId,
@@ -554,7 +554,7 @@ class _MobileCategoryStrip extends StatelessWidget {
         final category = Map<String, dynamic>.from(categories[index] as Map);
         final selected = category['id'] == selectedCategoryId;
         return SizedBox(
-          width: 152,
+          width: 138,
           child: _CategoryTile(
             category: category,
             selected: selected,

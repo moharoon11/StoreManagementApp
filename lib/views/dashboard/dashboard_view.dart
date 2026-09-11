@@ -129,31 +129,29 @@ class _DashboardViewState extends State<DashboardView> {
             ),
             SizedBox(height: compact ? 14 : 20),
             if (compact) ...[
-              SurfacePanel(
-                padding: const EdgeInsets.all(16),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    StatusPill(
-                      label: '₹$todaySales today',
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    StatusPill(
-                      label: '$todayInvoices bills',
-                      color: Theme.of(context).colorScheme.secondary,
-                    ),
-                    StatusPill(
-                      label: '$totalProducts products',
-                      color: Theme.of(context).colorScheme.tertiary,
-                    ),
-                    StatusPill(
-                      label: '${lowStockProducts.length} low stock',
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ],
-                ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  StatusPill(
+                    label: '₹$todaySales today',
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  StatusPill(
+                    label: '$todayInvoices bills',
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                  StatusPill(
+                    label: '$totalProducts products',
+                    color: Theme.of(context).colorScheme.tertiary,
+                  ),
+                  StatusPill(
+                    label: '${lowStockProducts.length} low stock',
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ],
               ),
+              const SizedBox(height: 2),
             ] else ...[
               _HeroCard(
                 sales: todaySales,
