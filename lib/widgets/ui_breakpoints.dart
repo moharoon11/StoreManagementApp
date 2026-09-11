@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 /// Shared responsive breakpoints and density helpers so every screen adapts
 /// consistently across phones, tablets and desktop.
 abstract final class Ui {
-  /// Phones (portrait).
-  static const double compactMax = 600;
+  /// Phones and narrow split-screen widths.
+  static const double compactMax = 720;
 
-  /// Tablets / small desktop windows.
-  static const double mediumMax = 1024;
+  /// Tablets and laptop-sized windows.
+  static const double mediumMax = 1180;
 
   /// Maximum content width on very wide windows so layouts stay readable.
-  static const double maxContentWidth = 1280;
+  static const double maxContentWidth = 1120;
 
   static bool isCompact(BuildContext context) =>
       MediaQuery.sizeOf(context).width < compactMax;
@@ -26,16 +26,18 @@ abstract final class Ui {
   /// Page padding that scales with available width.
   static EdgeInsets pagePadding(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    if (width < compactMax) return const EdgeInsets.all(10);
-    if (width < mediumMax) return const EdgeInsets.all(14);
+    if (width < 420) return const EdgeInsets.all(10);
+    if (width < compactMax) return const EdgeInsets.all(12);
+    if (width < mediumMax) return const EdgeInsets.all(16);
     return const EdgeInsets.all(20);
   }
 
   /// Heading size that scales with available width.
   static double headingSize(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    if (width < compactMax) return 17;
-    if (width < mediumMax) return 19;
-    return 22;
+    if (width < 420) return 21;
+    if (width < compactMax) return 24;
+    if (width < mediumMax) return 27;
+    return 30;
   }
 }

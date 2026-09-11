@@ -1,14 +1,17 @@
 import 'dart:io';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../services/api_service.dart';
+
 import '../../config/api_config.dart';
-import '../../widgets/ui_breakpoints.dart';
+import '../../services/api_service.dart';
 import '../../utils/quantity_utils.dart';
+import '../../widgets/workspace_ui.dart';
 import 'product_edit_view.dart';
 
 class ProductsView extends StatefulWidget {
-  const ProductsView({Key? key}) : super(key: key);
+  const ProductsView({super.key});
 
   @override
   State<ProductsView> createState() => _ProductsViewState();
@@ -50,26 +53,34 @@ class _ProductsViewState extends State<ProductsView> {
         'pageNumber': '1',
         'pageSize': '50',
       };
-      if (_searchTerm.isNotEmpty) queryParams['searchTerm'] = _searchTerm;
-      if (_selectedCategoryId != null)
+      if (_searchTerm.isNotEmpty) {
+        queryParams['searchTerm'] = _searchTerm;
+      }
+      if (_selectedCategoryId != null) {
         queryParams['categoryId'] = _selectedCategoryId.toString();
-      if (_showFavouritesOnly) queryParams['isFavourite'] = 'true';
+      }
+      if (_showFavouritesOnly) {
+        queryParams['isFavourite'] = 'true';
+      }
 
-      final res = await ApiService.get(ApiConfig.products,
-          queryParameters: queryParams);
-      if (res['success'] == true) {
+      final res = await ApiService.get(
+        ApiConfig.products,
+        queryParameters: queryParams,
+      );
+      if (res['success'] == true && mounted) {
         setState(() {
           _products = res['data']['items'] ?? [];
           _isLoading = false;
         });
       }
-    } catch (e) {
-      setState(() => _isLoading = false);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  Future<void> _toggleFavourite(
-      int productId, bool isCurrentlyFavourite) async {
+  Future<void> _toggleFavourite(int productId, bool isCurrentlyFavourite) async {
     try {
       if (isCurrentlyFavourite) {
         await ApiService.delete('${ApiConfig.favourites}/$productId');
@@ -88,566 +99,1063 @@ class _ProductsViewState extends State<ProductsView> {
     final newCatController = TextEditingController();
 
     int? selectedCategory =
-        _categories.isNotEmpty ? _categories.first['id'] : null;
+        _categories.isNotEmpty ? _categories.first['id'] as int? : null;
     bool createNewCategory = false;
     String selectedUnit = 'Piece';
     String productImageUrl = '';
     bool isUploading = false;
     File? pickedImageFile;
 
-    Navigator.of(context).push(
+    Navigator.of(context)
+        .push(
       MaterialPageRoute(
-        builder: (ctx) => Scaffold(
-          appBar: AppBar(
-            title: const Text('Add product',
-                style: TextStyle(fontWeight: FontWeight.w800)),
-            leading: IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => Navigator.pop(ctx)),
-          ),
-          body: StatefulBuilder(
-            builder: (context, setModalState) {
-              Future<void> pickProductImage(ImageSource source) async {
-                try {
-                  final picker = ImagePicker();
-                  final XFile? image =
-                      await picker.pickImage(source: source, imageQuality: 80);
-                  if (image != null) {
-                    setModalState(() {
-                      pickedImageFile = File(image.path);
-                      isUploading = true;
-                    });
+        builder: (ctx) => StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> pickProductImage(ImageSource source) async {
+              try {
+                final picker = ImagePicker();
+                final image =
+                    await picker.pickImage(source: source, imageQuality: 80);
+                if (image == null) return;
 
-                    final url = await ApiService.uploadImage(image.path);
-                    if (url != null) {
-                      setModalState(() {
-                        productImageUrl = url;
-                        isUploading = false;
-                      });
-                    }
-                  }
-                } catch (e) {
+                setModalState(() {
+                  pickedImageFile = File(image.path);
+                  isUploading = true;
+                });
+
+                final url = await ApiService.uploadImage(image.path);
+                if (url != null) {
+                  setModalState(() {
+                    productImageUrl = url;
+                    isUploading = false;
+                  });
+                } else {
                   setModalState(() => isUploading = false);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(
-                              'Upload failed: ${e.toString().replaceAll("Exception: ", "")}')),
+                }
+              } catch (e) {
+                setModalState(() => isUploading = false);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Upload failed: ${e.toString().replaceAll("Exception: ", "")}',
+                    ),
+                  ),
+                );
+              }
+            }
+
+            Widget buildPair(Widget first, Widget second) {
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth < 520) {
+                    return Column(
+                      children: [
+                        first,
+                        const SizedBox(height: 12),
+                        second,
+                      ],
                     );
                   }
-                }
-              }
-
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-                  top: 20,
-                  left: 20,
-                  right: 20,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  return Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Add New Product',
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF172033))),
-                          IconButton(
-                            icon: const Icon(Icons.close,
-                                color: Color(0xFF6C7486)),
-                            onPressed: () => Navigator.pop(ctx),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Center(
-                        child: GestureDetector(
-                          onTap: () {
-                            showModalBottomSheet(
-                              context: context,
-                              builder: (_) => Container(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    ListTile(
-                                      leading: const Icon(Icons.photo_library,
-                                          color: Color(0xFF365FF4)),
-                                      title: const Text('Choose from Gallery'),
-                                      onTap: () {
-                                        Navigator.pop(context);
-                                        pickProductImage(ImageSource.gallery);
-                                      },
-                                    ),
-                                    ListTile(
-                                      leading: const Icon(Icons.camera_alt,
-                                          color: Color(0xFF365FF4)),
-                                      title: const Text('Take a Photo'),
-                                      onTap: () {
-                                        Navigator.pop(context);
-                                        pickProductImage(ImageSource.camera);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            width: double.infinity,
-                            height: 156,
-                            clipBehavior: Clip.antiAlias,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF6F7FB),
-                              borderRadius: BorderRadius.circular(12),
-                              border:
-                                  Border.all(color: const Color(0xFFD2D6E0)),
+                      Expanded(child: first),
+                      const SizedBox(width: 12),
+                      Expanded(child: second),
+                    ],
+                  );
+                },
+              );
+            }
+
+            final scheme = Theme.of(context).colorScheme;
+            final wide = MediaQuery.sizeOf(context).width >= 860;
+
+            Widget imagePicker() => GestureDetector(
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      builder: (sheetContext) => SafeArea(
+                        child: Wrap(
+                          children: [
+                            ListTile(
+                              leading:
+                                  const Icon(Icons.photo_library_outlined),
+                              title: const Text('Choose from gallery'),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                pickProductImage(ImageSource.gallery);
+                              },
                             ),
-                            child: isUploading
-                                ? const Center(
-                                    child: CircularProgressIndicator(
-                                        color: Color(0xFF365FF4)))
-                                : pickedImageFile != null
-                                    ? Image.file(pickedImageFile!,
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                        fit: BoxFit.contain)
-                                    : productImageUrl.isNotEmpty
-                                        ? Image.network(productImageUrl,
-                                            width: double.infinity,
-                                            height: double.infinity,
-                                            fit: BoxFit.contain,
-                                            errorBuilder: (_, __, ___) =>
-                                                const _ImagePlaceholder())
-                                        : const _ImagePlaceholder(),
-                          ),
+                            ListTile(
+                              leading: const Icon(Icons.camera_alt_outlined),
+                              title: const Text('Take a photo'),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                pickProductImage(ImageSource.camera);
+                              },
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: nameController,
-                        style: const TextStyle(color: Color(0xFF172033)),
-                        decoration:
-                            const InputDecoration(labelText: 'Product Name *'),
+                    );
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    height: 206,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest.withValues(
+                        alpha: .26,
                       ),
-                      const SizedBox(height: 10),
-                      Row(
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: scheme.outlineVariant),
+                    ),
+                    child: isUploading
+                        ? const Center(child: CircularProgressIndicator())
+                        : pickedImageFile != null
+                            ? Image.file(pickedImageFile!, fit: BoxFit.cover)
+                            : productImageUrl.isNotEmpty
+                                ? Image.network(
+                                    productImageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        const _ImagePlaceholder(),
+                                  )
+                                : const _ImagePlaceholder(),
+                  ),
+                );
+
+            Widget formFields() => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      onChanged: (_) => setModalState(() {}),
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Product name *',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerHighest.withValues(
+                          alpha: .18,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Row(
                         children: [
                           Checkbox(
                             value: createNewCategory,
-                            onChanged: (val) {
+                            onChanged: (value) {
                               setModalState(
-                                  () => createNewCategory = val ?? false);
+                                () => createNewCategory = value ?? false,
+                              );
                             },
-                            activeColor: const Color(0xFF365FF4),
                           ),
-                          const Text('Create a new category inline',
-                              style: TextStyle(
-                                  color: Color(0xFF172033), fontSize: 13)),
-                        ],
-                      ),
-                      if (createNewCategory) ...[
-                        TextField(
-                          controller: newCatController,
-                          style: const TextStyle(color: Color(0xFF172033)),
-                          decoration: const InputDecoration(
-                              labelText: 'New Category Name *'),
-                        ),
-                      ] else ...[
-                        DropdownButtonFormField<int>(
-                          value: selectedCategory,
-                          style: const TextStyle(color: Color(0xFF172033)),
-                          decoration: const InputDecoration(
-                              labelText: 'Select Category'),
-                          items: _categories.map<DropdownMenuItem<int>>((cat) {
-                            return DropdownMenuItem<int>(
-                              value: cat['id'],
-                              child: Text(cat['name'] ?? ''),
-                            );
-                          }).toList(),
-                          onChanged: (val) =>
-                              setModalState(() => selectedCategory = val),
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: costPriceController,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                      decimal: true),
-                              style: const TextStyle(color: Color(0xFF172033)),
-                              decoration: const InputDecoration(
-                                  labelText: 'Cost Price (₹)'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: sellingPriceController,
-                              keyboardType: TextInputType.number,
-                              style: const TextStyle(color: Color(0xFF172033)),
-                              decoration: const InputDecoration(
-                                  labelText: 'Selling Price (₹) *'),
-                            ),
+                          const Expanded(
+                            child: Text('Create a new category inline'),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                    ),
+                    const SizedBox(height: 12),
+                    if (createNewCategory)
+                      TextField(
+                        controller: newCatController,
+                        decoration: const InputDecoration(
+                          labelText: 'New category name *',
+                        ),
+                      )
+                    else
+                      DropdownButtonFormField<int>(
+                        value: selectedCategory,
+                        decoration: const InputDecoration(
+                          labelText: 'Select category',
+                        ),
+                        items: _categories.map<DropdownMenuItem<int>>((cat) {
+                          return DropdownMenuItem<int>(
+                            value: cat['id'],
+                            child: Text((cat['name'] ?? '').toString()),
+                          );
+                        }).toList(),
+                        onChanged: (value) =>
+                            setModalState(() => selectedCategory = value),
+                      ),
+                    const SizedBox(height: 12),
+                    buildPair(
+                      TextField(
+                        controller: costPriceController,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Cost price (₹)',
+                        ),
+                      ),
+                      TextField(
+                        controller: sellingPriceController,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Selling price (₹) *',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    buildPair(
                       TextField(
                         controller: stockController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        style: const TextStyle(color: Color(0xFF172033)),
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
                         decoration: const InputDecoration(
-                            labelText: 'Initial Stock Quantity *'),
+                          labelText: 'Initial stock quantity *',
+                        ),
                       ),
-                      const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         value: selectedUnit,
                         decoration: const InputDecoration(labelText: 'Unit *'),
                         items: productUnits
-                            .map((unit) => DropdownMenuItem(
-                                value: unit, child: Text(unit)))
+                            .map(
+                              (unit) => DropdownMenuItem(
+                                value: unit,
+                                child: Text(unit),
+                              ),
+                            )
                             .toList(),
-                        onChanged: (unit) =>
-                            setModalState(() => selectedUnit = unit!),
+                        onChanged: (unit) {
+                          if (unit == null) return;
+                          setModalState(() => selectedUnit = unit);
+                        },
                       ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: isUploading
-                              ? null
-                              : () async {
-                                  if (nameController.text.isEmpty ||
-                                      sellingPriceController.text.isEmpty)
-                                    return;
+                    ),
+                  ],
+                );
 
-                                  final body = {
-                                    'name': nameController.text.trim(),
-                                    'costPrice': double.tryParse(
-                                            costPriceController.text) ??
-                                        0.0,
-                                    'sellingPrice': double.tryParse(
-                                            sellingPriceController.text) ??
-                                        0.0,
-                                    'stockQuantity':
-                                        double.tryParse(stockController.text) ??
-                                            0,
-                                    'unit': selectedUnit,
-                                    'imageUrl': productImageUrl,
-                                  };
-
-                                  if (createNewCategory) {
-                                    body['newCategoryName'] =
-                                        newCatController.text.trim();
-                                  } else {
-                                    if (selectedCategory != null)
-                                      body['categoryId'] = selectedCategory!;
-                                  }
-
-                                  Navigator.pop(ctx);
-                                  await ApiService.post(
-                                      ApiConfig.products, body);
-                                  await _fetchCategories();
-                                  await _fetchProducts();
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF365FF4),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ),
-                          child: const Text('Create Product',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 15)),
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('Add product'),
+              ),
+              body: WorkspacePage(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 920),
+                    child: SurfacePanel(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.only(
+                          bottom: MediaQuery.viewInsetsOf(context).bottom,
                         ),
+                        child: wide
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: imagePicker()),
+                                  const SizedBox(width: 16),
+                                  Expanded(child: formFields()),
+                                ],
+                              )
+                            : Column(
+                                children: [
+                                  imagePicker(),
+                                  const SizedBox(height: 16),
+                                  formFields(),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              bottomNavigationBar: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: SurfacePanel(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final narrow = constraints.maxWidth < 520;
+                        final summary = Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'New catalogue item',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelMedium
+                                  ?.copyWith(color: scheme.primary),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              nameController.text.trim().isEmpty
+                                  ? 'Waiting for product details'
+                                  : nameController.text.trim(),
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ],
+                        );
+
+                        final action = SizedBox(
+                          width: narrow ? double.infinity : 220,
+                          child: FilledButton(
+                            onPressed: isUploading
+                                ? null
+                                : () async {
+                                    if (nameController.text.trim().isEmpty ||
+                                        sellingPriceController.text
+                                            .trim()
+                                            .isEmpty) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Product name and selling price are required.',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    final body = <String, dynamic>{
+                                      'name': nameController.text.trim(),
+                                      'costPrice':
+                                          double.tryParse(
+                                                costPriceController.text,
+                                              ) ??
+                                              0.0,
+                                      'sellingPrice':
+                                          double.tryParse(
+                                                sellingPriceController.text,
+                                              ) ??
+                                              0.0,
+                                      'stockQuantity':
+                                          double.tryParse(stockController.text) ??
+                                              0,
+                                      'unit': selectedUnit,
+                                      'imageUrl': productImageUrl,
+                                    };
+
+                                    if (createNewCategory) {
+                                      body['newCategoryName'] =
+                                          newCatController.text.trim();
+                                    } else if (selectedCategory != null) {
+                                      body['categoryId'] = selectedCategory!;
+                                    }
+
+                                    Navigator.pop(ctx);
+                                    await ApiService.post(
+                                      ApiConfig.products,
+                                      body,
+                                    );
+                                    await _fetchCategories();
+                                    await _fetchProducts();
+                                  },
+                            child: Text(
+                              isUploading ? 'Uploading image...' : 'Create product',
+                            ),
+                          ),
+                        );
+
+                        if (narrow) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              summary,
+                              const SizedBox(height: 12),
+                              action,
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(child: summary),
+                            const SizedBox(width: 16),
+                            action,
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    )
+        .whenComplete(() {
+      nameController.dispose();
+      costPriceController.dispose();
+      sellingPriceController.dispose();
+      stockController.dispose();
+      newCatController.dispose();
+    });
+  }
+
+  int get _favouriteCount => _products.where((product) {
+        return product['isFavourite'] == true || product['isFavourite'] == 1;
+      }).length;
+
+  @override
+  Widget build(BuildContext context) {
+    return WorkspacePage(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PageIntro(
+            eyebrow: 'Products',
+            title: 'Catalogue management',
+            description:
+                'A new browsing layout with a proper filter panel, safer card widths, and faster access to edit and favourite actions.',
+            action: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _loadInitialData,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Refresh'),
+                ),
+                FilledButton.icon(
+                  onPressed: _showAddProductModal,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Add product'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          AdaptiveWrapGrid(
+            minItemWidth: 180,
+            children: [
+              StatTile(
+                label: 'Visible products',
+                value: '${_products.length}',
+                icon: Icons.inventory_2_outlined,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              StatTile(
+                label: 'Categories',
+                value: '${_categories.length}',
+                icon: Icons.account_tree_outlined,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+              StatTile(
+                label: 'Favourites',
+                value: '$_favouriteCount',
+                icon: Icons.star_rounded,
+                color: Theme.of(context).colorScheme.tertiary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 980;
+                return wide
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SizedBox(
+                            width: 268,
+                            child: _CatalogueFilters(
+                              categories: _categories,
+                              selectedCategoryId: _selectedCategoryId,
+                              showFavouritesOnly: _showFavouritesOnly,
+                              onSelectAll: () {
+                                setState(() {
+                                  _selectedCategoryId = null;
+                                  _showFavouritesOnly = false;
+                                });
+                                _fetchProducts();
+                              },
+                              onSelectFavourites: () {
+                                setState(() {
+                                  _selectedCategoryId = null;
+                                  _showFavouritesOnly = true;
+                                });
+                                _fetchProducts();
+                              },
+                              onSelectCategory: (id) {
+                                setState(() {
+                                  _selectedCategoryId = id;
+                                  _showFavouritesOnly = false;
+                                });
+                                _fetchProducts();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _ProductGridPanel(
+                              isLoading: _isLoading,
+                              products: _products,
+                              searchTerm: _searchTerm,
+                              onSearchChanged: (value) {
+                                _searchTerm = value;
+                                _fetchProducts();
+                              },
+                              onEditProduct: _openProductEditor,
+                              onToggleFavourite: _toggleFavourite,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          SizedBox(
+                            height: 48,
+                            child: _FilterStrip(
+                              categories: _categories,
+                              selectedCategoryId: _selectedCategoryId,
+                              showFavouritesOnly: _showFavouritesOnly,
+                              onSelectAll: () {
+                                setState(() {
+                                  _selectedCategoryId = null;
+                                  _showFavouritesOnly = false;
+                                });
+                                _fetchProducts();
+                              },
+                              onSelectFavourites: () {
+                                setState(() {
+                                  _selectedCategoryId = null;
+                                  _showFavouritesOnly = true;
+                                });
+                                _fetchProducts();
+                              },
+                              onSelectCategory: (id) {
+                                setState(() {
+                                  _selectedCategoryId = id;
+                                  _showFavouritesOnly = false;
+                                });
+                                _fetchProducts();
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Expanded(
+                            child: _ProductGridPanel(
+                              isLoading: _isLoading,
+                              products: _products,
+                              searchTerm: _searchTerm,
+                              onSearchChanged: (value) {
+                                _searchTerm = value;
+                                _fetchProducts();
+                              },
+                              onEditProduct: _openProductEditor,
+                              onToggleFavourite: _toggleFavourite,
+                            ),
+                          ),
+                        ],
+                      );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openProductEditor(Map<String, dynamic> product) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductEditView(
+          product: product,
+          categories: _categories,
+        ),
+      ),
+    );
+    if (result == true) {
+      _fetchProducts();
+    }
+  }
+}
+
+class _CatalogueFilters extends StatelessWidget {
+  const _CatalogueFilters({
+    required this.categories,
+    required this.selectedCategoryId,
+    required this.showFavouritesOnly,
+    required this.onSelectAll,
+    required this.onSelectFavourites,
+    required this.onSelectCategory,
+  });
+
+  final List<dynamic> categories;
+  final int? selectedCategoryId;
+  final bool showFavouritesOnly;
+  final VoidCallback onSelectAll;
+  final VoidCallback onSelectFavourites;
+  final ValueChanged<int?> onSelectCategory;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SurfacePanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Browse catalogue', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 6),
+          Text(
+            'Switch between all products, favourites, or a single category.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: .62),
+                ),
+          ),
+          const SizedBox(height: 18),
+          _FilterTile(
+            label: 'All products',
+            icon: Icons.apps_rounded,
+            selected: !showFavouritesOnly && selectedCategoryId == null,
+            onTap: onSelectAll,
+          ),
+          const SizedBox(height: 10),
+          _FilterTile(
+            label: 'Favourites',
+            icon: Icons.star_rounded,
+            selected: showFavouritesOnly,
+            onTap: onSelectFavourites,
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: ListView.separated(
+              itemCount: categories.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                return _FilterTile(
+                  label: (category['name'] ?? 'Untitled').toString(),
+                  icon: Icons.folder_outlined,
+                  selected:
+                      !showFavouritesOnly && selectedCategoryId == category['id'],
+                  onTap: () => onSelectCategory(category['id'] as int?),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterStrip extends StatelessWidget {
+  const _FilterStrip({
+    required this.categories,
+    required this.selectedCategoryId,
+    required this.showFavouritesOnly,
+    required this.onSelectAll,
+    required this.onSelectFavourites,
+    required this.onSelectCategory,
+  });
+
+  final List<dynamic> categories;
+  final int? selectedCategoryId;
+  final bool showFavouritesOnly;
+  final VoidCallback onSelectAll;
+  final VoidCallback onSelectFavourites;
+  final ValueChanged<int?> onSelectCategory;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      children: [
+        _StripChip(
+          label: 'All',
+          selected: !showFavouritesOnly && selectedCategoryId == null,
+          onTap: onSelectAll,
+        ),
+        const SizedBox(width: 8),
+        _StripChip(
+          label: 'Favourites',
+          selected: showFavouritesOnly,
+          onTap: onSelectFavourites,
+        ),
+        const SizedBox(width: 8),
+        for (final category in categories) ...[
+          _StripChip(
+            label: (category['name'] ?? 'Untitled').toString(),
+            selected: !showFavouritesOnly && selectedCategoryId == category['id'],
+            onTap: () => onSelectCategory(category['id'] as int?),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ],
+    );
+  }
+}
+
+class _ProductGridPanel extends StatelessWidget {
+  const _ProductGridPanel({
+    required this.isLoading,
+    required this.products,
+    required this.searchTerm,
+    required this.onSearchChanged,
+    required this.onEditProduct,
+    required this.onToggleFavourite,
+  });
+
+  final bool isLoading;
+  final List<dynamic> products;
+  final String searchTerm;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<Map<String, dynamic>> onEditProduct;
+  final Future<void> Function(int, bool) onToggleFavourite;
+
+  @override
+  Widget build(BuildContext context) {
+    return SurfacePanel(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = math.max(
+            1,
+            (constraints.maxWidth / 228).floor(),
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: constraints.maxWidth < 420 ? constraints.maxWidth : 340,
+                child: TextField(
+                  onChanged: onSearchChanged,
+                  decoration: InputDecoration(
+                    hintText: 'Search your catalogue',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: searchTerm.isEmpty
+                        ? null
+                        : const Icon(Icons.tune_rounded),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : products.isEmpty
+                        ? const EmptyCanvas(
+                            icon: Icons.inventory_2_outlined,
+                            title: 'No matching products',
+                            detail: 'Try another category or search term.',
+                          )
+                        : GridView.builder(
+                            itemCount: products.length,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: columns,
+                              mainAxisSpacing: 14,
+                              crossAxisSpacing: 14,
+                              mainAxisExtent: columns == 1 ? 166 : 256,
+                            ),
+                            itemBuilder: (_, index) => _ProductCard(
+                              product:
+                                  Map<String, dynamic>.from(products[index] as Map),
+                              compact: columns == 1,
+                              onEditProduct: onEditProduct,
+                              onToggleFavourite: onToggleFavourite,
+                            ),
+                          ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ProductCard extends StatelessWidget {
+  const _ProductCard({
+    required this.product,
+    required this.compact,
+    required this.onEditProduct,
+    required this.onToggleFavourite,
+  });
+
+  final Map<String, dynamic> product;
+  final bool compact;
+  final ValueChanged<Map<String, dynamic>> onEditProduct;
+  final Future<void> Function(int, bool) onToggleFavourite;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final favourite =
+        product['isFavourite'] == true || product['isFavourite'] == 1;
+    final imageUrl = (product['imageUrl'] ?? '').toString();
+    final stock = quantityValue(product['stockQuantity']);
+
+    if (compact) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => onEditProduct(product),
+          borderRadius: BorderRadius.circular(24),
+          child: SurfacePanel(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                _ProductArtwork(imageUrl: imageUrl, compact: true),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              (product['name'] ?? '').toString(),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () =>
+                                onToggleFavourite(product['id'] as int, favourite),
+                            icon: Icon(
+                              favourite
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              color: scheme.tertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        (product['categoryName'] ?? 'Uncategorised').toString(),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: scheme.primary,
+                            ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '₹${product['sellingPrice']}',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      StatusPill(
+                        label: '${formatProductQuantity(stock, product)} in stock',
+                        color: stock <= 5 ? scheme.error : scheme.secondary,
                       ),
                     ],
                   ),
                 ),
-              );
-            },
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => onEditProduct(product),
+        borderRadius: BorderRadius.circular(24),
+        child: SurfacePanel(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                children: [
+                  _ProductArtwork(imageUrl: imageUrl),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton(
+                      onPressed: () =>
+                          onToggleFavourite(product['id'] as int, favourite),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.surface,
+                      ),
+                      icon: Icon(
+                        favourite
+                            ? Icons.star_rounded
+                            : Icons.star_border_rounded,
+                        color: scheme.tertiary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                (product['categoryName'] ?? 'Uncategorised').toString(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.primary,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                (product['name'] ?? '').toString(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const Spacer(),
+              Text(
+                '₹${product['sellingPrice']}',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 10),
+              StatusPill(
+                label: '${formatProductQuantity(stock, product)} in stock',
+                color: stock <= 5 ? scheme.error : scheme.secondary,
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+}
+
+class _ProductArtwork extends StatelessWidget {
+  const _ProductArtwork({
+    required this.imageUrl,
+    this.compact = false,
+  });
+
+  final String imageUrl;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final wide = constraints.maxWidth >= 760;
-      final scheme = Theme.of(context).colorScheme;
-      final catalogue = Column(children: [
-        TextField(
-            onChanged: (value) {
-              _searchTerm = value;
-              _fetchProducts();
-            },
-            decoration: const InputDecoration(
-                hintText: 'Search your catalogue',
-                prefixIcon: Icon(Icons.search_rounded))),
-        const SizedBox(height: 10),
-        Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _products.isEmpty
-                    ? Center(
-                        child: Text('Nothing matches this selection.',
-                            style: TextStyle(
-                                color: scheme.onSurface.withValues(alpha: .6))))
-                    : GridView.builder(
-                        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: wide ? 225 : 165,
-                            childAspectRatio: .8,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10),
-                        itemCount: _products.length,
-                        itemBuilder: (_, index) =>
-                            _productCard(_products[index]))),
-      ]);
-      return Padding(
-        padding: EdgeInsets.all(wide ? 16 : 10),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              runSpacing: 12,
-              children: [
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Catalogue',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: Ui.headingSize(context),
-                          letterSpacing: -1,
-                          fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 3),
-                  Text('Browse products by collection',
-                      style: TextStyle(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: .62),
-                          fontSize: 12))
-                ]),
-                ElevatedButton.icon(
-                    onPressed: _showAddProductModal,
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Add product'))
-              ]),
-          const SizedBox(height: 12),
-          Expanded(
-              child: wide
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                          SizedBox(
-                              width: 168, child: _categoryMenu(vertical: true)),
-                          const SizedBox(width: 10),
-                          Expanded(child: catalogue)
-                        ])
-                  : Column(children: [
-                      SizedBox(
-                          height: 40, child: _categoryMenu(vertical: false)),
-                      const SizedBox(height: 10),
-                      Expanded(child: catalogue)
-                    ])),
-        ]),
-      );
-    });
-  }
-
-  Widget _categoryMenu({required bool vertical}) {
-    final items = <({String name, int? id, bool favourite, IconData icon})>[
-      (
-        name: 'All products',
-        id: null,
-        favourite: false,
-        icon: Icons.apps_rounded
-      ),
-      (name: 'Favourites', id: null, favourite: true, icon: Icons.star_rounded),
-      ..._categories.map((c) => (
-            name: (c['name'] ?? 'Untitled').toString(),
-            id: c['id'] as int?,
-            favourite: false,
-            icon: Icons.folder_outlined
-          ))
-    ];
-    return ListView.separated(
-        scrollDirection: vertical ? Axis.vertical : Axis.horizontal,
-        itemCount: items.length,
-        separatorBuilder: (_, __) =>
-            vertical ? const SizedBox(height: 6) : const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final item = items[index];
-          final selected = item.favourite
-              ? _showFavouritesOnly
-              : !item.favourite &&
-                  !_showFavouritesOnly &&
-                  _selectedCategoryId == item.id;
-          final scheme = Theme.of(context).colorScheme;
-          return Material(
-              color: selected
-                  ? scheme.primary.withValues(alpha: .12)
-                  : scheme.surfaceContainerHighest.withValues(alpha: .45),
-              borderRadius: BorderRadius.circular(11),
-              child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedCategoryId = item.id;
-                      _showFavouritesOnly = item.favourite;
-                    });
-                    _fetchProducts();
-                  },
-                  borderRadius: BorderRadius.circular(11),
-                  child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 8),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(item.icon,
-                            size: 17,
-                            color: selected
-                                ? scheme.primary
-                                : scheme.onSurface.withValues(alpha: .55)),
-                        const SizedBox(width: 7),
-                        Text(item.name,
-                            style: TextStyle(
-                                color: selected
-                                    ? scheme.primary
-                                    : scheme.onSurface,
-                                fontWeight: selected
-                                    ? FontWeight.w800
-                                    : FontWeight.w600,
-                                fontSize: 12))
-                      ]))));
-        });
-  }
-
-  Widget _productCard(Map<String, dynamic> product) {
     final scheme = Theme.of(context).colorScheme;
-    final favourite =
-        product['isFavourite'] == true || product['isFavourite'] == 1;
-    final imageUrl = product['imageUrl'] as String? ?? '';
-    final stock = quantityValue(product['stockQuantity']);
+    return Container(
+      width: compact ? 88 : double.infinity,
+      height: compact ? 104 : 126,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: .26),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: imageUrl.isEmpty
+          ? Icon(
+              Icons.inventory_2_outlined,
+              color: scheme.onSurface.withValues(alpha: .34),
+              size: compact ? 32 : 42,
+            )
+          : Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.inventory_2_outlined,
+                color: scheme.onSurface.withValues(alpha: .34),
+                size: compact ? 32 : 42,
+              ),
+            ),
+    );
+  }
+}
+
+class _FilterTile extends StatelessWidget {
+  const _FilterTile({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Material(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(13),
-        child: InkWell(
-            onTap: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProductEditView(
-                    product: product,
-                    categories: _categories,
-                  ),
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: selected
+                ? scheme.primary.withValues(alpha: .14)
+                : scheme.surfaceContainerHighest.withValues(alpha: .22),
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: selected ? scheme.primary : scheme.onSurface.withValues(alpha: .64),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: selected ? scheme.primary : scheme.onSurface,
+                      ),
                 ),
-              );
-              if (result == true) {
-                _fetchProducts();
-              }
-            },
-            borderRadius: BorderRadius.circular(13),
-            child: Container(
-                decoration: BoxDecoration(
-                    border: Border.all(color: scheme.outlineVariant),
-                    borderRadius: BorderRadius.circular(13)),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                          child: Stack(children: [
-                        Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                                color: scheme.surfaceContainerHighest
-                                    .withValues(alpha: .5),
-                                borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(13)),
-                                image: imageUrl.isEmpty
-                                    ? null
-                                    : DecorationImage(
-                                        image: NetworkImage(imageUrl),
-                                        fit: BoxFit.cover)),
-                            child: imageUrl.isEmpty
-                                ? Icon(Icons.inventory_2_outlined,
-                                    color:
-                                        scheme.onSurface.withValues(alpha: .35),
-                                    size: 32)
-                                : null),
-                        Positioned(
-                            top: 6,
-                            right: 6,
-                            child: IconButton(
-                                onPressed: () =>
-                                    _toggleFavourite(product['id'], favourite),
-                                visualDensity: VisualDensity.compact,
-                                constraints: const BoxConstraints(
-                                    minWidth: 30, minHeight: 30),
-                                padding: EdgeInsets.zero,
-                                style: IconButton.styleFrom(
-                                    backgroundColor: scheme.surface),
-                                icon: Icon(
-                                    favourite
-                                        ? Icons.star_rounded
-                                        : Icons.star_border_rounded,
-                                    color: const Color(0xFFE4A331),
-                                    size: 18)))
-                      ])),
-                      Padding(
-                          padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(product['categoryName'] ?? 'Uncategorised',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                        color: scheme.primary,
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.w800)),
-                                const SizedBox(height: 2),
-                                Text(product['name'] ?? '',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                        color: scheme.onSurface,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13)),
-                                const SizedBox(height: 7),
-                                Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text('₹${product['sellingPrice']}',
-                                          style: TextStyle(
-                                              color: scheme.secondary,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w800)),
-                                      Text(
-                                          '${formatProductQuantity(stock, product)} in stock',
-                                          style: TextStyle(
-                                              color: stock <= 5
-                                                  ? scheme.error
-                                                  : scheme.onSurface
-                                                      .withValues(alpha: .55),
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700))
-                                    ])
-                              ]))
-                    ]))));
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StripChip extends StatelessWidget {
+  const _StripChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? scheme.primary.withValues(alpha: .14) : scheme.surface,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected ? scheme.primary : scheme.outlineVariant,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected ? scheme.primary : scheme.onSurface,
+                  ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -655,16 +1163,20 @@ class _ImagePlaceholder extends StatelessWidget {
   const _ImagePlaceholder();
 
   @override
-  Widget build(BuildContext context) => const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.add_a_photo, color: Color(0xFF365FF4), size: 30),
-          SizedBox(height: 4),
-          Text('Upload Product Image',
-              style: TextStyle(
-                  color: Color(0xFF6C7486),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500)),
-        ],
-      );
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.add_photo_alternate_outlined, color: scheme.primary, size: 34),
+        const SizedBox(height: 8),
+        Text(
+          'Upload product image',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurface.withValues(alpha: .62),
+              ),
+        ),
+      ],
+    );
+  }
 }

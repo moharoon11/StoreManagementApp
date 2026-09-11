@@ -1,16 +1,15 @@
-import 'package:flutter/material.dart';
-import '../../services/api_service.dart';
-import '../../config/api_config.dart';
-import '../../widgets/ui_breakpoints.dart';
-import '../../utils/quantity_utils.dart';
-import '../../widgets/workspace_ui.dart';
-import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../config/api_config.dart';
 import '../../providers/app_provider.dart';
+import '../../services/api_service.dart';
+import '../../widgets/workspace_ui.dart';
 import '../billing/manual_billing_view.dart';
 
 class DashboardView extends StatefulWidget {
-  const DashboardView({Key? key}) : super(key: key);
+  const DashboardView({super.key});
 
   @override
   State<DashboardView> createState() => _DashboardViewState();
@@ -35,6 +34,7 @@ class _DashboardViewState extends State<DashboardView> {
 
     try {
       final res = await ApiService.get(ApiConfig.dashboard);
+      if (!mounted) return;
       if (res['success'] == true) {
         setState(() {
           _dashboardData = res['data'];
@@ -42,11 +42,12 @@ class _DashboardViewState extends State<DashboardView> {
         });
       } else {
         setState(() {
-          _error = res['message'];
+          _error = (res['message'] ?? 'Unable to load dashboard.').toString();
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString().replaceAll('Exception: ', '');
         _isLoading = false;
@@ -57,49 +58,19 @@ class _DashboardViewState extends State<DashboardView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(
-          child: CircularProgressIndicator(color: Color(0xFF365FF4)));
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline,
-                  size: 48, color: Color(0xFFE75C5C)),
-              const SizedBox(height: 12),
-              Text('Error: $_error',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFFE75C5C))),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _loadDashboard,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF365FF4),
-                    foregroundColor: Colors.white),
-              ),
-            ],
-          ),
+      return WorkspacePage(
+        child: EmptyCanvas(
+          icon: Icons.cloud_off_rounded,
+          title: 'Dashboard unavailable',
+          detail: _error!,
         ),
       );
     }
 
-    final todaySales = _dashboardData?['todaySales'] ?? 0;
-    final todayInvoices = _dashboardData?['todayInvoiceCount'] ?? 0;
-    final totalProducts = _dashboardData?['totalProducts'] ?? 0;
-    final lowStockProducts =
-        (_dashboardData?['lowStockProducts'] as List?) ?? [];
-    final mostSoldProducts =
-        (_dashboardData?['mostSoldProducts'] as List?) ?? [];
-    final recentInvoices = (_dashboardData?['recentInvoices'] as List?) ?? [];
-    final salesTrend = (_dashboardData?['salesTrend'] as List?) ?? [];
-
-    final width = MediaQuery.sizeOf(context).width;
     final provider = context.watch<AppProvider>();
     final hour = DateTime.now().hour;
     final greeting = hour < 12
@@ -107,583 +78,597 @@ class _DashboardViewState extends State<DashboardView> {
         : hour < 17
             ? 'Good afternoon'
             : 'Good evening';
+
+    final todaySales = _dashboardData?['todaySales'] ?? 0;
+    final todayInvoices = _dashboardData?['todayInvoiceCount'] ?? 0;
+    final totalProducts = _dashboardData?['totalProducts'] ?? 0;
+    final lowStockProducts =
+        (_dashboardData?['lowStockProducts'] as List<dynamic>? ?? []);
+    final mostSoldProducts =
+        (_dashboardData?['mostSoldProducts'] as List<dynamic>? ?? []);
+    final recentInvoices =
+        (_dashboardData?['recentInvoices'] as List<dynamic>? ?? []);
+    final salesTrend = (_dashboardData?['salesTrend'] as List<dynamic>? ?? []);
+
     return WorkspacePage(
-      child: Stack(children: [
-        Positioned(
-          top: -120,
-          right: -100,
-          child: IgnorePointer(
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: const BoxDecoration(
-                  color: Color(0x142563EB), shape: BoxShape.circle),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 120,
-          left: -130,
-          child: IgnorePointer(
-            child: Container(
-              width: 270,
-              height: 270,
-              decoration: const BoxDecoration(
-                  color: Color(0x1212A594), shape: BoxShape.circle),
-            ),
-          ),
-        ),
-        Positioned.fill(
-          child: RefreshIndicator(
-            onRefresh: _loadDashboard,
-            child: ListView(children: [
-              _dashboardGreeting(greeting, provider.username),
-              const SizedBox(height: 14),
-              _salesHero(todaySales, todayInvoices, totalProducts),
-              const SizedBox(height: 12),
-              Wrap(spacing: 10, runSpacing: 10, children: [
-                _actionCard(
-                    width: width,
-                    title: 'New bill',
-                    subtitle: 'Create a normal bill',
-                    icon: Icons.add_rounded,
-                    colors: const [Color(0xFF2563EB), Color(0xFF104FC7)],
-                    onTap: () {
+      child: RefreshIndicator(
+        onRefresh: _loadDashboard,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            PageIntro(
+              eyebrow: 'Overview',
+              title: '$greeting${provider.username.isEmpty ? '' : ', ${provider.username}'}',
+              description:
+                  'Start selling, check stock pressure, and keep the store moving from one calmer workspace.',
+              action: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ManualBillingView(),
+                          builder: (_) => const ManualBillingView(),
                         ),
                       );
-                    }),
-                _actionCard(
-                    width: width,
-                    title: 'Quick bill',
-                    subtitle: 'Fast billing in seconds',
-                    icon: Icons.bolt_rounded,
-                    colors: const [Color(0xFFFF9D00), Color(0xFFE66B00)],
-                    onTap: () => provider.setNavIndex(1)),
-              ]),
-              const SizedBox(height: 16),
-              if (salesTrend.isNotEmpty) ...[
-                _salesTrendChart(salesTrend),
-                const SizedBox(height: 16),
+                    },
+                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                    label: const Text('New manual bill'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => provider.setNavIndex(1),
+                    icon: const Icon(Icons.bolt_rounded, size: 18),
+                    label: const Text('Quick sale'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            _HeroCard(
+              sales: todaySales,
+              invoices: todayInvoices,
+              products: totalProducts,
+            ),
+            const SizedBox(height: 16),
+            AdaptiveWrapGrid(
+              minItemWidth: 200,
+              children: [
+                StatTile(
+                  label: 'Today sales',
+                  value: '₹$todaySales',
+                  icon: Icons.payments_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                  note: '$todayInvoices invoices processed today',
+                ),
+                StatTile(
+                  label: 'Products',
+                  value: '$totalProducts',
+                  icon: Icons.inventory_2_outlined,
+                  color: Theme.of(context).colorScheme.secondary,
+                  note: 'Live across your store catalogue',
+                ),
+                StatTile(
+                  label: 'Low stock',
+                  value: '${lowStockProducts.length}',
+                  icon: Icons.notification_important_outlined,
+                  color: Theme.of(context).colorScheme.error,
+                  note: lowStockProducts.isEmpty
+                      ? 'No urgent restocking alerts'
+                      : 'Items to review before the day ends',
+                ),
+                StatTile(
+                  label: 'Top sellers',
+                  value: '${mostSoldProducts.length}',
+                  icon: Icons.workspace_premium_outlined,
+                  color: Theme.of(context).colorScheme.tertiary,
+                  note: 'Products with the strongest movement',
+                ),
               ],
-              _recentBills(recentInvoices, provider),
+            ),
+            if (salesTrend.isNotEmpty) ...[
               const SizedBox(height: 16),
-              if (width < 800) ...[
-                _buildActivityPanel(
-                    'Stock to review',
-                    'Keep your shelves ready',
-                    Icons.inventory_rounded,
-                    const Color(0xFFE4A331),
-                    _buildLowStockContent(lowStockProducts)),
-                const SizedBox(height: 12),
-                _buildActivityPanel(
-                    'Customer favourites',
-                    'What is selling best',
-                    Icons.workspace_premium_outlined,
-                    const Color(0xFF365FF4),
-                    _buildMostSoldContent(mostSoldProducts))
-              ] else
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(
-                      child: _buildActivityPanel(
-                          'Stock to review',
-                          'Keep your shelves ready',
-                          Icons.inventory_rounded,
-                          const Color(0xFFE4A331),
-                          _buildLowStockContent(lowStockProducts))),
-                  const SizedBox(width: 12),
-                  Expanded(
-                      child: _buildActivityPanel(
-                          'Customer favourites',
-                          'What is selling best',
-                          Icons.workspace_premium_outlined,
-                          const Color(0xFF365FF4),
-                          _buildMostSoldContent(mostSoldProducts)))
-                ]),
-            ]),
+              _SalesTrendPanel(salesTrend: salesTrend),
+            ],
+            const SizedBox(height: 16),
+            AdaptiveWrapGrid(
+              minItemWidth: 280,
+              children: [
+                _InvoicePanel(
+                  invoices: recentInvoices,
+                  onViewAll: () => provider.setNavIndex(4),
+                ),
+                _InventoryPanel(
+                  title: 'Stock watch',
+                  subtitle: 'Products nearing the limit',
+                  icon: Icons.inventory_2_outlined,
+                  items: lowStockProducts,
+                  emptyLabel: 'Everything looks comfortably stocked.',
+                  accent: Theme.of(context).colorScheme.tertiary,
+                  rowBuilder: (context, item) => _SimpleMetricRow(
+                    title: (item['name'] ?? 'Product').toString(),
+                    subtitle:
+                        '₹${item['sellingPrice']} · ${item['stockQuantity']} ${item['unit'] ?? 'Piece'} left',
+                    trailing: 'Review',
+                    trailingColor: Theme.of(context).colorScheme.tertiary,
+                  ),
+                ),
+                _InventoryPanel(
+                  title: 'Customer favourites',
+                  subtitle: 'What is moving fastest today',
+                  icon: Icons.auto_awesome_outlined,
+                  items: mostSoldProducts,
+                  emptyLabel: 'Sales activity will appear here once billing starts.',
+                  accent: Theme.of(context).colorScheme.secondary,
+                  rowBuilder: (context, item) => _SimpleMetricRow(
+                    title: (item['productName'] ?? 'Product').toString(),
+                    subtitle:
+                        '${item['totalQuantitySold']} ${item['unit'] ?? 'units'} sold',
+                    trailing: '₹${item['totalRevenue']}',
+                    trailingColor: Theme.of(context).colorScheme.secondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
+    required this.sales,
+    required this.invoices,
+    required this.products,
+  });
+
+  final dynamic sales;
+  final dynamic invoices;
+  final dynamic products;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final wide = MediaQuery.sizeOf(context).width >= 960;
+
+    return Container(
+      padding: EdgeInsets.all(wide ? 24 : 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.lerp(scheme.primary, Colors.black, .28) ?? scheme.primary,
+            Color.lerp(scheme.secondary, scheme.primary, .45) ?? scheme.secondary,
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: .14),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: wide
+          ? Row(
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: _HeroCopy(
+                    sales: sales,
+                    invoices: invoices,
+                    products: products,
+                  ),
+                ),
+                const SizedBox(width: 18),
+                Expanded(
+                  flex: 4,
+                  child: _HeroLedger(
+                    sales: sales,
+                    invoices: invoices,
+                    products: products,
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _HeroCopy(
+                  sales: sales,
+                  invoices: invoices,
+                  products: products,
+                ),
+                const SizedBox(height: 20),
+                _HeroLedger(
+                  sales: sales,
+                  invoices: invoices,
+                  products: products,
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class _HeroCopy extends StatelessWidget {
+  const _HeroCopy({
+    required this.sales,
+    required this.invoices,
+    required this.products,
+  });
+
+  final dynamic sales;
+  final dynamic invoices;
+  final dynamic products;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Daily control room',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: Colors.white.withValues(alpha: .74),
+                letterSpacing: 1.1,
+              ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Move between billing, stock, and reporting without the old welcome step.',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: Colors.white,
+              ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'The new layout brings the day’s numbers, urgent products, and quick actions closer together so the workspace feels more deliberate and less cluttered.',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.white.withValues(alpha: .78),
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroLedger extends StatelessWidget {
+  const _HeroLedger({
+    required this.sales,
+    required this.invoices,
+    required this.products,
+  });
+
+  final dynamic sales;
+  final dynamic invoices;
+  final dynamic products;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: .15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _HeroStat(
+            label: 'Today sales',
+            value: '₹$sales',
+          ),
+          const SizedBox(height: 14),
+          _HeroStat(
+            label: 'Bills completed',
+            value: '$invoices',
+          ),
+          const SizedBox(height: 14),
+          _HeroStat(
+            label: 'Products live',
+            value: '$products',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroStat extends StatelessWidget {
+  const _HeroStat({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .14),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(
+            Icons.circle,
+            size: 12,
+            color: Color(0xFFF7E7C6),
           ),
         ),
-      ]),
-    );
-  }
-
-  Widget _dashboardGreeting(String greeting, String username) =>
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const SizedBox(width: 12),
         Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('STORE MANAGEMENT',
-              style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontSize: Ui.headingSize(context),
-                  letterSpacing: -1,
-                  fontWeight: FontWeight.w800)),
-          const SizedBox(height: 3),
-          Text('$greeting${username.isEmpty ? '' : ', $username'}',
-              style: TextStyle(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: .62),
-                  fontSize: 13))
-        ])),
-        IconButton(
-            onPressed: _loadDashboard,
-            tooltip: 'Refresh dashboard',
-            visualDensity: VisualDensity.compact,
-            icon: Icon(Icons.refresh_rounded,
-                size: 21, color: Theme.of(context).colorScheme.primary))
-      ]);
-
-  Widget _salesHero(dynamic sales, dynamic invoices, dynamic products) =>
-      Container(
-          padding:
-              EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 15 : 18),
-          decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF3A86F7), Color(0xFF1556C0)]),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0x66FFFFFF)),
-              boxShadow: const [
-                BoxShadow(
-                    color: Color(0x3D1556C0),
-                    blurRadius: 20,
-                    spreadRadius: 1,
-                    offset: Offset(0, 9))
-              ]),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text("TODAY'S SALES",
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: .85),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11)),
-              const Spacer(),
-              Icon(Icons.auto_graph_rounded,
-                  size: 19, color: Colors.white.withValues(alpha: .7))
-            ]),
-            const SizedBox(height: 8),
-            Text('₹$sales',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    letterSpacing: -1.2,
-                    fontWeight: FontWeight.w800)),
-            const SizedBox(height: 13),
-            Container(height: 1, color: Colors.white.withValues(alpha: .25)),
-            const SizedBox(height: 12),
-            Row(children: [
-              _heroStat(
-                  Icons.receipt_long_outlined, '$invoices', 'TOTAL BILLS'),
-              Container(
-                  height: 34,
-                  width: 1,
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  color: Colors.white.withValues(alpha: .25)),
-              _heroStat(Icons.inventory_2_outlined, '$products', 'PRODUCTS'),
-            ])
-          ]));
-
-  Widget _heroStat(IconData icon, String value, String label) => Expanded(
-          child: Row(children: [
-        Container(
-            padding: const EdgeInsets.all(9),
-            decoration: const BoxDecoration(
-                color: Color(0x22FFFFFF), shape: BoxShape.circle),
-            child: Icon(icon, color: Colors.white, size: 18)),
-        const SizedBox(width: 9),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label,
-              style: const TextStyle(
-                  color: Color(0xDFFFFFFF),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800)),
-          Text(value,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800))
-        ])
-      ]));
-
-  Widget _actionCard(
-          {required double width,
-          required String title,
-          required String subtitle,
-          required IconData icon,
-          required List<Color> colors,
-          required VoidCallback onTap}) =>
-      SizedBox(
-          width: width >= 680
-              ? (width >= 760 ? width - 68 : width - 44) / 2
-              : double.infinity,
-          child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-              child: InkWell(
-                  onTap: onTap,
-                  borderRadius: BorderRadius.circular(16),
-                  child: Ink(
-                      height: 82,
-                      padding: const EdgeInsets.all(13),
-                      decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: colors),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                                color: colors.last.withValues(alpha: .27),
-                                blurRadius: 14,
-                                offset: const Offset(0, 6))
-                          ]),
-                      child: Row(children: [
-                        Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: const BoxDecoration(
-                                color: Colors.white, shape: BoxShape.circle),
-                            child: Icon(icon, color: colors.first, size: 21)),
-                        const SizedBox(width: 11),
-                        Expanded(
-                            child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                              Text(title.toUpperCase(),
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800)),
-                              const SizedBox(height: 2),
-                              Text(subtitle,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      color: Color(0xDFFFFFFF), fontSize: 11))
-                            ])),
-                        const Icon(Icons.chevron_right_rounded,
-                            color: Colors.white, size: 24)
-                      ])))));
-
-  Widget _recentBills(List invoices, AppProvider provider) => Container(
-      decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-                color: Color(0x140F2454), blurRadius: 14, offset: Offset(0, 6))
-          ]),
-      child: SurfacePanel(
-          padding: EdgeInsets.zero,
-          child: Column(children: [
-            Padding(
-                padding: const EdgeInsets.fromLTRB(16, 13, 10, 10),
-                child: Row(children: [
-                  const Expanded(
-                      child: Text('RECENT BILLS',
-                          style: TextStyle(
-                              color: Color(0xFF172033),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800))),
-                  TextButton(
-                      onPressed: () => provider.setNavIndex(4),
-                      child: const Text('View all'))
-                ])),
-            const Divider(),
-            if (invoices.isEmpty)
-              const Padding(
-                  padding: EdgeInsets.all(22),
-                  child: Text('Your completed bills will appear here.',
-                      style: TextStyle(color: Color(0xFF6C7486))))
-            else
-              ...invoices.take(4).map((invoice) => ListTile(
-                  onTap: () => provider.setNavIndex(4),
-                  leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFEEF4FF),
-                      child: Icon(Icons.receipt_long_outlined,
-                          color: Color(0xFF2563EB))),
-                  title: Text(invoice['invoiceNumber'] ?? 'Invoice',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800)),
-                  subtitle: Text(
-                      '${invoice['createdAt'] ?? ''}'.replaceFirst('T', ' '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11)),
-                  trailing: Text('₹${invoice['grandTotal']}',
-                      style: const TextStyle(
-                          color: Color(0xFF16834B),
-                          fontWeight: FontWeight.w800)))),
-          ])));
-
-  Widget _buildActivityPanel(String title, String subtitle, IconData icon,
-          Color color, Widget content) =>
-      Container(
-          decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                    color: Color(0x120F2454),
-                    blurRadius: 12,
-                    offset: Offset(0, 5))
-              ]),
-          child: SurfacePanel(
-              padding: EdgeInsets.zero,
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-                        child: Row(children: [
-                          Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                  color: color.withValues(alpha: .12),
-                                  borderRadius: BorderRadius.circular(9)),
-                              child: Icon(icon, color: color, size: 17)),
-                          const SizedBox(width: 10),
-                          Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(title,
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13.5,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface)),
-                                Text(subtitle,
-                                    style: TextStyle(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface
-                                            .withValues(alpha: .6),
-                                        fontSize: 11))
-                              ])
-                        ])),
-                    const Divider(),
-                    content
-                  ])));
-
-  Widget _buildLowStockContent(List lowStockProducts) {
-    if (lowStockProducts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(20.0),
-        child: Text('All products are sufficiently stocked.',
-            style: TextStyle(color: Color(0xFF6C7486), fontSize: 13)),
-      );
-    }
-    return Column(
-      children: lowStockProducts.map((p) {
-        return ListTile(
-          dense: true,
-          leading: CircleAvatar(
-            backgroundColor: const Color(0xFFFFF8E8),
-            child: const Icon(Icons.inventory_2,
-                color: Color(0xFFE4A331), size: 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Colors.white.withValues(alpha: .68),
+                      letterSpacing: 1.4,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                    ),
+              ),
+            ],
           ),
-          title: Text(p['name'] ?? '',
-              style: const TextStyle(
-                  color: Color(0xFF172033),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13)),
-          subtitle: Text('Price: ₹${p['sellingPrice']}',
-              style: const TextStyle(color: Color(0xFF6C7486), fontSize: 12)),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF0F0),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '${formatQuantity(p['stockQuantity'])} ${p['unit'] ?? 'Piece'} left',
-              style: const TextStyle(
-                  color: Color(0xFFE75C5C),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11),
-            ),
-          ),
-        );
-      }).toList(),
+        ),
+      ],
     );
   }
+}
 
-  Widget _buildMostSoldContent(List mostSoldProducts) {
-    if (mostSoldProducts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(20.0),
-        child: Text('No sales records yet.',
-            style: TextStyle(color: Color(0xFF6C7486), fontSize: 13)),
-      );
-    }
-    return Column(
-      children: mostSoldProducts.map((p) {
-        return ListTile(
-          dense: true,
-          leading: CircleAvatar(
-            backgroundColor: const Color(0xFFEEF0FF),
-            child: const Icon(Icons.shopping_bag_outlined,
-                color: Color(0xFF365FF4), size: 18),
-          ),
-          title: Text(p['productName'] ?? '',
-              style: const TextStyle(
-                  color: Color(0xFF172033),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13)),
-          subtitle: Text(
-              '${formatQuantity(p['totalQuantitySold'])} ${p['unit'] ?? 'units'} sold',
-              style: const TextStyle(color: Color(0xFF6C7486), fontSize: 12)),
-          trailing: Text(
-            '₹${p['totalRevenue']}',
-            style: const TextStyle(
-                color: Color(0xFF12A594),
-                fontWeight: FontWeight.bold,
-                fontSize: 13),
-          ),
-        );
-      }).toList(),
-    );
-  }
+class _SalesTrendPanel extends StatelessWidget {
+  const _SalesTrendPanel({required this.salesTrend});
 
-  Widget _salesTrendChart(List salesTrend) {
-    if (salesTrend.isEmpty) return const SizedBox.shrink();
+  final List<dynamic> salesTrend;
 
-    List<FlSpot> spots = [];
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final spots = <FlSpot>[];
     double maxY = 0;
 
-    for (int i = 0; i < salesTrend.length; i++) {
-      double y = (salesTrend[i]['totalSales'] ?? 0).toDouble();
+    for (var i = 0; i < salesTrend.length; i++) {
+      final y = (salesTrend[i]['totalSales'] as num?)?.toDouble() ?? 0;
       if (y > maxY) maxY = y;
       spots.add(FlSpot(i.toDouble(), y));
     }
 
     if (maxY == 0) maxY = 100;
-    maxY = maxY * 1.2;
+    maxY *= 1.18;
 
-    return Container(
-      height: 240,
-      padding: const EdgeInsets.fromLTRB(16, 16, 22, 16),
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-                color: Color(0x120F2454), blurRadius: 12, offset: Offset(0, 5))
-          ]),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                    color: const Color(0xFF365FF4).withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(9)),
-                child: const Icon(Icons.show_chart_rounded,
-                    color: Color(0xFF365FF4), size: 17),
-              ),
-              const SizedBox(width: 10),
-              const Text('7-Day Sales Trend',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13.5,
-                    color: Color(0xFF172033),
-                  )),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Expanded(
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: maxY > 0 ? maxY / 4 : 1,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: const Color(0xFFE5E7EB),
-                    strokeWidth: 1,
-                    dashArray: [5, 5],
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 22,
-                      interval: 1,
-                      getTitlesWidget: (value, meta) {
-                        int index = value.toInt();
-                        if (index >= 0 && index < salesTrend.length) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              salesTrend[index]['dateLabel'] ?? '',
-                              style: const TextStyle(
-                                  color: Color(0xFF6C7486), fontSize: 10),
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      interval: maxY > 0 ? maxY / 4 : 1,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          value >= 1000
-                              ? '${(value / 1000).toStringAsFixed(1)}k'
-                              : value.toInt().toString(),
-                          style: const TextStyle(
-                              color: Color(0xFF6C7486), fontSize: 10),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                minX: 0,
-                maxX: (salesTrend.length - 1).toDouble(),
-                minY: 0,
-                maxY: maxY,
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    color: const Color(0xFF365FF4),
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) =>
-                          FlDotCirclePainter(
-                        radius: 4,
-                        color: Colors.white,
-                        strokeWidth: 2,
-                        strokeColor: const Color(0xFF365FF4),
-                      ),
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: const Color(0xFF365FF4).withValues(alpha: 0.1),
-                    ),
-                  ),
-                ],
+    return SectionPanel(
+      title: 'Sales rhythm',
+      subtitle: 'A cleaner view of the recent billing trend.',
+      child: SizedBox(
+        height: 260,
+        child: LineChart(
+          LineChartData(
+            minX: 0,
+            maxX: (salesTrend.length - 1).toDouble(),
+            minY: 0,
+            maxY: maxY,
+            borderData: FlBorderData(show: false),
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              horizontalInterval: maxY / 4,
+              getDrawingHorizontalLine: (_) => FlLine(
+                color: scheme.outlineVariant,
+                strokeWidth: 1,
+                dashArray: const [6, 6],
               ),
             ),
+            titlesData: FlTitlesData(
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40,
+                  interval: maxY / 4,
+                  getTitlesWidget: (value, _) => Text(
+                    value >= 1000
+                        ? '${(value / 1000).toStringAsFixed(1)}k'
+                        : value.toInt().toString(),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  interval: 1,
+                  getTitlesWidget: (value, _) {
+                    final index = value.toInt();
+                    if (index < 0 || index >= salesTrend.length) {
+                      return const SizedBox.shrink();
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(
+                        (salesTrend[index]['dateLabel'] ?? '').toString(),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            lineBarsData: [
+              LineChartBarData(
+                spots: spots,
+                isCurved: true,
+                color: scheme.primary,
+                barWidth: 3,
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: scheme.primary.withValues(alpha: .12),
+                ),
+                dotData: FlDotData(
+                  show: true,
+                  getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
+                    radius: 4,
+                    color: scheme.surface,
+                    strokeWidth: 2,
+                    strokeColor: scheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InvoicePanel extends StatelessWidget {
+  const _InvoicePanel({
+    required this.invoices,
+    required this.onViewAll,
+  });
+
+  final List<dynamic> invoices;
+  final VoidCallback onViewAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionPanel(
+      title: 'Recent invoices',
+      subtitle: 'Jump back into your latest sales and documents.',
+      action: TextButton(
+        onPressed: onViewAll,
+        child: const Text('View all'),
+      ),
+      child: invoices.isEmpty
+          ? const Text('Completed invoices will appear here once billing starts.')
+          : Column(
+              children: [
+                for (final invoice in invoices.take(4)) ...[
+                  _SimpleMetricRow(
+                    title: (invoice['invoiceNumber'] ?? 'Invoice').toString(),
+                    subtitle:
+                        '${invoice['createdAt'] ?? ''}'.toString().replaceFirst('T', ' '),
+                    trailing: '₹${invoice['grandTotal']}',
+                    trailingColor: Theme.of(context).colorScheme.primary,
+                  ),
+                  if (invoice != invoices.take(4).last) const SizedBox(height: 12),
+                ],
+              ],
+            ),
+    );
+  }
+}
+
+class _InventoryPanel extends StatelessWidget {
+  const _InventoryPanel({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.items,
+    required this.emptyLabel,
+    required this.accent,
+    required this.rowBuilder,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final List<dynamic> items;
+  final String emptyLabel;
+  final Color accent;
+  final Widget Function(BuildContext context, dynamic item) rowBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionPanel(
+      title: title,
+      subtitle: subtitle,
+      action: StatusPill(
+        label: '${items.length}',
+        color: accent,
+      ),
+      child: items.isEmpty
+          ? Text(
+              emptyLabel,
+              style: Theme.of(context).textTheme.bodyMedium,
+            )
+          : Column(
+              children: [
+                for (final item in items.take(4)) ...[
+                  rowBuilder(context, item),
+                  if (item != items.take(4).last) const SizedBox(height: 12),
+                ],
+              ],
+            ),
+    );
+  }
+}
+
+class _SimpleMetricRow extends StatelessWidget {
+  const _SimpleMetricRow({
+    required this.title,
+    required this.subtitle,
+    required this.trailing,
+    required this.trailingColor,
+  });
+
+  final String title;
+  final String subtitle;
+  final String trailing;
+  final Color trailingColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: .24),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurface.withValues(alpha: .62),
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            trailing,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: trailingColor,
+                ),
           ),
         ],
       ),

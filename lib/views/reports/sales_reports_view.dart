@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../services/api_service.dart';
+
 import '../../config/api_config.dart';
-import '../../widgets/ui_breakpoints.dart';
+import '../../services/api_service.dart';
 import '../../utils/quantity_utils.dart';
+import '../../widgets/workspace_ui.dart';
 
 class SalesReportsView extends StatefulWidget {
-  const SalesReportsView({Key? key}) : super(key: key);
+  const SalesReportsView({super.key});
 
   @override
   State<SalesReportsView> createState() => _SalesReportsViewState();
@@ -29,14 +30,18 @@ class _SalesReportsViewState extends State<SalesReportsView> {
         ApiConfig.salesReports,
         queryParameters: {'period': _selectedPeriod},
       );
-      if (res['success'] == true) {
+      if (res['success'] == true && mounted) {
         setState(() {
           _reportData = res['data'];
           _isLoading = false;
         });
+      } else if (mounted) {
+        setState(() => _isLoading = false);
       }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -48,284 +53,183 @@ class _SalesReportsViewState extends State<SalesReportsView> {
     final topSoldProducts = (_reportData?['topSoldProducts'] as List?) ?? [];
     final salesByCategory = (_reportData?['salesByCategory'] as List?) ?? [];
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 700;
-
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: Ui.pagePadding(context),
+    return WorkspacePage(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text('Sales Reports',
-                    style: TextStyle(
-                        fontSize: Ui.headingSize(context),
-                        fontWeight: FontWeight.w800,
-                        color: scheme.onSurface,
-                        letterSpacing: -0.5),
-                    overflow: TextOverflow.ellipsis),
-              ),
-              Row(
-                children: ['today', 'week', 'month'].map((period) {
-                  final isSelected = _selectedPeriod == period;
-                  return Padding(
-                    padding: const EdgeInsets.only(left: 6.0),
-                    child: ChoiceChip(
-                      label: Text(period.toUpperCase(),
-                          style: const TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.w700)),
-                      selected: isSelected,
-                      selectedColor: scheme.primary,
-                      showCheckmark: false,
-                      visualDensity: VisualDensity.compact,
-                      labelStyle: TextStyle(
-                          color: isSelected
-                              ? scheme.onPrimary
-                              : scheme.onSurface.withValues(alpha: .6)),
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() => _selectedPeriod = period);
-                          _fetchReport();
-                        }
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
+          PageIntro(
+            eyebrow: 'Insights',
+            title: 'Sales reports',
+            description:
+                'Review revenue, invoices, and product movement inside a tighter analytical layout.',
+            action: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: ['today', 'week', 'month'].map((period) {
+                final selected = _selectedPeriod == period;
+                return ChoiceChip(
+                  label: Text(period.toUpperCase()),
+                  selected: selected,
+                  showCheckmark: false,
+                  onSelected: (value) {
+                    if (!value) return;
+                    setState(() => _selectedPeriod = period);
+                    _fetchReport();
+                  },
+                );
+              }).toList(),
+            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           if (_isLoading)
             const Expanded(
-                child: Center(
-                    child: CircularProgressIndicator(color: Color(0xFF365FF4))))
+              child: Center(child: CircularProgressIndicator()),
+            )
           else
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    if (isMobile) ...[
-                      _buildReportMetric(
-                          'Total Revenue',
-                          '₹$totalSales',
-                          Icons.payments,
-                          const Color(0xFF12A594),
-                          const Color(0xFFEAF9F6)),
-                      const SizedBox(height: 12),
-                      _buildReportMetric(
-                          'Total Invoices',
-                          '$totalInvoices',
-                          Icons.receipt_long,
-                          const Color(0xFF365FF4),
-                          const Color(0xFFEEF0FF)),
-                      const SizedBox(height: 12),
-                      _buildReportMetric(
-                          'Products Sold',
-                          '$totalProductsSold',
-                          Icons.shopping_bag,
-                          const Color(0xFF8D63D8),
-                          const Color(0xFFF4F0FF)),
-                    ] else ...[
-                      Row(
-                        children: [
-                          Expanded(
-                              child: _buildReportMetric(
-                                  'Total Revenue',
-                                  '₹$totalSales',
-                                  Icons.payments,
-                                  const Color(0xFF12A594),
-                                  const Color(0xFFEAF9F6))),
-                          const SizedBox(width: 10),
-                          Expanded(
-                              child: _buildReportMetric(
-                                  'Total Invoices',
-                                  '$totalInvoices',
-                                  Icons.receipt_long,
-                                  const Color(0xFF365FF4),
-                                  const Color(0xFFEEF0FF))),
-                          const SizedBox(width: 10),
-                          Expanded(
-                              child: _buildReportMetric(
-                                  'Products Sold',
-                                  '$totalProductsSold',
-                                  Icons.shopping_bag,
-                                  const Color(0xFF8D63D8),
-                                  const Color(0xFFF4F0FF))),
-                        ],
+              child: ListView(
+                children: [
+                  AdaptiveWrapGrid(
+                    minItemWidth: 190,
+                    children: [
+                      StatTile(
+                        label: 'Revenue',
+                        value: '₹$totalSales',
+                        icon: Icons.payments_outlined,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                      StatTile(
+                        label: 'Invoices',
+                        value: '$totalInvoices',
+                        icon: Icons.receipt_long_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      StatTile(
+                        label: 'Products sold',
+                        value: '$totalProductsSold',
+                        icon: Icons.shopping_bag_outlined,
+                        color: Theme.of(context).colorScheme.tertiary,
                       ),
                     ],
-                    const SizedBox(height: 16),
-                    if (isMobile) ...[
-                      _buildTableCard('Top Sold Products', topSoldProducts,
-                          (p) {
-                        return ListTile(
-                          dense: true,
-                          title: Text(p['productName'] ?? '',
-                              style: const TextStyle(
-                                  color: Color(0xFF172033),
-                                  fontWeight: FontWeight.w600)),
-                          subtitle: Text(
-                              '${formatQuantity(p['totalQuantitySold'])} ${p['unit'] ?? 'units'} sold',
-                              style: const TextStyle(color: Color(0xFF6C7486))),
-                          trailing: Text('₹${p['totalRevenue']}',
-                              style: const TextStyle(
-                                  color: Color(0xFF12A594),
-                                  fontWeight: FontWeight.bold)),
-                        );
-                      }),
-                      const SizedBox(height: 12),
-                      _buildTableCard('Sales by Category', salesByCategory,
-                          (c) {
-                        return ListTile(
-                          dense: true,
-                          title: Text(c['categoryName'] ?? '',
-                              style: const TextStyle(
-                                  color: Color(0xFF172033),
-                                  fontWeight: FontWeight.w600)),
-                          subtitle: Text('${c['totalQuantitySold']} units sold',
-                              style: const TextStyle(color: Color(0xFF6C7486))),
-                          trailing: Text('₹${c['totalRevenue']}',
-                              style: const TextStyle(
-                                  color: Color(0xFF365FF4),
-                                  fontWeight: FontWeight.bold)),
-                        );
-                      }),
-                    ] else ...[
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _buildTableCard(
-                                'Top Sold Products', topSoldProducts, (p) {
-                              return ListTile(
-                                dense: true,
-                                title: Text(p['productName'] ?? '',
-                                    style: const TextStyle(
-                                        color: Color(0xFF172033),
-                                        fontWeight: FontWeight.w600)),
-                                subtitle: Text(
-                                    '${formatQuantity(p['totalQuantitySold'])} ${p['unit'] ?? 'units'} sold',
-                                    style: const TextStyle(
-                                        color: Color(0xFF6C7486))),
-                                trailing: Text('₹${p['totalRevenue']}',
-                                    style: const TextStyle(
-                                        color: Color(0xFF12A594),
-                                        fontWeight: FontWeight.bold)),
-                              );
-                            }),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildTableCard(
-                                'Sales by Category', salesByCategory, (c) {
-                              return ListTile(
-                                dense: true,
-                                title: Text(c['categoryName'] ?? '',
-                                    style: const TextStyle(
-                                        color: Color(0xFF172033),
-                                        fontWeight: FontWeight.w600)),
-                                subtitle: Text(
-                                    '${c['totalQuantitySold']} units sold',
-                                    style: const TextStyle(
-                                        color: Color(0xFF6C7486))),
-                                trailing: Text('₹${c['totalRevenue']}',
-                                    style: const TextStyle(
-                                        color: Color(0xFF365FF4),
-                                        fontWeight: FontWeight.bold)),
-                              );
-                            }),
-                          ),
-                        ],
+                  ),
+                  const SizedBox(height: 16),
+                  AdaptiveWrapGrid(
+                    minItemWidth: 300,
+                    children: [
+                      _ReportTable(
+                        title: 'Top sold products',
+                        subtitle: 'Best performing items for this period',
+                        items: topSoldProducts,
+                        emptyLabel: 'No product sales recorded for this period.',
+                        builder: (context, item) => _ReportRow(
+                          title: (item['productName'] ?? '').toString(),
+                          subtitle:
+                              '${formatQuantity(item['totalQuantitySold'])} ${item['unit'] ?? 'units'} sold',
+                          trailing: '₹${item['totalRevenue']}',
+                        ),
+                      ),
+                      _ReportTable(
+                        title: 'Sales by category',
+                        subtitle: 'How each category contributed',
+                        items: salesByCategory,
+                        emptyLabel: 'No category-level data recorded for this period.',
+                        builder: (context, item) => _ReportRow(
+                          title: (item['categoryName'] ?? '').toString(),
+                          subtitle:
+                              '${formatQuantity(item['totalQuantitySold'])} ${item['unit'] ?? 'units'} sold',
+                          trailing: '₹${item['totalRevenue']}',
+                        ),
                       ),
                     ],
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildReportMetric(
-      String title, String value, IconData icon, Color color, Color bgColor) {
+class _ReportTable extends StatelessWidget {
+  const _ReportTable({
+    required this.title,
+    required this.subtitle,
+    required this.items,
+    required this.emptyLabel,
+    required this.builder,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<dynamic> items;
+  final String emptyLabel;
+  final Widget Function(BuildContext context, dynamic item) builder;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionPanel(
+      title: title,
+      subtitle: subtitle,
+      child: items.isEmpty
+          ? Text(
+              emptyLabel,
+              style: Theme.of(context).textTheme.bodyMedium,
+            )
+          : Column(
+              children: [
+                for (var i = 0; i < items.length; i++) ...[
+                  builder(context, items[i]),
+                  if (i != items.length - 1) const SizedBox(height: 12),
+                ],
+              ],
+            ),
+    );
+  }
+}
+
+class _ReportRow extends StatelessWidget {
+  const _ReportRow({
+    required this.title,
+    required this.subtitle,
+    required this.trailing,
+  });
+
+  final String title;
+  final String subtitle;
+  final String trailing;
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant),
+        color: scheme.surfaceContainerHighest.withValues(alpha: .18),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: bgColor.withValues(alpha: .8),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(icon, color: color, size: 19),
-          ),
-          const SizedBox(width: 10),
-          Flexible(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: scheme.onSurface.withValues(alpha: .55),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(value,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: scheme.onSurface,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800)),
+                Text(title, style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTableCard(
-      String title, List<dynamic> items, Widget Function(dynamic) itemBuilder) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(13, 11, 13, 9),
-            child: Text(title,
-                style: TextStyle(
-                    color: scheme.onSurface,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800)),
+          const SizedBox(width: 10),
+          Text(
+            trailing,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: scheme.primary,
+                ),
           ),
-          Divider(height: 1, color: scheme.outlineVariant),
-          items.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.all(13),
-                  child: Text('No data recorded for this period.',
-                      style: TextStyle(
-                          color: scheme.onSurface.withValues(alpha: .55),
-                          fontSize: 12)))
-              : Column(
-                  children: items.map((item) => itemBuilder(item)).toList()),
         ],
       ),
     );

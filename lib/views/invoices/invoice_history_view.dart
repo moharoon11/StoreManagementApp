@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+
 import '../../config/api_config.dart';
 import '../../services/api_service.dart';
 import '../../services/invoice_pdf_service.dart';
 import '../../utils/quantity_utils.dart';
+import '../../widgets/workspace_ui.dart';
 
 class InvoiceHistoryView extends StatefulWidget {
-  const InvoiceHistoryView({Key? key}) : super(key: key);
+  const InvoiceHistoryView({super.key});
 
   @override
   State<InvoiceHistoryView> createState() => _InvoiceHistoryViewState();
@@ -37,8 +39,10 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
 
   Future<void> _fetchInvoices() async {
     try {
-      final res = await ApiService.get(ApiConfig.invoices,
-          queryParameters: {'pageSize': '100'});
+      final res = await ApiService.get(
+        ApiConfig.invoices,
+        queryParameters: {'pageSize': '100'},
+      );
       if (res['success'] == true && mounted) {
         _invoices = res['data']['items'] ?? [];
       }
@@ -65,13 +69,10 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Error downloading PDF: $e'),
-              backgroundColor: const Color(0xFFEF4444)),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error downloading PDF: $e')),
+      );
     }
   }
 
@@ -80,282 +81,200 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _SaleDetailModal(
+      builder: (_) => _SaleDetailModal(
         invoice: invoice,
         onUpdated: _loadData,
         onPdfRequested: () =>
-            _downloadPdf(invoice['id'], invoice['invoiceNumber'] ?? '1'),
+            _downloadPdf(invoice['id'] as int, invoice['invoiceNumber'] ?? '1'),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(
-          0xFFE0F2FE), // Modern light blue background matching screenshot
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        title: const Text(
-          'Sale Report',
-          style: TextStyle(
-              color: Color(0xFF0F172A),
-              fontWeight: FontWeight.bold,
-              fontSize: 18),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF2563EB)),
-            onPressed: _loadData,
-            tooltip: 'Refresh',
+    return WorkspacePage(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PageIntro(
+            eyebrow: 'Invoices',
+            title: 'Sales history',
+            description:
+                'Track transactions, revisit customer details, and download invoice PDFs from a more compact ledger view.',
+            action: OutlinedButton.icon(
+              onPressed: _loadData,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Refresh'),
+            ),
           ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF2563EB)))
-          : Column(
-              children: [
-                // Top Date Filter Bar
-                Container(
-                  color: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFCBD5E1)),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Row(
-                          children: [
-                            Text('This Month',
-                                style: TextStyle(
-                                    color: Color(0xFF2563EB),
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13)),
-                            SizedBox(width: 4),
-                            Icon(Icons.keyboard_arrow_down,
-                                color: Color(0xFF2563EB), size: 18),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.calendar_month_outlined,
-                          color: Color(0xFF2563EB), size: 20),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '${DateTime.now().year}-08-01 TO ${DateTime.now().year}-08-31',
-                          style: const TextStyle(
-                              color: Color(0xFF475569),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Metric summary cards
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      _metricCard('No of Txns',
-                          '${_summary['totalTransactions'] ?? _invoices.length}'),
-                      const SizedBox(width: 8),
-                      _metricCard('Total Sale',
-                          '₹ ${((_summary['totalSale'] ?? 0.0) as num).toStringAsFixed(2)}'),
-                      const SizedBox(width: 8),
-                      _metricCard('Balance Due',
-                          '₹ ${((_summary['balanceDue'] ?? 0.0) as num).toStringAsFixed(2)}',
-                          isDue: true),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Invoices List
-                Expanded(
-                  child: _invoices.isEmpty
-                      ? const Center(
-                          child: Text('No sales records found.',
-                              style: TextStyle(
-                                  color: Color(0xFF64748B),
-                                  fontWeight: FontWeight.w500)))
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 4),
+          const SizedBox(height: 16),
+          AdaptiveWrapGrid(
+            minItemWidth: 190,
+            children: [
+              StatTile(
+                label: 'Transactions',
+                value:
+                    '${_summary['totalTransactions'] ?? _invoices.length}',
+                icon: Icons.receipt_long_outlined,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              StatTile(
+                label: 'Total sale',
+                value:
+                    '₹${((_summary['totalSale'] ?? 0.0) as num).toStringAsFixed(2)}',
+                icon: Icons.payments_outlined,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+              StatTile(
+                label: 'Balance due',
+                value:
+                    '₹${((_summary['balanceDue'] ?? 0.0) as num).toStringAsFixed(2)}',
+                icon: Icons.account_balance_wallet_outlined,
+                color: Theme.of(context).colorScheme.tertiary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: SectionPanel(
+              title: 'Invoice ledger',
+              subtitle: 'Tap an invoice to edit details, review items, or save the PDF.',
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 220,
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : _invoices.isEmpty
+                      ? const EmptyCanvas(
+                          icon: Icons.receipt_long_outlined,
+                          title: 'No sales records found',
+                          detail:
+                              'Completed checkouts will appear here automatically.',
+                        )
+                      : ListView.separated(
                           itemCount: _invoices.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
-                            final inv = _invoices[index];
-                            final custName =
-                                (inv['customerName'] ?? '').toString().trim();
-                            final nameDisplay =
-                                custName.isEmpty || custName == 'NO_NAME'
-                                    ? 'Walk-in Customer'
-                                    : custName;
-                            final totalAmt =
-                                (inv['grandTotal'] as num?)?.toDouble() ?? 0.0;
-                            final balDue =
-                                (inv['balanceDue'] as num?)?.toDouble() ?? 0.0;
-                            // New invoices expose the selected invoice date;
-                            // keep the audit timestamp as a fallback for older records.
-                            final dateStr =
-                                (inv['invoiceDate'] ?? inv['createdAt'] ?? '')
-                                    .toString();
-                            final dateFormatted = dateStr.contains('T')
-                                ? dateStr.split('T').first
-                                : dateStr;
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                border:
-                                    Border.all(color: const Color(0xFFE2E8F0)),
-                                boxShadow: [
-                                  BoxShadow(
-                                      color: Colors.black.withOpacity(0.02),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2)),
-                                ],
-                              ),
-                              child: InkWell(
-                                onTap: () => _openSaleEditModal(inv),
-                                borderRadius: BorderRadius.circular(10),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            nameDisplay,
-                                            style: const TextStyle(
-                                                color: Color(0xFF0F172A),
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 15),
-                                          ),
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              Text(
-                                                'SALE ${inv['id']}',
-                                                style: const TextStyle(
-                                                    color: Color(0xFF94A3B8),
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 11),
-                                              ),
-                                              Text(
-                                                dateFormatted,
-                                                style: const TextStyle(
-                                                    color: Color(0xFF94A3B8),
-                                                    fontSize: 11),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const Text('Amount',
-                                                  style: TextStyle(
-                                                      color: Color(0xFF94A3B8),
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w600)),
-                                              Text(
-                                                  '₹ ${totalAmt.toStringAsFixed(2)}',
-                                                  style: const TextStyle(
-                                                      color: Color(0xFF1E293B),
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 14)),
-                                            ],
-                                          ),
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              const Text('Balance',
-                                                  style: TextStyle(
-                                                      color: Color(0xFF94A3B8),
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w600)),
-                                              Text(
-                                                '₹ ${balDue.toStringAsFixed(2)}',
-                                                style: TextStyle(
-                                                  color: balDue > 0
-                                                      ? const Color(0xFFEF4444)
-                                                      : const Color(0xFF10B981),
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                            final invoice =
+                                Map<String, dynamic>.from(_invoices[index] as Map);
+                            return _InvoiceCard(
+                              invoice: invoice,
+                              onTap: () => _openSaleEditModal(invoice),
                             );
                           },
                         ),
-                ),
-              ],
             ),
+          ),
+        ],
+      ),
     );
   }
+}
 
-  Widget _metricCard(String label, String val, {bool isDue = false}) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text(
-              val,
-              style: TextStyle(
-                color:
-                    isDue ? const Color(0xFF10B981) : const Color(0xFF0F172A),
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ],
+class _InvoiceCard extends StatelessWidget {
+  const _InvoiceCard({
+    required this.invoice,
+    required this.onTap,
+  });
+
+  final Map<String, dynamic> invoice;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final customerName = (invoice['customerName'] ?? '').toString().trim();
+    final nameDisplay = customerName.isEmpty || customerName == 'NO_NAME'
+        ? 'Walk-in customer'
+        : customerName;
+    final totalAmount =
+        (invoice['grandTotal'] as num?)?.toDouble() ?? 0.0;
+    final balanceDue = (invoice['balanceDue'] as num?)?.toDouble() ?? 0.0;
+    final dateStr = (invoice['invoiceDate'] ?? invoice['createdAt'] ?? '')
+        .toString();
+    final dateFormatted =
+        dateStr.contains('T') ? dateStr.split('T').first : dateStr;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest.withValues(alpha: .18),
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 540;
+              final amountText =
+                  '₹${totalAmount.toStringAsFixed(2)}';
+              final balanceText =
+                  '₹${balanceDue.toStringAsFixed(2)}';
+
+              Widget amountColumn() => Column(
+                    crossAxisAlignment: narrow
+                        ? CrossAxisAlignment.start
+                        : CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        amountText,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 6),
+                      StatusPill(
+                        label: balanceDue > 0
+                            ? 'Due $balanceText'
+                            : 'Fully paid',
+                        color: balanceDue > 0 ? scheme.error : scheme.secondary,
+                      ),
+                    ],
+                  );
+
+              if (narrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(nameDisplay, style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Sale ${invoice['id']} · $dateFormatted',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurface.withValues(alpha: .6),
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    amountColumn(),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(nameDisplay,
+                            style: Theme.of(context).textTheme.titleSmall),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Sale ${invoice['id']} · $dateFormatted',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurface.withValues(alpha: .6),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  amountColumn(),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -363,15 +282,15 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
 }
 
 class _SaleDetailModal extends StatefulWidget {
-  final Map<String, dynamic> invoice;
-  final VoidCallback onUpdated;
-  final VoidCallback onPdfRequested;
-
   const _SaleDetailModal({
     required this.invoice,
     required this.onUpdated,
     required this.onPdfRequested,
   });
+
+  final Map<String, dynamic> invoice;
+  final VoidCallback onUpdated;
+  final VoidCallback onPdfRequested;
 
   @override
   State<_SaleDetailModal> createState() => _SaleDetailModalState();
@@ -387,20 +306,21 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
   @override
   void initState() {
     super.initState();
-    final custName = (widget.invoice['customerName'] ?? '').toString();
+    final customerName = (widget.invoice['customerName'] ?? '').toString();
     _nameController =
-        TextEditingController(text: custName == 'NO_NAME' ? '' : custName);
+        TextEditingController(text: customerName == 'NO_NAME' ? '' : customerName);
     _mobileController = TextEditingController(
-        text: (widget.invoice['customerMobileNumber'] ?? '').toString());
+      text: (widget.invoice['customerMobileNumber'] ?? '').toString(),
+    );
 
     final grandTotal =
         (widget.invoice['grandTotal'] as num?)?.toDouble() ?? 0.0;
-    final amtRec =
+    final amountReceived =
         (widget.invoice['amountReceived'] as num?)?.toDouble() ?? grandTotal;
     _isReceived =
-        (widget.invoice['isReceived'] as bool?) ?? (amtRec >= grandTotal);
+        (widget.invoice['isReceived'] as bool?) ?? (amountReceived >= grandTotal);
     _amountReceivedController =
-        TextEditingController(text: amtRec.toStringAsFixed(2));
+        TextEditingController(text: amountReceived.toStringAsFixed(2));
   }
 
   @override
@@ -416,44 +336,36 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
     try {
       final grandTotal =
           (widget.invoice['grandTotal'] as num?)?.toDouble() ?? 0.0;
-      final amtRec = double.tryParse(_amountReceivedController.text) ??
+      final amountReceived = double.tryParse(_amountReceivedController.text) ??
           (_isReceived ? grandTotal : 0.0);
 
       final res = await ApiService.put(
-          '${ApiConfig.invoices}/${widget.invoice['id']}', {
-        'customerName': _nameController.text.trim(),
-        'customerMobileNumber': _mobileController.text.trim(),
-        'isReceived': _isReceived,
-        'amountReceived': amtRec,
-      });
+        '${ApiConfig.invoices}/${widget.invoice['id']}',
+        {
+          'customerName': _nameController.text.trim(),
+          'customerMobileNumber': _mobileController.text.trim(),
+          'isReceived': _isReceived,
+          'amountReceived': amountReceived,
+        },
+      );
 
       if (res['success'] == true) {
         widget.onUpdated();
-        if (mounted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Sale updated successfully!'),
-                backgroundColor: Color(0xFF10B981)),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(res['message'] ?? 'Failed to update sale.'),
-                backgroundColor: const Color(0xFFEF4444)),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
+        if (!mounted) return;
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Error: $e'),
-              backgroundColor: const Color(0xFFEF4444)),
+          const SnackBar(content: Text('Sale updated successfully!')),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? 'Failed to update sale.')),
         );
       }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -463,17 +375,17 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Sale'),
-        content:
-            const Text('Are you sure you want to delete this sale invoice?'),
+        title: const Text('Delete sale'),
+        content: const Text('Are you sure you want to delete this sale invoice?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Delete',
-                  style: TextStyle(color: Color(0xFFEF4444)))),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -482,27 +394,21 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
 
     setState(() => _isSaving = true);
     try {
-      final res = await ApiService.delete(
-          '${ApiConfig.invoices}/${widget.invoice['id']}');
+      final res =
+          await ApiService.delete('${ApiConfig.invoices}/${widget.invoice['id']}');
       if (res['success'] == true) {
         widget.onUpdated();
-        if (mounted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Sale deleted.'),
-                backgroundColor: Color(0xFF10B981)),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
+        if (!mounted) return;
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Error deleting: $e'),
-              backgroundColor: const Color(0xFFEF4444)),
+          const SnackBar(content: Text('Sale deleted.')),
         );
       }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting: $e')),
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -512,234 +418,109 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
   Widget build(BuildContext context) {
     final grandTotal =
         (widget.invoice['grandTotal'] as num?)?.toDouble() ?? 0.0;
-    final amtRec = double.tryParse(_amountReceivedController.text) ??
+    final amountReceived = double.tryParse(_amountReceivedController.text) ??
         (_isReceived ? grandTotal : 0.0);
-    final balanceDue = (grandTotal - amtRec).clamp(0.0, double.infinity);
+    final balanceDue = (grandTotal - amountReceived).clamp(0.0, double.infinity);
     final items = (widget.invoice['items'] as List?) ?? [];
+    final scheme = Theme.of(context).colorScheme;
+    final wide = MediaQuery.sizeOf(context).width >= 860;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.9,
-      decoration: const BoxDecoration(
-        color: Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      height: MediaQuery.sizeOf(context).height * .92,
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
         children: [
-          // AppBar / Header matching Screenshot 1
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
             child: Row(
               children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF0F172A)),
-                  onPressed: () => Navigator.pop(context),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Sale ${widget.invoice['id']}',
+                          style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 4),
+                      Text(
+                        (widget.invoice['invoiceDate'] ?? widget.invoice['createdAt'] ?? '')
+                            .toString()
+                            .split('T')
+                            .first,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurface.withValues(alpha: .62),
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
-                const Text('Sale',
-                    style: TextStyle(
-                        color: Color(0xFF0F172A),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18)),
-                const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.picture_as_pdf_outlined,
-                      color: Color(0xFFEF4444)),
                   onPressed: widget.onPdfRequested,
-                  tooltip: 'PDF',
+                  icon: Icon(Icons.picture_as_pdf_outlined, color: scheme.error),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
-          // Content Scroll
+          Divider(height: 1, color: scheme.outlineVariant),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Invoice No & Date row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Invoice No. ${widget.invoice['id']}',
-                          style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13)),
-                      Text(
-                          'Date: ${(widget.invoice['createdAt'] ?? '').toString().split('T').first}',
-                          style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Customer inputs card
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TextFormField(
-                          controller: _nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Customer Name *',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        TextFormField(
-                          controller: _mobileController,
-                          keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(
-                            labelText: 'Phone Number',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Billed Items card
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF60A5FA),
-                            borderRadius:
-                                BorderRadius.vertical(top: Radius.circular(9)),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.check_circle,
-                                  color: Colors.white, size: 16),
-                              SizedBox(width: 6),
-                              Text('Billed Items',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                        ...items.asMap().entries.map((entry) {
-                          final idx = entry.key + 1;
-                          final item = entry.value;
-                          final price =
-                              (item['sellingPrice'] as num?)?.toDouble() ?? 0.0;
-                          final qty = quantityValue(item['quantity']);
-                          final unit = item['unit'] ?? 'Piece';
-                          final total = (item['total'] as num?)?.toDouble() ??
-                              (price * qty);
-
-                          return Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                  bottom: BorderSide(color: Color(0xFFF1F5F9))),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                      color: const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(4)),
-                                  child: Text('#$idx',
-                                      style: const TextStyle(
-                                          color: Color(0xFF64748B),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11)),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(item['productName'] ?? 'Item',
-                                          style: const TextStyle(
-                                              color: Color(0xFF0F172A),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14)),
-                                      Text(
-                                          'Item Subtotal: ${formatQuantity(qty)} $unit × ₹$price = ₹$total',
-                                          style: const TextStyle(
-                                              color: Color(0xFF64748B),
-                                              fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                                Text('₹ $total',
-                                    style: const TextStyle(
-                                        color: Color(0xFF0F172A),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14)),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Totals card
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 980),
+                  child: wide
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Total Amount',
-                                style: TextStyle(
-                                    color: Color(0xFF0F172A),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14)),
-                            Text('₹ ${grandTotal.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                    color: Color(0xFF0F172A),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16)),
+                            Expanded(
+                              child: _SaleMetaPanel(
+                                nameController: _nameController,
+                                mobileController: _mobileController,
+                                amountReceivedController: _amountReceivedController,
+                                isReceived: _isReceived,
+                                grandTotal: grandTotal,
+                                balanceDue: balanceDue,
+                                onChangedReceived: (value) {
+                                  setState(() {
+                                    _isReceived = value;
+                                    if (_isReceived) {
+                                      _amountReceivedController.text =
+                                          grandTotal.toStringAsFixed(2);
+                                    } else {
+                                      _amountReceivedController.text = '0.00';
+                                    }
+                                  });
+                                },
+                                onAmountChanged: () => setState(() {}),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _ItemLedgerPanel(
+                                items: items,
+                                grandTotal: grandTotal,
+                              ),
+                            ),
                           ],
-                        ),
-                        const Divider(height: 20),
-                        Row(
+                        )
+                      : Column(
                           children: [
-                            Checkbox(
-                              value: _isReceived,
-                              activeColor: const Color(0xFF2563EB),
-                              onChanged: (val) {
+                            _SaleMetaPanel(
+                              nameController: _nameController,
+                              mobileController: _mobileController,
+                              amountReceivedController: _amountReceivedController,
+                              isReceived: _isReceived,
+                              grandTotal: grandTotal,
+                              balanceDue: balanceDue,
+                              onChangedReceived: (value) {
                                 setState(() {
-                                  _isReceived = val ?? true;
+                                  _isReceived = value;
                                   if (_isReceived) {
                                     _amountReceivedController.text =
                                         grandTotal.toStringAsFixed(2);
@@ -748,108 +529,233 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
                                   }
                                 });
                               },
+                              onAmountChanged: () => setState(() {}),
                             ),
-                            const Text('Received',
-                                style: TextStyle(
-                                    color: Color(0xFF0F172A),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14)),
-                            const Spacer(),
-                            SizedBox(
-                              width: 120,
-                              height: 38,
-                              child: TextField(
-                                controller: _amountReceivedController,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                style: const TextStyle(
-                                    color: Color(0xFF0F172A),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14),
-                                onChanged: (v) => setState(() {}),
-                                decoration: const InputDecoration(
-                                  prefixText: '₹ ',
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
+                            const SizedBox(height: 16),
+                            _ItemLedgerPanel(
+                              items: items,
+                              grandTotal: grandTotal,
                             ),
                           ],
                         ),
-                        const Divider(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Balance Due',
-                                style: TextStyle(
-                                    color: Color(0xFF10B981),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14)),
-                            Text(
-                              '₹ ${balanceDue.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                color: balanceDue > 0
-                                    ? const Color(0xFFEF4444)
-                                    : const Color(0xFF10B981),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isSaving ? null : _deleteInvoice,
+                      child: const Text('Delete'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _isSaving ? null : _saveChanges,
+                      child: _isSaving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Save changes'),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          // Bottom Actions matching Screenshot 1 (Delete & Edit)
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _isSaving ? null : _deleteInvoice,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFEF4444),
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+        ],
+      ),
+    );
+  }
+}
+
+class _SaleMetaPanel extends StatelessWidget {
+  const _SaleMetaPanel({
+    required this.nameController,
+    required this.mobileController,
+    required this.amountReceivedController,
+    required this.isReceived,
+    required this.grandTotal,
+    required this.balanceDue,
+    required this.onChangedReceived,
+    required this.onAmountChanged,
+  });
+
+  final TextEditingController nameController;
+  final TextEditingController mobileController;
+  final TextEditingController amountReceivedController;
+  final bool isReceived;
+  final double grandTotal;
+  final double balanceDue;
+  final ValueChanged<bool> onChangedReceived;
+  final VoidCallback onAmountChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SectionPanel(
+          title: 'Customer details',
+          child: Column(
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Customer name'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: mobileController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Phone number'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SectionPanel(
+          title: 'Payment summary',
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Total amount'),
+                  Text(
+                    '₹${grandTotal.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Checkbox(
+                    value: isReceived,
+                    onChanged: (value) => onChangedReceived(value ?? true),
+                  ),
+                  const Text('Received'),
+                  const Spacer(),
+                  SizedBox(
+                    width: 140,
+                    child: TextField(
+                      controller: amountReceivedController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => onAmountChanged(),
+                      decoration: const InputDecoration(
+                        prefixText: '₹ ',
+                        labelText: 'Amount',
+                      ),
                     ),
-                    child: const Text('Delete',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Balance due'),
+                  StatusPill(
+                    label: '₹${balanceDue.toStringAsFixed(2)}',
+                    color: balanceDue > 0
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.secondary,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ItemLedgerPanel extends StatelessWidget {
+  const _ItemLedgerPanel({
+    required this.items,
+    required this.grandTotal,
+  });
+
+  final List<dynamic> items;
+  final double grandTotal;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionPanel(
+      title: 'Item ledger',
+      subtitle: '${items.length} billed item type${items.length == 1 ? '' : 's'}',
+      child: Column(
+        children: [
+          if (items.isEmpty)
+            const Text('No line items were stored for this sale.')
+          else
+            ...items.map((entry) {
+              final item = entry as Map;
+              final price =
+                  (item['sellingPrice'] as num?)?.toDouble() ?? 0.0;
+              final qty = quantityValue(item['quantity']);
+              final total =
+                  (item['total'] as num?)?.toDouble() ?? (price * qty);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: .18),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              (item['productName'] ?? 'Item').toString(),
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${formatQuantity(qty)} ${item['unit'] ?? 'Piece'} × ₹${price.toStringAsFixed(2)}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '₹${total.toStringAsFixed(2)}',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _isSaving ? null : _saveChanges,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0091FF),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2))
-                        : const Text('Edit',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 15)),
-                  ),
-                ),
-              ],
-            ),
+              );
+            }),
+          const SizedBox(height: 4),
+          Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Grand total'),
+              Text(
+                '₹${grandTotal.toStringAsFixed(2)}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ],
           ),
         ],
       ),

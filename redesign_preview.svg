@@ -1,0 +1,337 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="120" y1="40" x2="1480" y2="1120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F6F0E7"/>
+      <stop offset="1" stop-color="#E8E0D2"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="540" y1="210" x2="1180" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2A2F35"/>
+      <stop offset="1" stop-color="#454038"/>
+    </linearGradient>
+    <linearGradient id="mobileHero" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#23313A"/>
+      <stop offset="1" stop-color="#55685B"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#6D5B46" flood-opacity="0.14"/>
+    </filter>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#4B3C2B" flood-opacity="0.08"/>
+    </filter>
+    <style>
+      .eyebrow { font: 700 14px Arial, sans-serif; letter-spacing: 3px; fill: #8A6A46; }
+      .heroTitle { font: 700 52px Georgia, "Times New Roman", serif; fill: #1E2326; }
+      .lead { font: 400 18px Arial, sans-serif; fill: #5E615D; }
+      .small { font: 600 13px Arial, sans-serif; fill: #7A746B; }
+      .chip { font: 700 12px Arial, sans-serif; fill: #1F2428; }
+      .frameLabel { font: 700 14px Arial, sans-serif; fill: #615F58; letter-spacing: 1px; }
+      .navText { font: 600 13px Arial, sans-serif; fill: #C7C0B3; }
+      .navTextSelected { font: 700 13px Arial, sans-serif; fill: #1E2326; }
+      .sectionTitle { font: 700 28px Georgia, "Times New Roman", serif; fill: #FAF5EE; }
+      .sectionNote { font: 400 14px Arial, sans-serif; fill: #D9D3C8; }
+      .panelTitle { font: 700 18px Georgia, "Times New Roman", serif; fill: #1E2326; }
+      .panelBody { font: 400 13px Arial, sans-serif; fill: #706A62; }
+      .metricLabel { font: 700 11px Arial, sans-serif; letter-spacing: 1.3px; fill: #867F74; }
+      .metricValue { font: 700 28px Georgia, "Times New Roman", serif; fill: #1E2326; }
+      .metricNote { font: 600 12px Arial, sans-serif; fill: #667868; }
+      .listTitle { font: 700 13px Arial, sans-serif; fill: #1F2427; }
+      .listMeta { font: 400 12px Arial, sans-serif; fill: #7B756B; }
+      .price { font: 700 17px Georgia, "Times New Roman", serif; fill: #1E2326; }
+      .stock { font: 700 11px Arial, sans-serif; fill: #5A725E; }
+      .mobileHeading { font: 700 20px Georgia, "Times New Roman", serif; fill: #F8F2EA; }
+      .mobileText { font: 400 12px Arial, sans-serif; fill: #E5DED3; }
+      .mobileDark { font: 700 13px Arial, sans-serif; fill: #1E2326; }
+      .mobileMuted { font: 400 11px Arial, sans-serif; fill: #726B61; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1180" fill="url(#bg)"/>
+  <circle cx="150" cy="145" r="110" fill="#FFFFFF" opacity="0.38"/>
+  <circle cx="1420" cy="1040" r="160" fill="#DCCAAF" opacity="0.25"/>
+  <circle cx="1360" cy="120" r="150" fill="#F5EADD" opacity="0.65"/>
+
+  <g transform="translate(88 90)">
+    <text class="eyebrow">REDESIGN PREVIEW</text>
+    <text class="heroTitle" x="0" y="68">Nexora Commerce, reimagined.</text>
+    <text class="lead" x="0" y="112">A calmer, more premium workspace with direct entry, stronger hierarchy,</text>
+    <text class="lead" x="0" y="140">and safer responsive catalogue screens that do not squeeze product cards.</text>
+
+    <g transform="translate(0 178)">
+      <rect x="0" y="0" width="180" height="38" rx="19" fill="#1F2428"/>
+      <text class="chip" x="90" y="24" text-anchor="middle" fill="#F7F2EA">WELCOME SCREEN REMOVED</text>
+    </g>
+    <g transform="translate(194 178)">
+      <rect x="0" y="0" width="170" height="38" rx="19" fill="#F0E4D1" stroke="#D1C2AD"/>
+      <text class="chip" x="85" y="24" text-anchor="middle" fill="#846341">EDITORIAL LAYOUT</text>
+    </g>
+    <g transform="translate(378 178)">
+      <rect x="0" y="0" width="190" height="38" rx="19" fill="#E4ECE5" stroke="#B6C4B8"/>
+      <text class="chip" x="95" y="24" text-anchor="middle" fill="#496051">RESPONSIVE PRODUCT GRID</text>
+    </g>
+
+    <text class="frameLabel" x="0" y="282">Palette</text>
+    <g transform="translate(0 300)">
+      <rect x="0" y="0" width="72" height="20" rx="10" fill="#1F2428"/>
+      <rect x="84" y="0" width="72" height="20" rx="10" fill="#F7F2EA"/>
+      <rect x="168" y="0" width="72" height="20" rx="10" fill="#A67C52"/>
+      <rect x="252" y="0" width="72" height="20" rx="10" fill="#607567"/>
+      <rect x="336" y="0" width="72" height="20" rx="10" fill="#D8CEBF"/>
+    </g>
+  </g>
+
+  <text class="frameLabel" x="324" y="132">DESKTOP HOME</text>
+  <g filter="url(#shadow)">
+    <rect x="320" y="150" width="930" height="478" rx="34" fill="#1E2328"/>
+    <rect x="336" y="166" width="898" height="446" rx="28" fill="#F7F2EA"/>
+  </g>
+
+  <g transform="translate(360 198)">
+    <rect width="214" height="382" rx="28" fill="#20252D"/>
+    <rect x="18" y="18" width="178" height="76" rx="20" fill="#2B313A"/>
+    <circle cx="48" cy="56" r="18" fill="#A67C52"/>
+    <text class="listTitle" x="76" y="47" fill="#F6F0E7">Nexora Market</text>
+    <text class="listMeta" x="76" y="66" fill="#C2BAAE">Operational workspace</text>
+    <rect x="18" y="116" width="178" height="42" rx="16" fill="#EDE1CE"/>
+    <circle cx="38" cy="137" r="9" fill="#A67C52"/>
+    <text class="navTextSelected" x="58" y="142">Home</text>
+    <g transform="translate(18 172)">
+      <circle cx="20" cy="14" r="9" fill="#36404C"/>
+      <text class="navText" x="40" y="19">Sell</text>
+      <circle cx="20" cy="54" r="9" fill="#36404C"/>
+      <text class="navText" x="40" y="59">Products</text>
+      <circle cx="20" cy="94" r="9" fill="#36404C"/>
+      <text class="navText" x="40" y="99">Categories</text>
+      <circle cx="20" cy="134" r="9" fill="#36404C"/>
+      <text class="navText" x="40" y="139">Invoices</text>
+      <circle cx="20" cy="174" r="9" fill="#36404C"/>
+      <text class="navText" x="40" y="179">Stock</text>
+      <circle cx="20" cy="214" r="9" fill="#36404C"/>
+      <text class="navText" x="40" y="219">Insights</text>
+      <circle cx="20" cy="254" r="9" fill="#36404C"/>
+      <text class="navText" x="40" y="259">Business</text>
+    </g>
+    <rect x="18" y="316" width="178" height="48" rx="18" fill="#2A322E"/>
+    <text class="listMeta" x="36" y="338" fill="#C8D4CA">Low stock warning</text>
+    <text class="listTitle" x="36" y="357" fill="#EFF6F0">4 items need attention</text>
+  </g>
+
+  <g transform="translate(602 198)">
+    <rect x="0" y="8" width="330" height="42" rx="21" fill="#FFFFFF" stroke="#D8CEBF"/>
+    <circle cx="24" cy="29" r="8" fill="#CDB89A"/>
+    <text class="panelBody" x="42" y="34">Search products, invoices, or tasks</text>
+    <rect x="516" y="8" width="112" height="42" rx="21" fill="#1F2428"/>
+    <text class="chip" x="572" y="34" text-anchor="middle" fill="#F6F0E7">NEW SALE</text>
+    <text class="small" x="0" y="76">Friday, September 11</text>
+    <text class="panelTitle" x="0" y="106">The workspace opens directly here after login.</text>
+    <text class="panelBody" x="0" y="128">No welcome step, no extra tap. The app starts on a clearer command view.</text>
+
+    <g filter="url(#softShadow)">
+      <rect x="0" y="150" width="628" height="112" rx="26" fill="url(#hero)"/>
+    </g>
+    <text class="sectionTitle" x="26" y="190">Daily Control Room</text>
+    <text class="sectionNote" x="26" y="214">Elegant analytics, faster actions, less chrome, more breathing room.</text>
+    <rect x="26" y="232" width="118" height="40" rx="20" fill="#EFE2CD"/>
+    <text class="chip" x="85" y="257" text-anchor="middle" fill="#5E4529">CREATE INVOICE</text>
+    <rect x="156" y="232" width="122" height="40" rx="20" fill="#314036"/>
+    <text class="chip" x="217" y="257" text-anchor="middle" fill="#EAF0EB">REVIEW STOCK</text>
+    <text class="sectionNote" x="512" y="191">Today</text>
+    <text class="sectionTitle" x="512" y="223">Rs 42,650</text>
+    <text class="sectionNote" x="512" y="246">up 8.2 percent from yesterday</text>
+
+    <g transform="translate(0 286)">
+      <rect width="146" height="94" rx="22" fill="#FFFFFF" stroke="#D8CEBF"/>
+      <text class="metricLabel" x="18" y="26">TODAY SALES</text>
+      <text class="metricValue" x="18" y="58">Rs 42.6k</text>
+      <text class="metricNote" x="18" y="78">+12 invoices</text>
+    </g>
+    <g transform="translate(160 286)">
+      <rect width="146" height="94" rx="22" fill="#FFFFFF" stroke="#D8CEBF"/>
+      <text class="metricLabel" x="18" y="26">PRODUCTS</text>
+      <text class="metricValue" x="18" y="58">318</text>
+      <text class="metricNote" x="18" y="78">42 favourites</text>
+    </g>
+    <g transform="translate(320 286)">
+      <rect width="146" height="94" rx="22" fill="#FFFFFF" stroke="#D8CEBF"/>
+      <text class="metricLabel" x="18" y="26">LOW STOCK</text>
+      <text class="metricValue" x="18" y="58">4</text>
+      <text class="metricNote" x="18" y="78">watch this afternoon</text>
+    </g>
+    <g transform="translate(480 286)">
+      <rect width="148" height="94" rx="22" fill="#FFFFFF" stroke="#D8CEBF"/>
+      <text class="metricLabel" x="18" y="26">AVERAGE BILL</text>
+      <text class="metricValue" x="18" y="58">Rs 1,930</text>
+      <text class="metricNote" x="18" y="78">steady week trend</text>
+    </g>
+
+    <g transform="translate(0 398)">
+      <rect width="292" height="166" rx="24" fill="#FFFFFF" stroke="#D8CEBF"/>
+      <text class="panelTitle" x="18" y="28">Recent invoices</text>
+      <rect x="18" y="44" width="256" height="34" rx="14" fill="#F5EEE2"/>
+      <text class="listTitle" x="32" y="65">INV-2091   Riya Stores</text>
+      <text class="listMeta" x="200" y="65">Rs 4,820</text>
+      <rect x="18" y="86" width="256" height="34" rx="14" fill="#FBF8F2"/>
+      <text class="listTitle" x="32" y="107">INV-2090   Walk-in billing</text>
+      <text class="listMeta" x="200" y="107">Rs 1,360</text>
+      <rect x="18" y="128" width="256" height="20" rx="10" fill="#E8EFE8"/>
+      <text class="chip" x="75" y="142" text-anchor="middle" fill="#4B6151">SYNCED AND READY</text>
+    </g>
+
+    <g transform="translate(308 398)">
+      <rect width="152" height="166" rx="24" fill="#FFFFFF" stroke="#D8CEBF"/>
+      <text class="panelTitle" x="18" y="28">Trend</text>
+      <path d="M22 126 C52 96, 72 112, 96 86 S138 70, 130 48" stroke="#607567" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="22" cy="126" r="5" fill="#607567"/>
+      <circle cx="54" cy="101" r="5" fill="#607567"/>
+      <circle cx="87" cy="94" r="5" fill="#607567"/>
+      <circle cx="120" cy="60" r="5" fill="#A67C52"/>
+      <text class="listMeta" x="18" y="148">Last 7 days</text>
+    </g>
+
+    <g transform="translate(476 398)">
+      <rect width="152" height="166" rx="24" fill="#FFFFFF" stroke="#D8CEBF"/>
+      <text class="panelTitle" x="18" y="28">Stock watch</text>
+      <rect x="18" y="44" width="116" height="26" rx="13" fill="#F5EEE2"/>
+      <text class="listTitle" x="30" y="61">Masala Tea</text>
+      <text class="listMeta" x="30" y="85">5 boxes left</text>
+      <rect x="18" y="98" width="116" height="26" rx="13" fill="#F0F5F1"/>
+      <text class="listTitle" x="30" y="115">Rice Flour</text>
+      <text class="listMeta" x="30" y="139">12 kg left</text>
+    </g>
+  </g>
+
+  <text class="frameLabel" x="324" y="656">CATEGORIES AND PRODUCTS</text>
+  <g filter="url(#shadow)">
+    <rect x="320" y="674" width="930" height="398" rx="34" fill="#1E2328"/>
+    <rect x="336" y="690" width="898" height="366" rx="28" fill="#F7F2EA"/>
+  </g>
+
+  <g transform="translate(364 718)">
+    <rect width="190" height="310" rx="26" fill="#FFFFFF" stroke="#D8CEBF"/>
+    <text class="panelTitle" x="20" y="30">Category library</text>
+    <rect x="20" y="48" width="150" height="34" rx="17" fill="#FBF8F2" stroke="#D8CEBF"/>
+    <text class="panelBody" x="36" y="69">Search categories</text>
+    <rect x="20" y="98" width="150" height="52" rx="18" fill="#EFE2CD"/>
+    <text class="listTitle" x="36" y="122">Beverages</text>
+    <text class="listMeta" x="36" y="140">26 products</text>
+    <rect x="20" y="162" width="150" height="52" rx="18" fill="#FBF8F2"/>
+    <text class="listTitle" x="36" y="186">Snacks</text>
+    <text class="listMeta" x="36" y="204">43 products</text>
+    <rect x="20" y="226" width="150" height="52" rx="18" fill="#FBF8F2"/>
+    <text class="listTitle" x="36" y="250">Dairy</text>
+    <text class="listMeta" x="36" y="268">18 products</text>
+  </g>
+
+  <g transform="translate(580 718)">
+    <text class="panelTitle" x="0" y="28">Catalogue by category</text>
+    <text class="panelBody" x="0" y="48">The rail is gone. Categories become a proper panel on desktop and chips on mobile.</text>
+    <rect x="0" y="66" width="220" height="36" rx="18" fill="#FFFFFF" stroke="#D8CEBF"/>
+    <text class="panelBody" x="18" y="88">Search inside Beverages</text>
+    <rect x="236" y="66" width="92" height="36" rx="18" fill="#1F2428"/>
+    <text class="chip" x="282" y="88" text-anchor="middle" fill="#F7F2EA">FILTERS</text>
+    <rect x="340" y="66" width="104" height="36" rx="18" fill="#E5EEE7" stroke="#B9C6BB"/>
+    <text class="chip" x="392" y="88" text-anchor="middle" fill="#4C6353">IN STOCK</text>
+    <rect x="456" y="66" width="104" height="36" rx="18" fill="#F2E8D8" stroke="#D7C8AE"/>
+    <text class="chip" x="508" y="88" text-anchor="middle" fill="#7E613C">ADD PRODUCT</text>
+
+    <g transform="translate(0 122)">
+      <g>
+        <rect width="180" height="188" rx="22" fill="#FFFFFF" stroke="#D8CEBF"/>
+        <rect x="14" y="14" width="152" height="92" rx="18" fill="#EFE7DA"/>
+        <rect x="26" y="32" width="56" height="56" rx="18" fill="#D8C5AB"/>
+        <text class="listTitle" x="14" y="128">Cold Brew Bottle</text>
+        <text class="listMeta" x="14" y="148">350 ml glass bottle</text>
+        <text class="price" x="14" y="173">Rs 220</text>
+        <rect x="116" y="155" width="50" height="24" rx="12" fill="#E8EFE8"/>
+        <text class="stock" x="141" y="171" text-anchor="middle">8 left</text>
+      </g>
+      <g transform="translate(194 0)">
+        <rect width="180" height="188" rx="22" fill="#FFFFFF" stroke="#D8CEBF"/>
+        <rect x="14" y="14" width="152" height="92" rx="18" fill="#EEE5D5"/>
+        <rect x="26" y="32" width="56" height="56" rx="18" fill="#C7D4CC"/>
+        <text class="listTitle" x="14" y="128">Green Tea Pack</text>
+        <text class="listMeta" x="14" y="148">25 sachets</text>
+        <text class="price" x="14" y="173">Rs 180</text>
+        <rect x="116" y="155" width="50" height="24" rx="12" fill="#E8EFE8"/>
+        <text class="stock" x="141" y="171" text-anchor="middle">14 left</text>
+      </g>
+      <g transform="translate(388 0)">
+        <rect width="180" height="188" rx="22" fill="#FFFFFF" stroke="#D8CEBF"/>
+        <rect x="14" y="14" width="152" height="92" rx="18" fill="#EFE7DA"/>
+        <rect x="26" y="32" width="56" height="56" rx="18" fill="#D9BCA4"/>
+        <text class="listTitle" x="14" y="128">House Blend Coffee</text>
+        <text class="listMeta" x="14" y="148">500 g premium roast</text>
+        <text class="price" x="14" y="173">Rs 460</text>
+        <rect x="116" y="155" width="50" height="24" rx="12" fill="#F4E5DF"/>
+        <text class="stock" x="141" y="171" text-anchor="middle" fill="#9B5D4B">2 left</text>
+      </g>
+    </g>
+  </g>
+
+  <rect x="586" y="1036" width="592" height="36" rx="18" fill="#FFFFFF" stroke="#D8CEBF"/>
+  <text class="chip" x="882" y="1059" text-anchor="middle" fill="#57685A">Cards auto-shift between 3, 2, and 1 columns instead of forcing narrow widths.</text>
+
+  <text class="frameLabel" x="1288" y="170">RESPONSIVE MOBILE</text>
+  <g filter="url(#shadow)">
+    <rect x="1240" y="190" width="262" height="550" rx="42" fill="#1E2328"/>
+    <rect x="1252" y="202" width="238" height="526" rx="34" fill="#F7F2EA"/>
+    <rect x="1330" y="212" width="80" height="16" rx="8" fill="#2C323A"/>
+  </g>
+
+  <g transform="translate(1270 246)">
+    <text class="small" x="0" y="0">Categories</text>
+    <text class="panelTitle" x="0" y="28">Browse faster on mobile</text>
+    <rect x="0" y="48" width="202" height="110" rx="26" fill="url(#mobileHero)"/>
+    <text class="mobileHeading" x="18" y="82">Open straight to work.</text>
+    <text class="mobileText" x="18" y="104">No welcome screen. Filters stay reachable.</text>
+    <rect x="18" y="118" width="86" height="26" rx="13" fill="#ECE0CC"/>
+    <text class="chip" x="61" y="136" text-anchor="middle" fill="#465748">IN STOCK</text>
+
+    <rect x="0" y="176" width="202" height="34" rx="17" fill="#FFFFFF" stroke="#D8CEBF"/>
+    <text class="panelBody" x="18" y="198">Search products</text>
+
+    <rect x="0" y="226" width="64" height="28" rx="14" fill="#EFE2CD"/>
+    <text class="chip" x="32" y="244" text-anchor="middle" fill="#7E613C">Tea</text>
+    <rect x="72" y="226" width="82" height="28" rx="14" fill="#FBF8F2" stroke="#D8CEBF"/>
+    <text class="chip" x="113" y="244" text-anchor="middle" fill="#635E57">Coffee</text>
+    <rect x="162" y="226" width="40" height="28" rx="14" fill="#FBF8F2" stroke="#D8CEBF"/>
+    <text class="chip" x="182" y="244" text-anchor="middle" fill="#635E57">All</text>
+
+    <g transform="translate(0 270)">
+      <rect width="202" height="94" rx="22" fill="#FFFFFF" stroke="#D8CEBF"/>
+      <rect x="14" y="14" width="62" height="66" rx="18" fill="#EFE7DA"/>
+      <text class="mobileDark" x="92" y="32">Cold Brew Bottle</text>
+      <text class="mobileMuted" x="92" y="51">350 ml</text>
+      <text class="price" x="92" y="78">Rs 220</text>
+      <rect x="150" y="56" width="34" height="24" rx="12" fill="#E8EFE8"/>
+      <text class="stock" x="167" y="72" text-anchor="middle">8</text>
+    </g>
+    <g transform="translate(0 376)">
+      <rect width="202" height="94" rx="22" fill="#FFFFFF" stroke="#D8CEBF"/>
+      <rect x="14" y="14" width="62" height="66" rx="18" fill="#EEE5D5"/>
+      <text class="mobileDark" x="92" y="32">Green Tea Pack</text>
+      <text class="mobileMuted" x="92" y="51">25 sachets</text>
+      <text class="price" x="92" y="78">Rs 180</text>
+      <rect x="150" y="56" width="34" height="24" rx="12" fill="#E8EFE8"/>
+      <text class="stock" x="167" y="72" text-anchor="middle">14</text>
+    </g>
+
+    <g transform="translate(22 486)">
+      <rect width="158" height="52" rx="26" fill="#1F2428"/>
+      <circle cx="26" cy="26" r="8" fill="#A67C52"/>
+      <circle cx="62" cy="26" r="8" fill="#D8CEBF"/>
+      <circle cx="98" cy="26" r="8" fill="#D8CEBF"/>
+      <circle cx="134" cy="26" r="8" fill="#D8CEBF"/>
+      <rect x="16" y="8" width="20" height="36" rx="10" fill="#EDE1CE" opacity="0.14"/>
+    </g>
+  </g>
+
+  <g transform="translate(1270 770)">
+    <text class="frameLabel" x="0" y="0">Implementation plan after approval</text>
+    <text class="lead" x="0" y="34">1. Remove the welcome route and land directly on Home.</text>
+    <text class="lead" x="0" y="64">2. Rebuild the app shell, navigation, spacing, and visual system.</text>
+    <text class="lead" x="0" y="94">3. Refactor catalogue, POS, reports, invoices, stock, and profile screens</text>
+    <text class="lead" x="0" y="122">   so they reflow cleanly on phones, tablets, and desktop.</text>
+    <text class="lead" x="0" y="160">4. Fix the categories/products UI crash by using safer layout constraints</text>
+    <text class="lead" x="0" y="188">   and more stable card sizing.</text>
+  </g>
+</svg>

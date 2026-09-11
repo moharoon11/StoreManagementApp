@@ -5,7 +5,6 @@ import 'views/auth/login_view.dart';
 import 'widgets/responsive_layout.dart';
 import 'widgets/app_splash.dart';
 import 'theme/app_theme.dart';
-import 'widgets/workday_welcome.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +31,7 @@ class StoreManagementApp extends StatelessWidget {
               child: provider.isBootstrapping
                   ? const AppSplash(key: ValueKey('splash'))
                   : provider.isAuthenticated
-                      ? const AuthenticatedFlow(key: ValueKey('app'))
+                      ? const ResponsiveLayout(key: ValueKey('app'))
                       : const LoginView(key: ValueKey('auth')),
             ),
           );
@@ -40,25 +39,4 @@ class StoreManagementApp extends StatelessWidget {
       ),
     );
   }
-}
-
-class AuthenticatedFlow extends StatefulWidget {
-  const AuthenticatedFlow({super.key});
-
-  @override
-  State<AuthenticatedFlow> createState() => _AuthenticatedFlowState();
-}
-
-class _AuthenticatedFlowState extends State<AuthenticatedFlow> {
-  bool _atWelcome = true;
-
-  @override
-  Widget build(BuildContext context) => AnimatedSwitcher(
-        duration: const Duration(milliseconds: 420),
-        child: _atWelcome
-            ? WorkdayWelcome(
-                key: const ValueKey('workday-welcome'),
-                onContinue: () => setState(() => _atWelcome = false))
-            : const ResponsiveLayout(key: ValueKey('workspace')),
-      );
 }
