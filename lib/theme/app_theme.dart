@@ -350,12 +350,19 @@ abstract final class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surface,
         indicatorColor: primary.withValues(alpha: .14),
-        height: 72,
+        height: 68,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return textTheme.labelSmall!.copyWith(
             color: selected ? primary : onSurface.withValues(alpha: .72),
             letterSpacing: .3,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return IconThemeData(
+            color: selected ? primary : onSurface.withValues(alpha: .72),
+            size: 22,
           );
         }),
       ),

@@ -135,6 +135,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
+    final compact = MediaQuery.sizeOf(context).width < 760;
     return WorkspacePage(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,7 +145,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
             title: 'Checkout workspace',
             description:
                 'Tap items to add them to the current sale. The product browser and cart now stay compact and readable across screen sizes.',
-            action: provider.cartItems.isEmpty
+            action: provider.cartItems.isEmpty || compact
                 ? null
                 : StatusPill(
                     label:
@@ -152,7 +153,7 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
                     color: Theme.of(context).colorScheme.primary,
                   ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: compact ? 12 : 16),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -221,10 +222,18 @@ class _ProductBrowser extends StatelessWidget {
     return SurfacePanel(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final columns = math.max(
-            1,
-            (constraints.maxWidth / 214).floor(),
-          );
+          final phone = constraints.maxWidth < 460;
+          final columns = phone
+              ? 2
+              : math.max(
+                  1,
+                  (constraints.maxWidth / 214).floor(),
+                );
+          final cardExtent = columns == 1
+              ? 128.0
+              : phone
+                  ? 194.0
+                  : 236.0;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -278,7 +287,7 @@ class _ProductBrowser extends StatelessWidget {
                               crossAxisCount: columns,
                               mainAxisSpacing: 12,
                               crossAxisSpacing: 12,
-                              mainAxisExtent: columns == 1 ? 128 : 236,
+                              mainAxisExtent: cardExtent,
                             ),
                             itemBuilder: (_, index) {
                               if (index == products.length) {
@@ -291,6 +300,7 @@ class _ProductBrowser extends StatelessWidget {
                               return _SellProductCard(
                                 product: product,
                                 compact: columns == 1,
+                                dense: phone,
                               );
                             },
                           ),
@@ -307,10 +317,12 @@ class _SellProductCard extends StatelessWidget {
   const _SellProductCard({
     required this.product,
     required this.compact,
+    this.dense = false,
   });
 
   final Map<String, dynamic> product;
   final bool compact;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -322,20 +334,21 @@ class _SellProductCard extends StatelessWidget {
 
     final addAction = InkWell(
       onTap: stock > 0 ? () => provider.addToCart(product) : null,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(dense ? 14 : 16),
       child: Container(
-        width: 42,
-        height: 42,
+        width: dense ? 38 : 42,
+        height: dense ? 38 : 42,
         decoration: BoxDecoration(
           color: stock > 0
               ? (inCart
                   ? scheme.primary
                   : scheme.primary.withValues(alpha: .12))
               : scheme.surfaceContainerHighest.withValues(alpha: .42),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(dense ? 14 : 16),
         ),
         child: Icon(
           inCart ? Icons.check_rounded : Icons.add_rounded,
+          size: dense ? 18 : 22,
           color: stock > 0
               ? (inCart ? scheme.onPrimary : scheme.primary)
               : scheme.onSurface.withValues(alpha: .34),
@@ -388,18 +401,19 @@ class _SellProductCard extends StatelessWidget {
     }
 
     return SurfacePanel(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(dense ? 10 : 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SellProductImage(imageUrl: imageUrl),
-          const SizedBox(height: 10),
+          _SellProductImage(imageUrl: imageUrl, dense: dense),
+          SizedBox(height: dense ? 8 : 10),
           Text(
             (product['categoryName'] ?? 'Product').toString(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: scheme.primary,
+                  letterSpacing: dense ? .7 : 1.2,
                 ),
           ),
           const SizedBox(height: 4),
@@ -407,32 +421,52 @@ class _SellProductCard extends StatelessWidget {
             (product['name'] ?? '').toString(),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleSmall,
+            style: dense
+                ? Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                    )
+                : Theme.of(context).textTheme.titleSmall,
           ),
           const Spacer(),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
-                child: Text(
-                  '₹${product['sellingPrice']} / ${productUnit(product)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      dense
+                          ? '₹${product['sellingPrice']}'
+                          : '₹${product['sellingPrice']} / ${productUnit(product)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: (dense
+                              ? Theme.of(context).textTheme.titleSmall
+                              : Theme.of(context).textTheme.labelLarge)
+                          ?.copyWith(
                         color: stock > 0 ? scheme.primary : scheme.error,
                       ),
+                    ),
+                    SizedBox(height: dense ? 4 : 8),
+                    Text(
+                      stock > 0
+                          ? '${formatProductQuantity(stock, product)} left'
+                          : 'Out of stock',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: stock > 0 ? scheme.secondary : scheme.error,
+                          ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 8),
               addAction,
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            stock > 0
-                ? '${formatProductQuantity(stock, product)} left'
-                : 'Out of stock',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: stock > 0 ? scheme.secondary : scheme.error,
-                ),
           ),
         ],
       ),
@@ -444,26 +478,33 @@ class _SellProductImage extends StatelessWidget {
   const _SellProductImage({
     required this.imageUrl,
     this.compact = false,
+    this.dense = false,
   });
 
   final String imageUrl;
   final bool compact;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       width: compact ? 82 : double.infinity,
-      height: compact ? 82 : 88,
+      height: compact
+          ? 82
+          : dense
+              ? 74
+              : 88,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: .26),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(dense ? 18 : 20),
       ),
       child: imageUrl.isEmpty
           ? Icon(
               Icons.inventory_2_outlined,
               color: scheme.onSurface.withValues(alpha: .34),
+              size: dense ? 28 : 32,
             )
           : Image.network(
               imageUrl,
@@ -471,6 +512,7 @@ class _SellProductImage extends StatelessWidget {
               errorBuilder: (_, __, ___) => Icon(
                 Icons.inventory_2_outlined,
                 color: scheme.onSurface.withValues(alpha: .34),
+                size: dense ? 28 : 32,
               ),
             ),
     );

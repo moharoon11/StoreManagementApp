@@ -138,6 +138,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 760;
     return WorkspacePage(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,33 +154,58 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
               label: const Text('Refresh'),
             ),
           ),
-          const SizedBox(height: 16),
-          AdaptiveWrapGrid(
-            minItemWidth: 190,
-            children: [
-              StatTile(
-                label: 'Transactions',
-                value: '${_summary['totalTransactions'] ?? _invoices.length}',
-                icon: Icons.receipt_long_outlined,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              StatTile(
-                label: 'Total sale',
-                value:
-                    '₹${((_summary['totalSale'] ?? 0.0) as num).toStringAsFixed(2)}',
-                icon: Icons.payments_outlined,
-                color: Theme.of(context).colorScheme.secondary,
-              ),
-              StatTile(
-                label: 'Balance due',
-                value:
-                    '₹${((_summary['balanceDue'] ?? 0.0) as num).toStringAsFixed(2)}',
-                icon: Icons.account_balance_wallet_outlined,
-                color: Theme.of(context).colorScheme.tertiary,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
+          SizedBox(height: compact ? 12 : 16),
+          if (compact) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                StatusPill(
+                  label:
+                      '${_summary['totalTransactions'] ?? _invoices.length} transactions',
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                StatusPill(
+                  label:
+                      '₹${((_summary['totalSale'] ?? 0.0) as num).toStringAsFixed(2)} sale',
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+                StatusPill(
+                  label:
+                      '₹${((_summary['balanceDue'] ?? 0.0) as num).toStringAsFixed(2)} due',
+                  color: Theme.of(context).colorScheme.tertiary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+          ] else ...[
+            AdaptiveWrapGrid(
+              minItemWidth: 190,
+              children: [
+                StatTile(
+                  label: 'Transactions',
+                  value: '${_summary['totalTransactions'] ?? _invoices.length}',
+                  icon: Icons.receipt_long_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                StatTile(
+                  label: 'Total sale',
+                  value:
+                      '₹${((_summary['totalSale'] ?? 0.0) as num).toStringAsFixed(2)}',
+                  icon: Icons.payments_outlined,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+                StatTile(
+                  label: 'Balance due',
+                  value:
+                      '₹${((_summary['balanceDue'] ?? 0.0) as num).toStringAsFixed(2)}',
+                  icon: Icons.account_balance_wallet_outlined,
+                  color: Theme.of(context).colorScheme.tertiary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
           Expanded(
             child: SectionPanel(
               title: 'Invoice ledger',

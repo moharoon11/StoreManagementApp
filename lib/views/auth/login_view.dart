@@ -75,19 +75,25 @@ class _LoginViewState extends State<LoginView>
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final wide = MediaQuery.sizeOf(context).width >= 980;
+    final compact = MediaQuery.sizeOf(context).width < 760;
 
     return Scaffold(
       body: WorkspaceBackdrop(
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(18),
+              padding: EdgeInsets.all(compact ? 14 : 18),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1120),
+                constraints: BoxConstraints(maxWidth: compact ? 440 : 1120),
                 child: Column(
                   children: [
-                    const _BrandStrip(),
-                    const SizedBox(height: 18),
+                    if (wide) ...[
+                      const _BrandStrip(),
+                      const SizedBox(height: 18),
+                    ] else ...[
+                      const _CompactAuthHeader(),
+                      const SizedBox(height: 14),
+                    ],
                     wide
                         ? Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,6 +108,7 @@ class _LoginViewState extends State<LoginView>
                                     passwordController: _passwordController,
                                     obscurePassword: _obscurePassword,
                                     loading: provider.isLoading,
+                                    compact: false,
                                     onTogglePassword: () => setState(
                                       () =>
                                           _obscurePassword = !_obscurePassword,
@@ -128,6 +135,7 @@ class _LoginViewState extends State<LoginView>
                                   passwordController: _passwordController,
                                   obscurePassword: _obscurePassword,
                                   loading: provider.isLoading,
+                                  compact: true,
                                   onTogglePassword: () => setState(
                                     () => _obscurePassword = !_obscurePassword,
                                   ),
@@ -135,8 +143,6 @@ class _LoginViewState extends State<LoginView>
                                   onSwitchMode: _toggleMode,
                                 ),
                               ),
-                              const SizedBox(height: 16),
-                              const _WorkspaceSnapshot(compact: true),
                             ],
                           ),
                   ],
@@ -234,7 +240,7 @@ class _AnimatedAuthCard extends StatelessWidget {
       ),
       child: SurfacePanel(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(4),
+          padding: const EdgeInsets.all(2),
           child: child,
         ),
       ),
@@ -249,6 +255,7 @@ class _AuthForm extends StatelessWidget {
     required this.passwordController,
     required this.obscurePassword,
     required this.loading,
+    required this.compact,
     required this.onTogglePassword,
     required this.onSubmit,
     required this.onSwitchMode,
@@ -257,6 +264,7 @@ class _AuthForm extends StatelessWidget {
   final bool register;
   final bool obscurePassword;
   final bool loading;
+  final bool compact;
   final TextEditingController usernameController;
   final TextEditingController passwordController;
   final VoidCallback onTogglePassword;
@@ -270,25 +278,35 @@ class _AuthForm extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        StatusPill(
-          label: register ? 'Create account' : 'Store access',
-          color: scheme.primary,
-        ),
-        const SizedBox(height: 14),
+        if (!compact) ...[
+          StatusPill(
+            label: register ? 'Create account' : 'Store access',
+            color: scheme.primary,
+          ),
+          const SizedBox(height: 14),
+        ] else
+          const SizedBox(height: 2),
         Text(
-          register ? 'Create your workspace' : 'Welcome back',
-          style: Theme.of(context).textTheme.headlineMedium,
+          compact
+              ? (register ? 'Create account' : 'Sign in')
+              : (register ? 'Create your workspace' : 'Welcome back'),
+          style: compact
+              ? Theme.of(context).textTheme.headlineSmall
+              : Theme.of(context).textTheme.headlineMedium,
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: compact ? 6 : 8),
         Text(
           register
-              ? 'Set up your login once and open directly into the full billing workspace.'
-              : 'Sign in to continue with products, stock, reports, and checkout.',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: scheme.onSurface.withValues(alpha: .7),
-              ),
+              ? 'Set up your login and start billing.'
+              : 'Sign in to continue.',
+          style: (compact
+                  ? Theme.of(context).textTheme.bodyMedium
+                  : Theme.of(context).textTheme.bodyLarge)
+              ?.copyWith(
+            color: scheme.onSurface.withValues(alpha: .7),
+          ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: compact ? 16 : 20),
         TextField(
           controller: usernameController,
           textInputAction: TextInputAction.next,
@@ -315,7 +333,7 @@ class _AuthForm extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: compact ? 16 : 20),
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
@@ -357,10 +375,49 @@ class _AuthForm extends StatelessWidget {
   }
 }
 
-class _WorkspaceSnapshot extends StatelessWidget {
-  const _WorkspaceSnapshot({this.compact = false});
+class _CompactAuthHeader extends StatelessWidget {
+  const _CompactAuthHeader();
 
-  final bool compact;
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: scheme.primary,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: const Icon(Icons.auto_graph_rounded, color: Colors.white),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Nexora Commerce',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Store login',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: .68),
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _WorkspaceSnapshot extends StatelessWidget {
+  const _WorkspaceSnapshot();
 
   @override
   Widget build(BuildContext context) {
@@ -394,7 +451,7 @@ class _WorkspaceSnapshot extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         AdaptiveWrapGrid(
-          minItemWidth: compact ? 150 : 180,
+          minItemWidth: 180,
           children: [
             _SnapshotMetric(
               label: 'Platform',

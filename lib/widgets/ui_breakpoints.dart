@@ -6,6 +6,9 @@ abstract final class Ui {
   /// Phones and narrow split-screen widths.
   static const double compactMax = 760;
 
+  /// Smaller handsets where every vertical pixel matters.
+  static const double phoneMax = 420;
+
   /// Tablets and laptop-sized windows.
   static const double mediumMax = 1240;
 
@@ -14,6 +17,9 @@ abstract final class Ui {
 
   static bool isCompact(BuildContext context) =>
       MediaQuery.sizeOf(context).width < compactMax;
+
+  static bool isPhone(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < phoneMax;
 
   static bool isMedium(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
@@ -26,7 +32,7 @@ abstract final class Ui {
   /// Page padding that scales with available width.
   static EdgeInsets pagePadding(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    if (width < 420) return const EdgeInsets.all(12);
+    if (width < phoneMax) return const EdgeInsets.all(10);
     if (width < compactMax) return const EdgeInsets.all(14);
     if (width < mediumMax) return const EdgeInsets.all(18);
     return const EdgeInsets.all(24);
@@ -35,7 +41,7 @@ abstract final class Ui {
   /// Heading size that scales with available width.
   static double headingSize(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    if (width < 420) return 24;
+    if (width < phoneMax) return 22;
     if (width < compactMax) return 28;
     if (width < mediumMax) return 32;
     return 36;

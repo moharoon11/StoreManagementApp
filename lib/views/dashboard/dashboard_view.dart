@@ -89,6 +89,7 @@ class _DashboardViewState extends State<DashboardView> {
     final recentInvoices =
         (_dashboardData?['recentInvoices'] as List<dynamic>? ?? []);
     final salesTrend = (_dashboardData?['salesTrend'] as List<dynamic>? ?? []);
+    final compact = MediaQuery.sizeOf(context).width < 760;
 
     return WorkspacePage(
       child: RefreshIndicator(
@@ -126,55 +127,84 @@ class _DashboardViewState extends State<DashboardView> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            _HeroCard(
-              sales: todaySales,
-              invoices: todayInvoices,
-              products: totalProducts,
-            ),
-            const SizedBox(height: 16),
-            AdaptiveWrapGrid(
-              minItemWidth: 200,
-              children: [
-                StatTile(
-                  label: 'Today sales',
-                  value: '₹$todaySales',
-                  icon: Icons.payments_outlined,
-                  color: Theme.of(context).colorScheme.primary,
-                  note: '$todayInvoices invoices processed today',
+            SizedBox(height: compact ? 14 : 20),
+            if (compact) ...[
+              SurfacePanel(
+                padding: const EdgeInsets.all(16),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    StatusPill(
+                      label: '₹$todaySales today',
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    StatusPill(
+                      label: '$todayInvoices bills',
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                    StatusPill(
+                      label: '$totalProducts products',
+                      color: Theme.of(context).colorScheme.tertiary,
+                    ),
+                    StatusPill(
+                      label: '${lowStockProducts.length} low stock',
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ],
                 ),
-                StatTile(
-                  label: 'Products',
-                  value: '$totalProducts',
-                  icon: Icons.inventory_2_outlined,
-                  color: Theme.of(context).colorScheme.secondary,
-                  note: 'Live across your store catalogue',
-                ),
-                StatTile(
-                  label: 'Low stock',
-                  value: '${lowStockProducts.length}',
-                  icon: Icons.notification_important_outlined,
-                  color: Theme.of(context).colorScheme.error,
-                  note: lowStockProducts.isEmpty
-                      ? 'No urgent restocking alerts'
-                      : 'Items to review before the day ends',
-                ),
-                StatTile(
-                  label: 'Top sellers',
-                  value: '${mostSoldProducts.length}',
-                  icon: Icons.workspace_premium_outlined,
-                  color: Theme.of(context).colorScheme.tertiary,
-                  note: 'Products with the strongest movement',
-                ),
-              ],
-            ),
+              ),
+            ] else ...[
+              _HeroCard(
+                sales: todaySales,
+                invoices: todayInvoices,
+                products: totalProducts,
+              ),
+              const SizedBox(height: 16),
+              AdaptiveWrapGrid(
+                minItemWidth: 200,
+                children: [
+                  StatTile(
+                    label: 'Today sales',
+                    value: '₹$todaySales',
+                    icon: Icons.payments_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                    note: '$todayInvoices invoices processed today',
+                  ),
+                  StatTile(
+                    label: 'Products',
+                    value: '$totalProducts',
+                    icon: Icons.inventory_2_outlined,
+                    color: Theme.of(context).colorScheme.secondary,
+                    note: 'Live across your store catalogue',
+                  ),
+                  StatTile(
+                    label: 'Low stock',
+                    value: '${lowStockProducts.length}',
+                    icon: Icons.notification_important_outlined,
+                    color: Theme.of(context).colorScheme.error,
+                    note: lowStockProducts.isEmpty
+                        ? 'No urgent restocking alerts'
+                        : 'Items to review before the day ends',
+                  ),
+                  StatTile(
+                    label: 'Top sellers',
+                    value: '${mostSoldProducts.length}',
+                    icon: Icons.workspace_premium_outlined,
+                    color: Theme.of(context).colorScheme.tertiary,
+                    note: 'Products with the strongest movement',
+                  ),
+                ],
+              ),
+            ],
             if (salesTrend.isNotEmpty) ...[
               const SizedBox(height: 16),
               _SalesTrendPanel(salesTrend: salesTrend),
             ],
             const SizedBox(height: 16),
             AdaptiveWrapGrid(
-              minItemWidth: 280,
+              minItemWidth: compact ? 240 : 280,
+              compactMinItemWidth: 220,
               children: [
                 _InvoicePanel(
                   invoices: recentInvoices,

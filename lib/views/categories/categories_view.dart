@@ -363,6 +363,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                 _stockFor(Map<String, dynamic>.from(product as Map)) > 0)
             .toList()
         : _products;
+    final compact = MediaQuery.sizeOf(context).width < 760;
 
     return WorkspacePage(
       child: Column(
@@ -390,7 +391,7 @@ class _CategoriesViewState extends State<CategoriesView> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: compact ? 14 : 20),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -435,14 +436,14 @@ class _CategoriesViewState extends State<CategoriesView> {
                     : Column(
                         children: [
                           SizedBox(
-                            height: 118,
+                            height: 94,
                             child: _MobileCategoryStrip(
                               categories: _categories,
                               selectedCategoryId: _selectedCategoryId,
                               onTap: _selectCategory,
                             ),
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 12),
                           Expanded(
                             child: _ProductCollection(
                               category: currentCategory,
@@ -547,12 +548,12 @@ class _MobileCategoryStrip extends StatelessWidget {
     return ListView.separated(
       scrollDirection: Axis.horizontal,
       itemCount: categories.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 12),
+      separatorBuilder: (_, __) => const SizedBox(width: 10),
       itemBuilder: (context, index) {
         final category = Map<String, dynamic>.from(categories[index] as Map);
         final selected = category['id'] == selectedCategoryId;
         return SizedBox(
-          width: 176,
+          width: 152,
           child: _CategoryTile(
             category: category,
             selected: selected,
@@ -589,12 +590,12 @@ class _CategoryTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),
         child: Ink(
-          padding: EdgeInsets.all(compact ? 14 : 16),
+          padding: EdgeInsets.all(compact ? 12 : 16),
           decoration: BoxDecoration(
             color: selected
                 ? scheme.primary.withValues(alpha: .14)
                 : scheme.surfaceContainerHighest.withValues(alpha: .22),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(compact ? 20 : 24),
             border: Border.all(
               color: selected
                   ? scheme.primary.withValues(alpha: .22)
@@ -604,14 +605,14 @@ class _CategoryTile extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: compact ? 54 : 58,
-                height: compact ? 54 : 58,
+                width: compact ? 44 : 58,
+                height: compact ? 44 : 58,
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   color: selected
                       ? scheme.primary.withValues(alpha: .12)
                       : scheme.surface,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(compact ? 14 : 18),
                 ),
                 child: imageUrl.isEmpty
                     ? Icon(
@@ -619,6 +620,7 @@ class _CategoryTile extends StatelessWidget {
                         color: selected
                             ? scheme.primary
                             : scheme.onSurface.withValues(alpha: .55),
+                        size: compact ? 20 : 24,
                       )
                     : Image.network(
                         imageUrl,
@@ -628,10 +630,11 @@ class _CategoryTile extends StatelessWidget {
                           color: selected
                               ? scheme.primary
                               : scheme.onSurface.withValues(alpha: .55),
+                          size: compact ? 20 : 24,
                         ),
                       ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: compact ? 10 : 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -640,9 +643,13 @@ class _CategoryTile extends StatelessWidget {
                       (category['name'] ?? 'Untitled').toString(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: selected ? scheme.primary : scheme.onSurface,
-                          ),
+                      style: (compact
+                              ? Theme.of(context).textTheme.bodyMedium
+                              : Theme.of(context).textTheme.titleSmall)
+                          ?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: selected ? scheme.primary : scheme.onSurface,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -708,12 +715,19 @@ class _ProductCollection extends StatelessWidget {
     return SurfacePanel(
       child: LayoutBuilder(
         builder: (context, constraints) {
+          final phone = constraints.maxWidth < 460;
           final compact = constraints.maxWidth < 760;
-          final columns = math.max(
-            1,
-            (constraints.maxWidth / (compact ? 300 : 228)).floor(),
-          );
-          final mainExtent = columns == 1 ? 148.0 : 292.0;
+          final columns = phone
+              ? 2
+              : math.max(
+                  1,
+                  (constraints.maxWidth / (compact ? 300 : 228)).floor(),
+                );
+          final mainExtent = columns == 1
+              ? 148.0
+              : phone
+                  ? 216.0
+                  : 292.0;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -803,6 +817,7 @@ class _ProductCollection extends StatelessWidget {
                                 product: Map<String, dynamic>.from(
                                     products[index] as Map),
                                 compact: columns == 1,
+                                dense: phone,
                               );
                             },
                           ),
@@ -917,10 +932,12 @@ class _ProductCard extends StatelessWidget {
   const _ProductCard({
     required this.product,
     required this.compact,
+    this.dense = false,
   });
 
   final Map<String, dynamic> product;
   final bool compact;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -986,19 +1003,19 @@ class _ProductCard extends StatelessWidget {
     }
 
     return SurfacePanel(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(dense ? 10 : 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _ProductImage(image: image),
-          const SizedBox(height: 14),
+          _ProductImage(image: image, dense: dense),
+          SizedBox(height: dense ? 10 : 14),
           Text(
             (product['categoryName'] ?? 'Uncategorised').toString(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: scheme.primary,
-                  letterSpacing: 1.2,
+                  letterSpacing: dense ? .7 : 1.2,
                 ),
           ),
           const SizedBox(height: 6),
@@ -1006,11 +1023,17 @@ class _ProductCard extends StatelessWidget {
             (product['name'] ?? 'Untitled product').toString(),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium,
+            style: dense
+                ? Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                    )
+                : Theme.of(context).textTheme.titleMedium,
           ),
           const Spacer(),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                dense ? CrossAxisAlignment.center : CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -1018,20 +1041,45 @@ class _ProductCard extends StatelessWidget {
                   children: [
                     Text(
                       '₹${product['sellingPrice'] ?? '—'}',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: (dense
+                              ? Theme.of(context).textTheme.titleMedium
+                              : Theme.of(context).textTheme.headlineSmall)
+                          ?.copyWith(
+                        color: scheme.onSurface,
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    StatusPill(
-                      label: stock > 0
-                          ? '${formatProductQuantity(stock, product)} left'
-                          : 'Out of stock',
-                      color: stock > 0 ? scheme.secondary : scheme.error,
-                    ),
+                    SizedBox(height: dense ? 4 : 8),
+                    if (dense)
+                      Text(
+                        stock > 0
+                            ? '${formatProductQuantity(stock, product)} left'
+                            : 'Out of stock',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color:
+                                  stock > 0 ? scheme.secondary : scheme.error,
+                            ),
+                      )
+                    else
+                      StatusPill(
+                        label: stock > 0
+                            ? '${formatProductQuantity(stock, product)} left'
+                            : 'Out of stock',
+                        color: stock > 0 ? scheme.secondary : scheme.error,
+                      ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              _CartAction(product: product, stock: stock, inCart: inCart),
+              SizedBox(width: dense ? 8 : 12),
+              _CartAction(
+                product: product,
+                stock: stock,
+                inCart: inCart,
+                dense: dense,
+              ),
             ],
           ),
         ],
@@ -1044,27 +1092,37 @@ class _ProductImage extends StatelessWidget {
   const _ProductImage({
     required this.image,
     this.compact = false,
+    this.dense = false,
   });
 
   final String image;
   final bool compact;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       width: compact ? 86 : double.infinity,
-      height: compact ? 86 : 118,
+      height: compact
+          ? 86
+          : dense
+              ? 86
+              : 118,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: .36),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(dense ? 18 : 22),
       ),
       child: image.isEmpty
           ? Icon(
               Icons.inventory_2_outlined,
               color: scheme.onSurface.withValues(alpha: .36),
-              size: compact ? 34 : 42,
+              size: compact
+                  ? 34
+                  : dense
+                      ? 30
+                      : 42,
             )
           : Image.network(
               image,
@@ -1072,7 +1130,11 @@ class _ProductImage extends StatelessWidget {
               errorBuilder: (_, __, ___) => Icon(
                 Icons.inventory_2_outlined,
                 color: scheme.onSurface.withValues(alpha: .36),
-                size: compact ? 34 : 42,
+                size: compact
+                    ? 34
+                    : dense
+                        ? 30
+                        : 42,
               ),
             ),
     );
@@ -1084,11 +1146,13 @@ class _CartAction extends StatelessWidget {
     required this.product,
     required this.stock,
     required this.inCart,
+    this.dense = false,
   });
 
   final Map<String, dynamic> product;
   final double stock;
   final bool inCart;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -1097,20 +1161,21 @@ class _CartAction extends StatelessWidget {
       onTap: stock > 0
           ? () => context.read<AppProvider>().addToCart(product)
           : null,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(dense ? 14 : 18),
       child: Container(
-        width: 48,
-        height: 48,
+        width: dense ? 40 : 48,
+        height: dense ? 40 : 48,
         decoration: BoxDecoration(
           color: stock > 0
               ? (inCart
                   ? scheme.primary
                   : scheme.primary.withValues(alpha: .12))
               : scheme.surfaceContainerHighest.withValues(alpha: .55),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(dense ? 14 : 18),
         ),
         child: Icon(
           inCart ? Icons.check_rounded : Icons.add_rounded,
+          size: dense ? 18 : 22,
           color: stock > 0
               ? (inCart ? scheme.onPrimary : scheme.primary)
               : scheme.onSurface.withValues(alpha: .35),

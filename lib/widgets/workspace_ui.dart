@@ -174,59 +174,79 @@ class PageIntro extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final compact = Ui.isCompact(context);
+
+    final introCopy = ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 660),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: compact ? 8 : 10,
+                height: compact ? 8 : 10,
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              SizedBox(width: compact ? 8 : 10),
+              Text(
+                eyebrow.toUpperCase(),
+                style: textTheme.labelSmall?.copyWith(
+                  color: scheme.primary,
+                  letterSpacing: compact ? 1.8 : 2.2,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: compact ? 8 : 12),
+          Text(
+            title,
+            style: (compact ? textTheme.headlineSmall : textTheme.headlineLarge)
+                ?.copyWith(
+              fontSize: Ui.headingSize(context),
+            ),
+          ),
+          SizedBox(height: compact ? 6 : 8),
+          Text(
+            description,
+            maxLines: compact ? 2 : null,
+            overflow: compact ? TextOverflow.ellipsis : TextOverflow.visible,
+            style: (compact ? textTheme.bodyMedium : textTheme.bodyLarge)
+                ?.copyWith(
+              color: scheme.onSurface.withValues(alpha: .7),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          introCopy,
+          if (action != null) ...[
+            const SizedBox(height: 12),
+            action!,
+          ],
+        ],
+      );
+    }
 
     return SurfacePanel(
       color: _blend(scheme.surface, scheme.primary, .025),
-      padding: EdgeInsets.all(Ui.isCompact(context) ? 18 : 22),
+      padding: const EdgeInsets.all(22),
       child: Wrap(
         alignment: WrapAlignment.spaceBetween,
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: 18,
         runSpacing: 18,
         children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 660),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: scheme.primary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      eyebrow.toUpperCase(),
-                      style: textTheme.labelSmall?.copyWith(
-                        color: scheme.primary,
-                        letterSpacing: 2.2,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  title,
-                  style: textTheme.headlineLarge?.copyWith(
-                    fontSize: Ui.headingSize(context),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  description,
-                  style: textTheme.bodyLarge?.copyWith(
-                    color: scheme.onSurface.withValues(alpha: .7),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          introCopy,
           if (action != null) action!,
         ],
       ),
@@ -250,11 +270,13 @@ class SurfacePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final panelColor = color ?? scheme.surface;
+    final compact = Ui.isCompact(context);
+    final radius = compact ? 22.0 : 28.0;
 
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: scheme.outlineVariant),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -266,9 +288,9 @@ class SurfacePanel extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: scheme.shadow.withValues(alpha: .08),
-            blurRadius: 30,
-            offset: const Offset(0, 16),
+            color: scheme.shadow.withValues(alpha: compact ? .05 : .08),
+            blurRadius: compact ? 18 : 30,
+            offset: Offset(0, compact ? 8 : 16),
           ),
         ],
       ),
@@ -297,23 +319,28 @@ class SectionPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final compact = Ui.isCompact(context);
+    final radius = compact ? 22.0 : 28.0;
+    final resolvedPadding = compact
+        ? const EdgeInsets.symmetric(horizontal: 14, vertical: 14)
+        : padding;
 
     return SurfacePanel(
       padding: EdgeInsets.zero,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final hasBoundedHeight = constraints.maxHeight.isFinite;
-          final body = Padding(padding: padding, child: child);
+          final body = Padding(padding: resolvedPadding, child: child);
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: padding,
+                padding: resolvedPadding,
                 decoration: BoxDecoration(
                   color: scheme.primary.withValues(alpha: .06),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(28),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(radius),
                   ),
                 ),
                 child: Row(
@@ -323,11 +350,20 @@ class SectionPanel extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(title, style: textTheme.titleLarge),
+                          Text(
+                            title,
+                            style: compact
+                                ? textTheme.titleMedium
+                                : textTheme.titleLarge,
+                          ),
                           if (subtitle != null) ...[
-                            const SizedBox(height: 6),
+                            SizedBox(height: compact ? 4 : 6),
                             Text(
                               subtitle!,
+                              maxLines: compact ? 2 : null,
+                              overflow: compact
+                                  ? TextOverflow.ellipsis
+                                  : TextOverflow.visible,
                               style: textTheme.bodyMedium?.copyWith(
                                 color: scheme.onSurface.withValues(alpha: .65),
                               ),
@@ -360,12 +396,14 @@ class AdaptiveWrapGrid extends StatelessWidget {
     required this.minItemWidth,
     this.spacing = 14,
     this.runSpacing = 14,
+    this.compactMinItemWidth,
   });
 
   final List<Widget> children;
   final double minItemWidth;
   final double spacing;
   final double runSpacing;
+  final double? compactMinItemWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -374,9 +412,12 @@ class AdaptiveWrapGrid extends StatelessWidget {
         final availableWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MediaQuery.sizeOf(context).width;
+        final effectiveMinWidth = Ui.isCompact(context)
+            ? compactMinItemWidth ?? math.min(minItemWidth, 150)
+            : minItemWidth;
         final columns = math.max(
           1,
-          ((availableWidth + spacing) / (minItemWidth + spacing)).floor(),
+          ((availableWidth + spacing) / (effectiveMinWidth + spacing)).floor(),
         );
         final totalSpacing = spacing * (columns - 1);
         final itemWidth = (availableWidth - totalSpacing) / columns;
@@ -414,26 +455,27 @@ class StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final compact = Ui.isCompact(context);
 
     return SurfacePanel(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(compact ? 12 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: compact ? 40 : 46,
+                height: compact ? 40 : 46,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: .14),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(compact ? 14 : 16),
                 ),
-                child: Icon(icon, size: 20, color: color),
+                child: Icon(icon, size: compact ? 18 : 20, color: color),
               ),
               const Spacer(),
               Container(
-                width: 44,
+                width: compact ? 36 : 44,
                 height: 5,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: .18),
@@ -452,20 +494,25 @@ class StatTile extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          SizedBox(height: compact ? 12 : 18),
           Text(
             label.toUpperCase(),
             style: textTheme.labelSmall?.copyWith(
               color: scheme.onSurface.withValues(alpha: .58),
-              letterSpacing: 1.6,
+              letterSpacing: compact ? 1.2 : 1.6,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(value, style: textTheme.headlineSmall),
+          SizedBox(height: compact ? 6 : 8),
+          Text(
+            value,
+            style: compact ? textTheme.titleLarge : textTheme.headlineSmall,
+          ),
           if (note != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: compact ? 6 : 8),
             Text(
               note!,
+              maxLines: compact ? 2 : null,
+              overflow: compact ? TextOverflow.ellipsis : TextOverflow.visible,
               style: textTheme.bodySmall?.copyWith(
                 color: scheme.onSurface.withValues(alpha: .66),
               ),
@@ -521,32 +568,39 @@ class EmptyCanvas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final compact = Ui.isCompact(context);
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
+        constraints: BoxConstraints(maxWidth: compact ? 360 : 420),
         child: SurfacePanel(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 18 : 24,
+            vertical: compact ? 20 : 28,
+          ),
           color: _blend(scheme.surface, scheme.primary, .015),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 74,
-                height: 74,
+                width: compact ? 58 : 74,
+                height: compact ? 58 : 74,
                 decoration: BoxDecoration(
                   color: scheme.primary.withValues(alpha: .12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: scheme.primary, size: 30),
+                child:
+                    Icon(icon, color: scheme.primary, size: compact ? 24 : 30),
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: compact ? 14 : 18),
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge,
+                style: compact
+                    ? Theme.of(context).textTheme.titleMedium
+                    : Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: compact ? 6 : 8),
               Text(
                 detail,
                 textAlign: TextAlign.center,

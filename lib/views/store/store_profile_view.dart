@@ -174,8 +174,8 @@ class _StoreProfileViewState extends State<StoreProfileView> {
       _pincodeController.text,
     ].where((part) => part.trim().isNotEmpty).join(', ');
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         PageIntro(
           eyebrow: 'Business',
@@ -230,7 +230,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                   identity,
                   const SizedBox(height: 18),
                   AdaptiveWrapGrid(
-                    minItemWidth: 200,
+                    minItemWidth: compact ? 150 : 200,
                     children: [
                       _DetailCard(
                         icon: Icons.location_on_outlined,
@@ -272,8 +272,8 @@ class _StoreProfileViewState extends State<StoreProfileView> {
   }
 
   Widget _buildEditor() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         PageIntro(
           eyebrow: 'Business',
@@ -287,87 +287,83 @@ class _StoreProfileViewState extends State<StoreProfileView> {
           ),
         ),
         const SizedBox(height: 16),
-        Expanded(
-          child: SingleChildScrollView(
-            child: SectionPanel(
-              title: 'Business details',
-              subtitle: 'This information appears on generated invoice PDFs.',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: GestureDetector(
-                      onTap: _pickLogo,
-                      child: Stack(
-                        children: [
-                          _LogoBadge(
-                            logoUrl: _logoUrl,
-                            pickedLogoFile: _pickedLogoFile,
-                            large: true,
-                            loading: _isUploadingLogo,
-                          ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                PlatformCapabilities.supportsCameraCapture
-                                    ? Icons.camera_alt_rounded
-                                    : Icons.upload_file_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                        ],
+        SectionPanel(
+          title: 'Business details',
+          subtitle: 'This information appears on generated invoice PDFs.',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: GestureDetector(
+                  onTap: _pickLogo,
+                  child: Stack(
+                    children: [
+                      _LogoBadge(
+                        logoUrl: _logoUrl,
+                        pickedLogoFile: _pickedLogoFile,
+                        large: true,
+                        loading: _isUploadingLogo,
                       ),
-                    ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            PlatformCapabilities.supportsCameraCapture
+                                ? Icons.camera_alt_rounded
+                                : Icons.upload_file_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 18),
-                  _FormPair(
-                    first: _textField('Store name *', _storeNameController),
-                    second: _textField('Owner name *', _ownerNameController),
-                  ),
-                  const SizedBox(height: 12),
-                  _FormPair(
-                    first: _textField('GSTIN number', _gstController),
-                    second: _textField('Phone number', _phoneController),
-                  ),
-                  const SizedBox(height: 12),
-                  _textField('Email address', _emailController),
-                  const SizedBox(height: 12),
-                  _textField('Address', _addressController, maxLines: 2),
-                  const SizedBox(height: 12),
-                  _FormPair(
-                    first: _textField('City', _cityController),
-                    second: _textField('District', _districtController),
-                  ),
-                  const SizedBox(height: 12),
-                  _textField('Pincode', _pincodeController),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed:
-                          (_isSaving || _isUploadingLogo) ? null : _saveProfile,
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Save store profile'),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(height: 18),
+              _FormPair(
+                first: _textField('Store name *', _storeNameController),
+                second: _textField('Owner name *', _ownerNameController),
+              ),
+              const SizedBox(height: 12),
+              _FormPair(
+                first: _textField('GSTIN number', _gstController),
+                second: _textField('Phone number', _phoneController),
+              ),
+              const SizedBox(height: 12),
+              _textField('Email address', _emailController),
+              const SizedBox(height: 12),
+              _textField('Address', _addressController, maxLines: 2),
+              const SizedBox(height: 12),
+              _FormPair(
+                first: _textField('City', _cityController),
+                second: _textField('District', _districtController),
+              ),
+              const SizedBox(height: 12),
+              _textField('Pincode', _pincodeController),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed:
+                      (_isSaving || _isUploadingLogo) ? null : _saveProfile,
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save store profile'),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -444,6 +440,7 @@ class _IdentityText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final compact = MediaQuery.sizeOf(context).width < 760;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -451,7 +448,9 @@ class _IdentityText extends StatelessWidget {
         const SizedBox(height: 12),
         Text(
           storeName.isEmpty ? 'Your business' : storeName,
-          style: Theme.of(context).textTheme.headlineMedium,
+          style: compact
+              ? Theme.of(context).textTheme.headlineSmall
+              : Theme.of(context).textTheme.headlineMedium,
         ),
         const SizedBox(height: 6),
         Text(
@@ -480,7 +479,7 @@ class _DetailCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: .18),
         borderRadius: BorderRadius.circular(20),
@@ -501,7 +500,10 @@ class _DetailCard extends StatelessWidget {
             value,
             maxLines: 4,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleSmall,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
           ),
         ],
       ),

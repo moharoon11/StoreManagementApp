@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:store_management_app/main.dart';
 import 'package:store_management_app/providers/app_provider.dart';
+import 'package:store_management_app/views/auth/login_view.dart';
 import 'package:store_management_app/widgets/adaptive_image_preview.dart';
 import 'package:store_management_app/widgets/cart_checkout.dart';
 import 'package:store_management_app/widgets/workspace_ui.dart';
@@ -22,7 +23,8 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 1400));
     await tester.pump();
-    expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.text('Store login'), findsOneWidget);
+    expect(find.text('Sign in'), findsWidgets);
   });
 
   testWidgets('saves an edited fractional cart quantity after closing dialog',
@@ -223,5 +225,36 @@ void main() {
 
     expect(find.byType(Image), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows a trimmed login experience on compact screens',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final provider = AppProvider();
+
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: provider,
+        child: const MaterialApp(
+          home: LoginView(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Store login'), findsOneWidget);
+    expect(find.text('Sign in'), findsWidgets);
+    expect(find.text('What changed'), findsNothing);
+    expect(find.text('Platform'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 1300));
   });
 }

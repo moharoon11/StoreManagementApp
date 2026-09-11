@@ -99,9 +99,7 @@ class ResponsiveLayout extends StatelessWidget {
               ? _CompactWorkspace(
                   active: active,
                   child: content,
-                  onQuickSale: () => provider.setNavIndex(1),
                   onOpenCart: () => openCart(context),
-                  onOpenBusiness: () => provider.setNavIndex(7),
                   onShowMore: () => _showMore(context),
                 )
               : _DesktopWorkspace(
@@ -433,30 +431,24 @@ class _CompactWorkspace extends StatelessWidget {
   const _CompactWorkspace({
     required this.active,
     required this.child,
-    required this.onQuickSale,
     required this.onOpenCart,
-    required this.onOpenBusiness,
     required this.onShowMore,
   });
 
   final _Destination active;
   final Widget child;
-  final VoidCallback onQuickSale;
   final VoidCallback onOpenCart;
-  final VoidCallback onOpenBusiness;
   final VoidCallback onShowMore;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
       child: Column(
         children: [
           _CompactHeader(
             active: active,
-            onQuickSale: onQuickSale,
             onOpenCart: onOpenCart,
-            onOpenBusiness: onOpenBusiness,
             onShowMore: onShowMore,
           ),
           const SizedBox(height: 12),
@@ -475,55 +467,56 @@ class _CompactWorkspace extends StatelessWidget {
 class _CompactHeader extends StatelessWidget {
   const _CompactHeader({
     required this.active,
-    required this.onQuickSale,
     required this.onOpenCart,
-    required this.onOpenBusiness,
     required this.onShowMore,
   });
 
   final _Destination active;
-  final VoidCallback onQuickSale;
   final VoidCallback onOpenCart;
-  final VoidCallback onOpenBusiness;
   final VoidCallback onShowMore;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final provider = context.watch<AppProvider>();
+    final phone = Ui.isPhone(context);
 
     return SurfacePanel(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(phone ? 12 : 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: phone ? 40 : 44,
+                height: phone ? 40 : 44,
                 decoration: BoxDecoration(
                   color: scheme.primary,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(phone ? 14 : 16),
                 ),
-                child:
-                    const Icon(Icons.auto_graph_rounded, color: Colors.white),
+                child: Icon(Icons.auto_graph_rounded,
+                    color: Colors.white, size: phone ? 20 : 22),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: phone ? 10 : 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Nexora Commerce',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: phone
+                          ? Theme.of(context).textTheme.titleSmall
+                          : Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       _formatToday(DateTime.now()).toUpperCase(),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: scheme.primary,
-                            letterSpacing: 1.6,
+                            letterSpacing: phone ? 1.2 : 1.6,
                           ),
                     ),
                   ],
@@ -551,30 +544,12 @@ class _CompactHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          StatusPill(label: active.title, color: scheme.primary),
-          const SizedBox(height: 10),
-          Text(
-            active.subtitle,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurface.withValues(alpha: .68),
-                ),
-          ),
-          const SizedBox(height: 14),
+          SizedBox(height: phone ? 10 : 12),
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              FilledButton.icon(
-                onPressed: onQuickSale,
-                icon: const Icon(Icons.bolt_rounded, size: 18),
-                label: const Text('New sale'),
-              ),
-              OutlinedButton.icon(
-                onPressed: onOpenBusiness,
-                icon: const Icon(Icons.storefront_outlined, size: 18),
-                label: const Text('Business'),
-              ),
+              StatusPill(label: active.title, color: scheme.primary),
             ],
           ),
         ],
@@ -655,12 +630,13 @@ class _ContentViewport extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final radius = compact ? 22.0 : 28.0;
 
     return SurfacePanel(
       padding: EdgeInsets.zero,
       color: _blend(scheme.surface, scheme.primary, .012),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(radius),
         child: Column(
           children: [
             Container(
@@ -702,12 +678,13 @@ class _BottomWorkspaceBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
         child: SurfacePanel(
           padding: EdgeInsets.zero,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(24),
             child: NavigationBar(
+              height: 68,
               selectedIndex: selectedIndex,
               onDestinationSelected: onSelect,
               destinations: const [

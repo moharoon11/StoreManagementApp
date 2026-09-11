@@ -479,6 +479,7 @@ class _ProductsViewState extends State<ProductsView> {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 760;
     return WorkspacePage(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -505,31 +506,53 @@ class _ProductsViewState extends State<ProductsView> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          AdaptiveWrapGrid(
-            minItemWidth: 180,
-            children: [
-              StatTile(
-                label: 'Visible products',
-                value: '${_products.length}',
-                icon: Icons.inventory_2_outlined,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              StatTile(
-                label: 'Categories',
-                value: '${_categories.length}',
-                icon: Icons.account_tree_outlined,
-                color: Theme.of(context).colorScheme.secondary,
-              ),
-              StatTile(
-                label: 'Favourites',
-                value: '$_favouriteCount',
-                icon: Icons.star_rounded,
-                color: Theme.of(context).colorScheme.tertiary,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+          if (compact) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                StatusPill(
+                  label: '${_products.length} products',
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                StatusPill(
+                  label: '${_categories.length} categories',
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+                StatusPill(
+                  label: '$_favouriteCount favourites',
+                  color: Theme.of(context).colorScheme.tertiary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+          ] else ...[
+            AdaptiveWrapGrid(
+              minItemWidth: 180,
+              children: [
+                StatTile(
+                  label: 'Visible products',
+                  value: '${_products.length}',
+                  icon: Icons.inventory_2_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                StatTile(
+                  label: 'Categories',
+                  value: '${_categories.length}',
+                  icon: Icons.account_tree_outlined,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+                StatTile(
+                  label: 'Favourites',
+                  value: '$_favouriteCount',
+                  icon: Icons.star_rounded,
+                  color: Theme.of(context).colorScheme.tertiary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -586,7 +609,7 @@ class _ProductsViewState extends State<ProductsView> {
                     : Column(
                         children: [
                           SizedBox(
-                            height: 48,
+                            height: 44,
                             child: _FilterStrip(
                               categories: _categories,
                               selectedCategoryId: _selectedCategoryId,
@@ -794,11 +817,18 @@ class _ProductGridPanel extends StatelessWidget {
     return SurfacePanel(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final columns = math.max(
-            1,
-            (constraints.maxWidth / 228).floor(),
-          );
-          final cardExtent = columns == 1 ? 166.0 : 312.0;
+          final phone = constraints.maxWidth < 460;
+          final columns = phone
+              ? 2
+              : math.max(
+                  1,
+                  (constraints.maxWidth / 228).floor(),
+                );
+          final cardExtent = columns == 1
+              ? 166.0
+              : phone
+                  ? 222.0
+                  : 312.0;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -839,6 +869,7 @@ class _ProductGridPanel extends StatelessWidget {
                               product: Map<String, dynamic>.from(
                                   products[index] as Map),
                               compact: columns == 1,
+                              dense: phone,
                               onEditProduct: onEditProduct,
                               onToggleFavourite: onToggleFavourite,
                             ),
@@ -856,12 +887,14 @@ class _ProductCard extends StatelessWidget {
   const _ProductCard({
     required this.product,
     required this.compact,
+    this.dense = false,
     required this.onEditProduct,
     required this.onToggleFavourite,
   });
 
   final Map<String, dynamic> product;
   final bool compact;
+  final bool dense;
   final ValueChanged<Map<String, dynamic>> onEditProduct;
   final Future<void> Function(int, bool) onToggleFavourite;
 
@@ -944,39 +977,43 @@ class _ProductCard extends StatelessWidget {
         onTap: () => onEditProduct(product),
         borderRadius: BorderRadius.circular(24),
         child: SurfacePanel(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(dense ? 10 : 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Stack(
                 children: [
-                  _ProductArtwork(imageUrl: imageUrl),
+                  _ProductArtwork(imageUrl: imageUrl, dense: dense),
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: dense ? 6 : 8,
+                    right: dense ? 6 : 8,
                     child: IconButton(
                       onPressed: () =>
                           onToggleFavourite(product['id'] as int, favourite),
                       style: IconButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.surface,
+                        minimumSize: Size.square(dense ? 34 : 40),
+                        padding: EdgeInsets.zero,
                       ),
                       icon: Icon(
                         favourite
                             ? Icons.star_rounded
                             : Icons.star_border_rounded,
                         color: scheme.tertiary,
+                        size: dense ? 18 : 22,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: dense ? 10 : 14),
               Text(
                 (product['categoryName'] ?? 'Uncategorised').toString(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: scheme.primary,
+                      letterSpacing: dense ? .7 : 1.1,
                     ),
               ),
               const SizedBox(height: 4),
@@ -984,18 +1021,40 @@ class _ProductCard extends StatelessWidget {
                 (product['name'] ?? '').toString(),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: dense
+                    ? Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
+                        )
+                    : Theme.of(context).textTheme.titleMedium,
               ),
               const Spacer(),
               Text(
                 '₹${product['sellingPrice']}',
-                style: Theme.of(context).textTheme.headlineSmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: (dense
+                        ? Theme.of(context).textTheme.titleMedium
+                        : Theme.of(context).textTheme.headlineSmall)
+                    ?.copyWith(
+                  color: scheme.onSurface,
+                ),
               ),
-              const SizedBox(height: 10),
-              StatusPill(
-                label: '${formatProductQuantity(stock, product)} in stock',
-                color: stock <= 5 ? scheme.error : scheme.secondary,
-              ),
+              SizedBox(height: dense ? 6 : 10),
+              if (dense)
+                Text(
+                  '${formatProductQuantity(stock, product)} in stock',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: stock <= 5 ? scheme.error : scheme.secondary,
+                      ),
+                )
+              else
+                StatusPill(
+                  label: '${formatProductQuantity(stock, product)} in stock',
+                  color: stock <= 5 ? scheme.error : scheme.secondary,
+                ),
             ],
           ),
         ),
@@ -1008,27 +1067,37 @@ class _ProductArtwork extends StatelessWidget {
   const _ProductArtwork({
     required this.imageUrl,
     this.compact = false,
+    this.dense = false,
   });
 
   final String imageUrl;
   final bool compact;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       width: compact ? 88 : double.infinity,
-      height: compact ? 104 : 126,
+      height: compact
+          ? 104
+          : dense
+              ? 88
+              : 126,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: .26),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(dense ? 18 : 24),
       ),
       child: imageUrl.isEmpty
           ? Icon(
               Icons.inventory_2_outlined,
               color: scheme.onSurface.withValues(alpha: .34),
-              size: compact ? 32 : 42,
+              size: compact
+                  ? 32
+                  : dense
+                      ? 30
+                      : 42,
             )
           : Image.network(
               imageUrl,
@@ -1036,7 +1105,11 @@ class _ProductArtwork extends StatelessWidget {
               errorBuilder: (_, __, ___) => Icon(
                 Icons.inventory_2_outlined,
                 color: scheme.onSurface.withValues(alpha: .34),
-                size: compact ? 32 : 42,
+                size: compact
+                    ? 32
+                    : dense
+                        ? 30
+                        : 42,
               ),
             ),
     );
