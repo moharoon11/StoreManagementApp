@@ -471,8 +471,9 @@ class _CategoriesViewState extends State<CategoriesView> {
               },
             ),
           ),
-          if (!context
-              .select<AppProvider, bool>((p) => p.cartItems.isEmpty)) ...[
+          if (!compact &&
+              !context
+                  .select<AppProvider, bool>((p) => p.cartItems.isEmpty)) ...[
             const SizedBox(height: 14),
             const CartSummaryBar(),
           ],
@@ -718,12 +719,13 @@ class _ProductCollection extends StatelessWidget {
           final phone = constraints.maxWidth < 460;
           final compact = constraints.maxWidth < 760;
           final columns = phone
-              ? 2
+              ? 1
               : math.max(
                   1,
                   (constraints.maxWidth / (compact ? 300 : 228)).floor(),
                 );
-          final mainExtent = columns == 1
+          final useList = phone;
+          final mainExtent = columns == 1 && !useList
               ? 148.0
               : phone
                   ? 216.0
@@ -796,31 +798,55 @@ class _ProductCollection extends StatelessWidget {
                                 ? 'There are no in-stock products in this category.'
                                 : 'Add products here or try a different search.',
                           )
-                        : GridView.builder(
-                            controller: controller,
-                            itemCount:
-                                products.length + (isLoadingMore ? 1 : 0),
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: columns,
-                              crossAxisSpacing: 14,
-                              mainAxisSpacing: 14,
-                              mainAxisExtent: mainExtent,
-                            ),
-                            itemBuilder: (context, index) {
-                              if (index == products.length) {
-                                return const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              }
-                              return _ProductCard(
-                                product: Map<String, dynamic>.from(
-                                    products[index] as Map),
-                                compact: columns == 1,
-                                dense: phone,
-                              );
-                            },
-                          ),
+                        : useList
+                            ? ListView.separated(
+                                controller: controller,
+                                itemCount:
+                                    products.length + (isLoadingMore ? 1 : 0),
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 10),
+                                itemBuilder: (context, index) {
+                                  if (index == products.length) {
+                                    return const Padding(
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 16),
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  }
+                                  return _ProductCard(
+                                    product: Map<String, dynamic>.from(
+                                        products[index] as Map),
+                                    compact: true,
+                                  );
+                                },
+                              )
+                            : GridView.builder(
+                                controller: controller,
+                                itemCount:
+                                    products.length + (isLoadingMore ? 1 : 0),
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: columns,
+                                  crossAxisSpacing: 14,
+                                  mainAxisSpacing: 14,
+                                  mainAxisExtent: mainExtent,
+                                ),
+                                itemBuilder: (context, index) {
+                                  if (index == products.length) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  }
+                                  return _ProductCard(
+                                    product: Map<String, dynamic>.from(
+                                        products[index] as Map),
+                                    compact: columns == 1,
+                                    dense: phone,
+                                  );
+                                },
+                              ),
               ),
             ],
           );

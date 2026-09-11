@@ -23,7 +23,7 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 1400));
     await tester.pump();
-    expect(find.text('Store login'), findsOneWidget);
+    expect(find.text('Nexora Commerce'), findsOneWidget);
     expect(find.text('Sign in'), findsWidgets);
   });
 
@@ -250,7 +250,8 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Store login'), findsOneWidget);
+    expect(find.text('Nexora Commerce'), findsOneWidget);
+    expect(find.text('Store login'), findsNothing);
     expect(find.text('Sign in'), findsWidgets);
     expect(find.text('What changed'), findsNothing);
     expect(find.text('Platform'), findsNothing);

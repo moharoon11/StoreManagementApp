@@ -142,6 +142,7 @@ class ResponsiveLayout extends StatelessWidget {
           final scheme = Theme.of(context).colorScheme;
           final width = MediaQuery.sizeOf(context).width;
           final crossAxisCount = width >= 720 ? 3 : 2;
+          final mobile = Ui.isCompact(context);
 
           return SafeArea(
             child: SingleChildScrollView(
@@ -189,52 +190,45 @@ class ResponsiveLayout extends StatelessWidget {
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final narrow = constraints.maxWidth < 480;
-                      final first = _ThemeChoice(
-                        option: AppThemeOption.light,
-                        selected: provider.themeOption == AppThemeOption.light,
-                        onTap: () => provider.setThemeOption(
-                          AppThemeOption.light,
-                        ),
-                        compact: true,
-                      );
-                      final second = _ThemeChoice(
-                        option: AppThemeOption.nightOwl,
-                        selected:
-                            provider.themeOption == AppThemeOption.nightOwl,
-                        onTap: () => provider.setThemeOption(
-                          AppThemeOption.nightOwl,
-                        ),
-                        compact: true,
-                      );
-                      final third = _ThemeChoice(
-                        option: AppThemeOption.evergreen,
-                        selected:
-                            provider.themeOption == AppThemeOption.evergreen,
-                        onTap: () => provider.setThemeOption(
-                          AppThemeOption.evergreen,
-                        ),
-                        compact: true,
-                      );
+                      final themeOptions = <AppThemeOption>[
+                        AppThemeOption.light,
+                        if (!mobile) AppThemeOption.nightOwl,
+                        AppThemeOption.evergreen,
+                      ];
+
+                      Widget choice(AppThemeOption option) => _ThemeChoice(
+                            option: option,
+                            selected: provider.themeOption == option,
+                            onTap: () => provider.setThemeOption(option),
+                            compact: true,
+                          );
 
                       if (narrow) {
                         return Column(
                           children: [
-                            SizedBox(width: double.infinity, child: first),
-                            const SizedBox(height: 10),
-                            SizedBox(width: double.infinity, child: second),
-                            const SizedBox(height: 10),
-                            SizedBox(width: double.infinity, child: third),
+                            for (var index = 0;
+                                index < themeOptions.length;
+                                index++) ...[
+                              SizedBox(
+                                width: double.infinity,
+                                child: choice(themeOptions[index]),
+                              ),
+                              if (index != themeOptions.length - 1)
+                                const SizedBox(height: 10),
+                            ],
                           ],
                         );
                       }
 
                       return Row(
                         children: [
-                          Expanded(child: first),
-                          const SizedBox(width: 10),
-                          Expanded(child: second),
-                          const SizedBox(width: 10),
-                          Expanded(child: third),
+                          for (var index = 0;
+                              index < themeOptions.length;
+                              index++) ...[
+                            Expanded(child: choice(themeOptions[index])),
+                            if (index != themeOptions.length - 1)
+                              const SizedBox(width: 10),
+                          ],
                         ],
                       );
                     },
@@ -443,7 +437,7 @@ class _CompactWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Column(
         children: [
           _CompactHeader(
@@ -675,47 +669,56 @@ class _BottomWorkspaceBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final phone = Ui.isPhone(context);
+
     return SafeArea(
       top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-        child: SurfacePanel(
-          padding: EdgeInsets.zero,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: NavigationBar(
-              height: 68,
-              selectedIndex: selectedIndex,
-              onDestinationSelected: onSelect,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: 'Home',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.point_of_sale_outlined),
-                  selectedIcon: Icon(Icons.point_of_sale_rounded),
-                  label: 'Sell',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.inventory_2_outlined),
-                  selectedIcon: Icon(Icons.inventory_2_rounded),
-                  label: 'Products',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.account_tree_outlined),
-                  selectedIcon: Icon(Icons.account_tree_rounded),
-                  label: 'Categories',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.dashboard_customize_outlined),
-                  selectedIcon: Icon(Icons.dashboard_customize_rounded),
-                  label: 'More',
-                ),
-              ],
-            ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          border: Border(
+            top: BorderSide(color: scheme.outlineVariant),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.shadow.withValues(alpha: .05),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: NavigationBar(
+          height: phone ? 64 : 68,
+          selectedIndex: selectedIndex,
+          onDestinationSelected: onSelect,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.point_of_sale_outlined),
+              selectedIcon: Icon(Icons.point_of_sale_rounded),
+              label: 'Sell',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.inventory_2_outlined),
+              selectedIcon: Icon(Icons.inventory_2_rounded),
+              label: 'Products',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.account_tree_outlined),
+              selectedIcon: Icon(Icons.account_tree_rounded),
+              label: 'Categories',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.dashboard_customize_outlined),
+              selectedIcon: Icon(Icons.dashboard_customize_rounded),
+              label: 'More',
+            ),
+          ],
         ),
       ),
     );

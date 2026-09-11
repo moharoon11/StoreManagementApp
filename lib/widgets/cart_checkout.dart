@@ -106,8 +106,8 @@ class CartSummaryBar extends StatelessWidget {
   }
 }
 
-/// Opens the cart for review — bottom sheet on narrow screens, centered
-/// dialog on wide ones.
+/// Opens the cart for review — a dedicated mobile screen on phones and a
+/// centered dialog on wider layouts.
 Future<void> openCart(BuildContext context) async {
   final provider = context.read<AppProvider>();
   if (provider.cartItems.isEmpty) return;
@@ -125,16 +125,33 @@ Future<void> openCart(BuildContext context) async {
       ),
     );
   } else {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => SizedBox(
-        height: MediaQuery.sizeOf(context).height * .78,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: CartPanel(pageContext: context, closeOverlayOnCheckout: true),
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const _CartScreen(),
+      ),
+    );
+  }
+}
+
+class _CartScreen extends StatelessWidget {
+  const _CartScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Current sale')),
+      body: WorkspaceBackdrop(
+        child: WorkspacePage(
+          child: Column(
+            children: [
+              Expanded(
+                child: CartPanel(
+                  pageContext: context,
+                  replaceWithCheckout: true,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -241,6 +258,7 @@ class CartPanel extends StatelessWidget {
     super.key,
     required this.pageContext,
     this.closeOverlayOnCheckout = false,
+    this.replaceWithCheckout = false,
   });
 
   /// Context of the page underneath any sheet/dialog. Used to present the
@@ -250,6 +268,10 @@ class CartPanel extends StatelessWidget {
   /// Whether the cart is shown inside an overlay that should be closed
   /// before starting checkout. Leave false when embedded inline in a page.
   final bool closeOverlayOnCheckout;
+
+  /// Replaces the current route with checkout so mobile cart screens do not
+  /// stack on top of the billing flow.
+  final bool replaceWithCheckout;
 
   @override
   Widget build(BuildContext context) {
@@ -350,7 +372,7 @@ class CartPanel extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: provider.cartItems.isEmpty || _isProcessing
                     ? null
-                    : () => _beginCheckout(),
+                    : () => _beginCheckout(context),
                 icon: const Icon(Icons.lock_outline_rounded, size: 18),
                 label: Text(
                   _isProcessing
@@ -367,11 +389,22 @@ class CartPanel extends StatelessWidget {
     );
   }
 
-  void _beginCheckout() {
-    if (closeOverlayOnCheckout) Navigator.of(pageContext).pop();
-    Navigator.of(pageContext).push(
-      MaterialPageRoute(builder: (_) => const CheckoutScreen()),
-    );
+  void _beginCheckout(BuildContext context) {
+    final route = MaterialPageRoute(builder: (_) => const CheckoutScreen());
+    if (replaceWithCheckout) {
+      Navigator.of(context).pushReplacement(route);
+      return;
+    }
+    if (closeOverlayOnCheckout) {
+      Navigator.of(context).pop();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (pageContext.mounted) {
+          Navigator.of(pageContext).push(route);
+        }
+      });
+      return;
+    }
+    Navigator.of(context).push(route);
   }
 }
 

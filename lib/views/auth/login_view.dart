@@ -82,9 +82,12 @@ class _LoginViewState extends State<LoginView>
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(compact ? 14 : 18),
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 18 : 18,
+                vertical: compact ? 12 : 18,
+              ),
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: compact ? 440 : 1120),
+                constraints: BoxConstraints(maxWidth: compact ? 392 : 1120),
                 child: Column(
                   children: [
                     if (wide) ...[
@@ -294,19 +297,18 @@ class _AuthForm extends StatelessWidget {
               ? Theme.of(context).textTheme.headlineSmall
               : Theme.of(context).textTheme.headlineMedium,
         ),
-        SizedBox(height: compact ? 6 : 8),
-        Text(
-          register
-              ? 'Set up your login and start billing.'
-              : 'Sign in to continue.',
-          style: (compact
-                  ? Theme.of(context).textTheme.bodyMedium
-                  : Theme.of(context).textTheme.bodyLarge)
-              ?.copyWith(
-            color: scheme.onSurface.withValues(alpha: .7),
+        if (!compact) ...[
+          const SizedBox(height: 8),
+          Text(
+            register
+                ? 'Set up your login and start billing.'
+                : 'Sign in to continue.',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: .7),
+                ),
           ),
-        ),
-        SizedBox(height: compact ? 16 : 20),
+        ],
+        SizedBox(height: compact ? 14 : 20),
         TextField(
           controller: usernameController,
           textInputAction: TextInputAction.next,
@@ -384,31 +386,19 @@ class _CompactAuthHeader extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 52,
-          height: 52,
+          width: 46,
+          height: 46,
           decoration: BoxDecoration(
             color: scheme.primary,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: const Icon(Icons.auto_graph_rounded, color: Colors.white),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Nexora Commerce',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Store login',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurface.withValues(alpha: .68),
-                    ),
-              ),
-            ],
+          child: Text(
+            'Nexora Commerce',
+            style: Theme.of(context).textTheme.titleLarge,
           ),
         ),
       ],

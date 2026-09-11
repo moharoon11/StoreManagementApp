@@ -819,12 +819,13 @@ class _ProductGridPanel extends StatelessWidget {
         builder: (context, constraints) {
           final phone = constraints.maxWidth < 460;
           final columns = phone
-              ? 2
+              ? 1
               : math.max(
                   1,
                   (constraints.maxWidth / 228).floor(),
                 );
-          final cardExtent = columns == 1
+          final useList = phone;
+          final cardExtent = columns == 1 && !useList
               ? 166.0
               : phone
                   ? 222.0
@@ -856,24 +857,37 @@ class _ProductGridPanel extends StatelessWidget {
                             title: 'No matching products',
                             detail: 'Try another category or search term.',
                           )
-                        : GridView.builder(
-                            itemCount: products.length,
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: columns,
-                              mainAxisSpacing: 14,
-                              crossAxisSpacing: 14,
-                              mainAxisExtent: cardExtent,
-                            ),
-                            itemBuilder: (_, index) => _ProductCard(
-                              product: Map<String, dynamic>.from(
-                                  products[index] as Map),
-                              compact: columns == 1,
-                              dense: phone,
-                              onEditProduct: onEditProduct,
-                              onToggleFavourite: onToggleFavourite,
-                            ),
-                          ),
+                        : useList
+                            ? ListView.separated(
+                                itemCount: products.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 10),
+                                itemBuilder: (_, index) => _ProductCard(
+                                  product: Map<String, dynamic>.from(
+                                      products[index] as Map),
+                                  compact: true,
+                                  onEditProduct: onEditProduct,
+                                  onToggleFavourite: onToggleFavourite,
+                                ),
+                              )
+                            : GridView.builder(
+                                itemCount: products.length,
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: columns,
+                                  mainAxisSpacing: 14,
+                                  crossAxisSpacing: 14,
+                                  mainAxisExtent: cardExtent,
+                                ),
+                                itemBuilder: (_, index) => _ProductCard(
+                                  product: Map<String, dynamic>.from(
+                                      products[index] as Map),
+                                  compact: columns == 1,
+                                  dense: phone,
+                                  onEditProduct: onEditProduct,
+                                  onToggleFavourite: onToggleFavourite,
+                                ),
+                              ),
               ),
             ],
           );

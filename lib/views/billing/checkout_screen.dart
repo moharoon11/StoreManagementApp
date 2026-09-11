@@ -9,6 +9,7 @@ import '../../services/api_service.dart';
 import '../../services/invoice_pdf_service.dart';
 import '../../services/platform_capabilities.dart';
 import '../../utils/quantity_utils.dart';
+import '../../widgets/ui_breakpoints.dart';
 import '../../widgets/workspace_ui.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -356,130 +357,173 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         (_isReceived ? grandTotal : 0.0);
     final balanceDue =
         (grandTotal - amountReceived).clamp(0.0, double.infinity);
-    final wide = MediaQuery.sizeOf(context).width >= 940;
+    final width = MediaQuery.sizeOf(context).width;
+    final wide = width >= 940;
+    final compact = width < Ui.compactMax;
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isManual ? 'Manual checkout' : 'Checkout'),
       ),
-      body: WorkspacePage(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            PageIntro(
-              eyebrow: widget.isManual ? 'Manual bill' : 'Checkout',
-              title: 'Review payment and complete the sale',
-              description:
-                  'Customer details, payment receipt, and invoice items are grouped into a calmer layout so the last step feels quick instead of cramped.',
-            ),
-            const SizedBox(height: 16),
-            AdaptiveWrapGrid(
-              minItemWidth: 180,
-              children: [
-                StatTile(
-                  label: 'Bill lines',
-                  value: '${lines.length}',
-                  icon: Icons.receipt_long_outlined,
-                  color: scheme.primary,
-                  note: widget.isManual
-                      ? 'Manual entries prepared for billing'
-                      : 'Products in the current checkout',
-                ),
-                StatTile(
-                  label: 'Grand total',
-                  value: '₹${grandTotal.toStringAsFixed(2)}',
-                  icon: Icons.payments_outlined,
-                  color: scheme.secondary,
-                  note: 'Current bill amount',
-                ),
-                StatTile(
-                  label: 'Balance due',
-                  value: '₹${balanceDue.toStringAsFixed(2)}',
-                  icon: Icons.account_balance_wallet_outlined,
-                  color: balanceDue > 0 ? scheme.error : scheme.tertiary,
-                  note: balanceDue > 0
-                      ? 'Outstanding after this checkout'
-                      : 'Marked as fully received',
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: lines.isEmpty
-                  ? const EmptyCanvas(
-                      icon: Icons.shopping_bag_outlined,
-                      title: 'Nothing to check out',
-                      detail:
-                          'Add products or manual bill lines before opening checkout.',
-                    )
-                  : Form(
-                      key: _formKey,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final details = _CheckoutDetailsPanel(
-                            nameController: _nameController,
-                            mobileController: _mobileController,
-                            amountReceivedController: _amountReceivedController,
-                            invoiceDate: _invoiceDate,
-                            isReceived: _isReceived,
-                            grandTotal: grandTotal,
-                            balanceDue: balanceDue,
-                            onSelectInvoiceDate: _selectInvoiceDate,
-                            onToggleReceived: (value) {
-                              setState(() {
-                                _isReceived = value;
-                                if (_isReceived) {
-                                  _amountReceivedController.text =
-                                      grandTotal.toStringAsFixed(2);
-                                } else {
-                                  _amountReceivedController.text = '0.00';
-                                }
-                              });
-                            },
-                            onAmountChanged: () => setState(() {}),
-                          );
+      body: WorkspaceBackdrop(
+        child: WorkspacePage(
+          child: lines.isEmpty
+              ? const EmptyCanvas(
+                  icon: Icons.shopping_bag_outlined,
+                  title: 'Nothing to check out',
+                  detail:
+                      'Add products or manual bill lines before opening checkout.',
+                )
+              : Form(
+                  key: _formKey,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final details = _CheckoutDetailsPanel(
+                        nameController: _nameController,
+                        mobileController: _mobileController,
+                        amountReceivedController: _amountReceivedController,
+                        invoiceDate: _invoiceDate,
+                        isReceived: _isReceived,
+                        grandTotal: grandTotal,
+                        balanceDue: balanceDue,
+                        onSelectInvoiceDate: _selectInvoiceDate,
+                        onToggleReceived: (value) {
+                          setState(() {
+                            _isReceived = value;
+                            if (_isReceived) {
+                              _amountReceivedController.text =
+                                  grandTotal.toStringAsFixed(2);
+                            } else {
+                              _amountReceivedController.text = '0.00';
+                            }
+                          });
+                        },
+                        onAmountChanged: () => setState(() {}),
+                      );
 
-                          final review = _CheckoutReviewPanel(
-                            lines: lines,
-                            grandTotal: grandTotal,
-                          );
+                      final review = _CheckoutReviewPanel(
+                        lines: lines,
+                        grandTotal: grandTotal,
+                      );
 
-                          if (wide && constraints.maxWidth >= 880) {
-                            return ListView(
+                      final summary = compact
+                          ? Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
                               children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(child: details),
-                                    const SizedBox(width: 16),
-                                    Expanded(child: review),
-                                  ],
+                                StatusPill(
+                                  label: '${lines.length} lines',
+                                  color: scheme.primary,
+                                ),
+                                StatusPill(
+                                  label:
+                                      '₹${grandTotal.toStringAsFixed(0)} total',
+                                  color: scheme.secondary,
+                                ),
+                                StatusPill(
+                                  label: balanceDue > 0
+                                      ? '₹${balanceDue.toStringAsFixed(0)} due'
+                                      : 'Fully received',
+                                  color: balanceDue > 0
+                                      ? scheme.error
+                                      : scheme.tertiary,
+                                ),
+                              ],
+                            )
+                          : AdaptiveWrapGrid(
+                              minItemWidth: 180,
+                              children: [
+                                StatTile(
+                                  label: 'Bill lines',
+                                  value: '${lines.length}',
+                                  icon: Icons.receipt_long_outlined,
+                                  color: scheme.primary,
+                                  note: widget.isManual
+                                      ? 'Manual entries prepared for billing'
+                                      : 'Products in the current checkout',
+                                ),
+                                StatTile(
+                                  label: 'Grand total',
+                                  value: '₹${grandTotal.toStringAsFixed(2)}',
+                                  icon: Icons.payments_outlined,
+                                  color: scheme.secondary,
+                                  note: 'Current bill amount',
+                                ),
+                                StatTile(
+                                  label: 'Balance due',
+                                  value: '₹${balanceDue.toStringAsFixed(2)}',
+                                  icon: Icons.account_balance_wallet_outlined,
+                                  color: balanceDue > 0
+                                      ? scheme.error
+                                      : scheme.tertiary,
+                                  note: balanceDue > 0
+                                      ? 'Outstanding after this checkout'
+                                      : 'Marked as fully received',
                                 ),
                               ],
                             );
-                          }
 
-                          return ListView(
-                            children: [
-                              details,
-                              const SizedBox(height: 16),
-                              review,
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-            ),
-          ],
+                      return ListView(
+                        children: [
+                          PageIntro(
+                            eyebrow:
+                                widget.isManual ? 'Manual bill' : 'Checkout',
+                            title: compact
+                                ? 'Complete the sale'
+                                : 'Review payment and complete the sale',
+                            description: compact
+                                ? 'Confirm the customer, payment, and bill items before saving the invoice.'
+                                : 'Customer details, payment receipt, and invoice items are grouped into a calmer layout so the last step feels quick instead of cramped.',
+                          ),
+                          SizedBox(height: compact ? 12 : 16),
+                          summary,
+                          SizedBox(height: compact ? 12 : 16),
+                          if (wide && constraints.maxWidth >= 880)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: details),
+                                const SizedBox(width: 16),
+                                Expanded(child: review),
+                              ],
+                            )
+                          else ...[
+                            details,
+                            const SizedBox(height: 16),
+                            review,
+                          ],
+                          SizedBox(height: compact ? 12 : 18),
+                        ],
+                      );
+                    },
+                  ),
+                ),
         ),
       ),
       bottomNavigationBar: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: SurfacePanel(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            border: Border(
+              top: BorderSide(color: scheme.outlineVariant),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: scheme.shadow.withValues(alpha: .05),
+                blurRadius: 16,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              compact ? 14 : 18,
+              12,
+              compact ? 14 : 18,
+              compact ? 12 : 14,
+            ),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final narrow = constraints.maxWidth < 560;
@@ -580,9 +624,7 @@ class _CheckoutDetailsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return ListView(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+    return Column(
       children: [
         SectionPanel(
           title: 'Customer details',

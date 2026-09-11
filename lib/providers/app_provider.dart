@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -63,10 +64,14 @@ class AppProvider extends ChangeNotifier {
         Future<void>.delayed(const Duration(milliseconds: 1300));
     try {
       final savedTheme = await StorageService.getTheme();
-      _themeOption = AppThemeOption.values.firstWhere(
+      final resolvedTheme = AppThemeOption.values.firstWhere(
         (option) => option.name == savedTheme,
         orElse: () => AppThemeOption.light,
       );
+      _themeOption = _normalizedThemeOption(resolvedTheme);
+      if (savedTheme != null && savedTheme != _themeOption.name) {
+        await StorageService.saveTheme(_themeOption.name);
+      }
       final token = await StorageService.getToken();
       if (token != null && token.isNotEmpty) {
         _isAuthenticated = true;
@@ -89,10 +94,11 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> setThemeOption(AppThemeOption option) async {
-    if (_themeOption == option) return;
-    _themeOption = option;
+    final resolvedOption = _normalizedThemeOption(option);
+    if (_themeOption == resolvedOption) return;
+    _themeOption = resolvedOption;
     notifyListeners();
-    await StorageService.saveTheme(option.name);
+    await StorageService.saveTheme(resolvedOption.name);
   }
 
   Future<bool> login(String username, String password) async {
@@ -225,5 +231,15 @@ class AppProvider extends ChangeNotifier {
   void clearCart() {
     _cartItems.clear();
     notifyListeners();
+  }
+
+  AppThemeOption _normalizedThemeOption(AppThemeOption option) {
+    final isMobilePlatform = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS);
+    if (isMobilePlatform && option == AppThemeOption.nightOwl) {
+      return AppThemeOption.evergreen;
+    }
+    return option;
   }
 }

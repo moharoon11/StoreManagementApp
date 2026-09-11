@@ -32,8 +32,12 @@ abstract final class Ui {
   /// Page padding that scales with available width.
   static EdgeInsets pagePadding(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    if (width < phoneMax) return const EdgeInsets.all(10);
-    if (width < compactMax) return const EdgeInsets.all(14);
+    if (width < phoneMax) {
+      return const EdgeInsets.symmetric(horizontal: 14, vertical: 10);
+    }
+    if (width < compactMax) {
+      return const EdgeInsets.symmetric(horizontal: 16, vertical: 12);
+    }
     if (width < mediumMax) return const EdgeInsets.all(18);
     return const EdgeInsets.all(24);
   }
@@ -41,8 +45,8 @@ abstract final class Ui {
   /// Heading size that scales with available width.
   static double headingSize(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    if (width < phoneMax) return 22;
-    if (width < compactMax) return 28;
+    if (width < phoneMax) return 20;
+    if (width < compactMax) return 26;
     if (width < mediumMax) return 32;
     return 36;
   }
