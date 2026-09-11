@@ -44,8 +44,19 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
         ApiConfig.invoices,
         queryParameters: {'pageSize': '100'},
       );
-      if (res['success'] == true && mounted) {
-        _invoices = res['data']['items'] ?? [];
+      if (!mounted) return;
+
+      if (res is List) {
+        _invoices = List<dynamic>.from(res);
+        return;
+      }
+
+      if (res is Map && res['success'] == false) {
+        return;
+      }
+
+      if (res is Map) {
+        _invoices = _extractInvoiceRows(res);
       }
     } catch (_) {}
   }
@@ -57,6 +68,34 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
         _summary = res['data'] ?? _summary;
       }
     } catch (_) {}
+  }
+
+  List<dynamic> _extractInvoiceRows(Map response) {
+    final data = response['data'];
+    if (data is List) {
+      return List<dynamic>.from(data);
+    }
+
+    if (data is Map) {
+      final candidates = [
+        data['items'],
+        data['invoices'],
+        data['rows'],
+        data['data'],
+      ];
+      for (final candidate in candidates) {
+        if (candidate is List) {
+          return List<dynamic>.from(candidate);
+        }
+      }
+    }
+
+    final topLevelItems = response['items'];
+    if (topLevelItems is List) {
+      return List<dynamic>.from(topLevelItems);
+    }
+
+    return const [];
   }
 
   Future<void> _downloadPdf(int invoiceId, String invoiceNum) async {
@@ -760,7 +799,7 @@ class _ItemLedgerPanel extends StatelessWidget {
               );
             }),
           const SizedBox(height: 4),
-          Divider(height: 1),
+          const Divider(height: 1),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

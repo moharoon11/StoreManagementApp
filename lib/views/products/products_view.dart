@@ -1,12 +1,13 @@
-import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../config/api_config.dart';
 import '../../services/adaptive_image_service.dart';
 import '../../services/api_service.dart';
 import '../../utils/quantity_utils.dart';
+import '../../widgets/adaptive_image_preview.dart';
 import '../../widgets/workspace_ui.dart';
 import 'product_edit_view.dart';
 
@@ -105,7 +106,7 @@ class _ProductsViewState extends State<ProductsView> {
     String selectedUnit = 'Piece';
     String productImageUrl = '';
     bool isUploading = false;
-    File? pickedImageFile;
+    XFile? pickedImageFile;
 
     Navigator.of(context)
         .push(
@@ -122,11 +123,11 @@ class _ProductsViewState extends State<ProductsView> {
                 if (image == null) return;
 
                 setModalState(() {
-                  pickedImageFile = File(image.path);
+                  pickedImageFile = image;
                   isUploading = true;
                 });
 
-                final url = await ApiService.uploadImage(image.path);
+                final url = await ApiService.uploadImage(image);
                 if (url != null) {
                   setModalState(() {
                     productImageUrl = url;
@@ -189,16 +190,12 @@ class _ProductsViewState extends State<ProductsView> {
                     ),
                     child: isUploading
                         ? const Center(child: CircularProgressIndicator())
-                        : pickedImageFile != null
-                            ? Image.file(pickedImageFile!, fit: BoxFit.cover)
-                            : productImageUrl.isNotEmpty
-                                ? Image.network(
-                                    productImageUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) =>
-                                        const _ImagePlaceholder(),
-                                  )
-                                : const _ImagePlaceholder(),
+                        : AdaptiveImagePreview(
+                            pickedImage: pickedImageFile,
+                            imageUrl: productImageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: const _ImagePlaceholder(),
+                          ),
                   ),
                 );
 
@@ -801,6 +798,8 @@ class _ProductGridPanel extends StatelessWidget {
             1,
             (constraints.maxWidth / 228).floor(),
           );
+          final cardExtent = columns == 1 ? 166.0 : 312.0;
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -834,7 +833,7 @@ class _ProductGridPanel extends StatelessWidget {
                               crossAxisCount: columns,
                               mainAxisSpacing: 14,
                               crossAxisSpacing: 14,
-                              mainAxisExtent: columns == 1 ? 166 : 256,
+                              mainAxisExtent: cardExtent,
                             ),
                             itemBuilder: (_, index) => _ProductCard(
                               product: Map<String, dynamic>.from(

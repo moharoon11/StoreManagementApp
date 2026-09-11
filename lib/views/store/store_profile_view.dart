@@ -1,11 +1,11 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../config/api_config.dart';
 import '../../services/adaptive_image_service.dart';
 import '../../services/api_service.dart';
 import '../../services/platform_capabilities.dart';
+import '../../widgets/adaptive_image_preview.dart';
 import '../../widgets/workspace_ui.dart';
 
 class StoreProfileView extends StatefulWidget {
@@ -32,7 +32,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
   final _gstController = TextEditingController();
 
   String _logoUrl = '';
-  File? _pickedLogoFile;
+  XFile? _pickedLogoFile;
 
   @override
   void initState() {
@@ -85,11 +85,11 @@ class _StoreProfileViewState extends State<StoreProfileView> {
       if (image == null) return;
 
       setState(() {
-        _pickedLogoFile = File(image.path);
+        _pickedLogoFile = image;
         _isUploadingLogo = true;
       });
 
-      final url = await ApiService.uploadImage(image.path);
+      final url = await ApiService.uploadImage(image);
       if (url != null && mounted) {
         setState(() {
           _logoUrl = url;
@@ -396,7 +396,7 @@ class _LogoBadge extends StatelessWidget {
   });
 
   final String logoUrl;
-  final File? pickedLogoFile;
+  final XFile? pickedLogoFile;
   final bool large;
   final bool loading;
 
@@ -407,23 +407,27 @@ class _LogoBadge extends StatelessWidget {
     return Container(
       width: size,
       height: size,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: .24),
         shape: BoxShape.circle,
-        image: pickedLogoFile != null
-            ? DecorationImage(
-                image: FileImage(pickedLogoFile!), fit: BoxFit.cover)
-            : (logoUrl.isNotEmpty
-                ? DecorationImage(
-                    image: NetworkImage(logoUrl), fit: BoxFit.cover)
-                : null),
       ),
       child: loading
           ? const Center(child: CircularProgressIndicator())
-          : (pickedLogoFile == null && logoUrl.isEmpty
-              ? Icon(Icons.storefront_rounded,
-                  color: scheme.primary, size: size / 2.4)
-              : null),
+          : AdaptiveImagePreview(
+              pickedImage: pickedLogoFile,
+              imageUrl: logoUrl,
+              fit: BoxFit.cover,
+              width: size,
+              height: size,
+              placeholder: Center(
+                child: Icon(
+                  Icons.storefront_rounded,
+                  color: scheme.primary,
+                  size: size / 2.4,
+                ),
+              ),
+            ),
     );
   }
 }

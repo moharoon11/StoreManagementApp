@@ -1,11 +1,11 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../config/api_config.dart';
 import '../../services/adaptive_image_service.dart';
 import '../../services/api_service.dart';
 import '../../utils/quantity_utils.dart';
+import '../../widgets/adaptive_image_preview.dart';
 import '../../widgets/workspace_ui.dart';
 
 class ProductEditView extends StatefulWidget {
@@ -32,7 +32,7 @@ class _ProductEditViewState extends State<ProductEditView> {
   late String _selectedUnit;
   String _productImageUrl = '';
   bool _isUploading = false;
-  File? _pickedImageFile;
+  XFile? _pickedImageFile;
   bool _isLoading = false;
 
   @override
@@ -73,11 +73,11 @@ class _ProductEditViewState extends State<ProductEditView> {
       if (image == null) return;
 
       setState(() {
-        _pickedImageFile = File(image.path);
+        _pickedImageFile = image;
         _isUploading = true;
       });
 
-      final url = await ApiService.uploadImage(image.path);
+      final url = await ApiService.uploadImage(image);
       if (url != null && mounted) {
         setState(() {
           _productImageUrl = url;
@@ -459,7 +459,7 @@ class _ImageEditorPanel extends StatelessWidget {
   });
 
   final String imageUrl;
-  final File? pickedImageFile;
+  final XFile? pickedImageFile;
   final bool isUploading;
   final VoidCallback onTap;
 
@@ -484,27 +484,16 @@ class _ImageEditorPanel extends StatelessWidget {
             ),
             child: isUploading
                 ? const Center(child: CircularProgressIndicator())
-                : pickedImageFile != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Image.file(
-                          pickedImageFile!,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                        ),
-                      )
-                    : imageUrl.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
-                            child: Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              errorBuilder: (_, __, ___) =>
-                                  const _ProductImagePlaceholder(),
-                            ),
-                          )
-                        : const _ProductImagePlaceholder(),
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: AdaptiveImagePreview(
+                      pickedImage: pickedImageFile,
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      placeholder: const _ProductImagePlaceholder(),
+                    ),
+                  ),
           ),
         ),
       ),

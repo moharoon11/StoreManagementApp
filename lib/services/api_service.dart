@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+
 import '../config/api_config.dart';
 import 'storage_service.dart';
 
@@ -85,7 +88,7 @@ class ApiService {
     return _processResponse(response);
   }
 
-  static Future<String?> uploadImage(String filePath) async {
+  static Future<String?> uploadImage(XFile imageFile) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.uploadImage}');
       final request = http.MultipartRequest('POST', uri);
@@ -95,7 +98,13 @@ class ApiService {
         request.headers['Authorization'] = 'Bearer $token';
       }
 
-      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          await imageFile.readAsBytes(),
+          filename: _uploadFilename(imageFile, fallback: 'image.jpg'),
+        ),
+      );
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
@@ -121,6 +130,23 @@ class ApiService {
     } catch (e) {
       rethrow;
     }
+  }
+
+  static String _uploadFilename(XFile imageFile, {required String fallback}) {
+    final explicitName = imageFile.name.trim();
+    if (explicitName.isNotEmpty) {
+      return explicitName;
+    }
+
+    final path = imageFile.path.trim();
+    if (path.isEmpty) {
+      return fallback;
+    }
+
+    final normalized = path.replaceAll('\\', '/');
+    final parts = normalized.split('/');
+    final candidate = parts.isEmpty ? '' : parts.last.trim();
+    return candidate.isEmpty ? fallback : candidate;
   }
 
   static dynamic _processResponse(http.Response response) {

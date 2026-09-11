@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/api_config.dart';
@@ -10,6 +10,7 @@ import '../../providers/app_provider.dart';
 import '../../services/adaptive_image_service.dart';
 import '../../services/api_service.dart';
 import '../../utils/quantity_utils.dart';
+import '../../widgets/adaptive_image_preview.dart';
 import '../../widgets/cart_checkout.dart';
 import '../../widgets/workspace_ui.dart';
 
@@ -188,7 +189,7 @@ class _CategoriesViewState extends State<CategoriesView> {
   void _showCategoryDialog({Map<String, dynamic>? category}) {
     final nameController = TextEditingController(text: category?['name'] ?? '');
     String imageUrl = category?['imageUrl'] ?? '';
-    File? localImage;
+    XFile? localImage;
     bool uploading = false;
 
     showDialog(
@@ -204,10 +205,10 @@ class _CategoriesViewState extends State<CategoriesView> {
               );
               if (image == null) return;
               setDialogState(() {
-                localImage = File(image.path);
+                localImage = image;
                 uploading = true;
               });
-              final uploaded = await ApiService.uploadImage(image.path);
+              final uploaded = await ApiService.uploadImage(image);
               if (uploaded != null) {
                 setDialogState(() {
                   imageUrl = uploaded;
@@ -247,29 +248,22 @@ class _CategoriesViewState extends State<CategoriesView> {
                       ),
                       child: uploading
                           ? const Center(child: CircularProgressIndicator())
-                          : localImage != null
-                              ? Image.file(localImage!, fit: BoxFit.cover)
-                              : imageUrl.isNotEmpty
-                                  ? Image.network(
-                                      imageUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Icon(
-                                        Icons.add_photo_alternate_outlined,
-                                        color: scheme.primary,
-                                      ),
-                                    )
-                                  : Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.add_photo_alternate_outlined,
-                                          color: scheme.primary,
-                                        ),
-                                        const SizedBox(height: 6),
-                                        const Text('Add image'),
-                                      ],
-                                    ),
+                          : AdaptiveImagePreview(
+                              pickedImage: localImage,
+                              imageUrl: imageUrl,
+                              fit: BoxFit.cover,
+                              placeholder: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.add_photo_alternate_outlined,
+                                    color: scheme.primary,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text('Add image'),
+                                ],
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -719,7 +713,7 @@ class _ProductCollection extends StatelessWidget {
             1,
             (constraints.maxWidth / (compact ? 300 : 228)).floor(),
           );
-          final mainExtent = columns == 1 ? 148.0 : 252.0;
+          final mainExtent = columns == 1 ? 148.0 : 292.0;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,

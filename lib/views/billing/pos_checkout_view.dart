@@ -278,7 +278,7 @@ class _ProductBrowser extends StatelessWidget {
                               crossAxisCount: columns,
                               mainAxisSpacing: 12,
                               crossAxisSpacing: 12,
-                              mainAxisExtent: columns == 1 ? 128 : 196,
+                              mainAxisExtent: columns == 1 ? 128 : 236,
                             ),
                             itemBuilder: (_, index) {
                               if (index == products.length) {

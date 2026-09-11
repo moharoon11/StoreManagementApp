@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -10,6 +8,7 @@ import '../../services/api_service.dart';
 import '../../services/bill_upload_service.dart';
 import '../../services/platform_capabilities.dart';
 import '../../utils/quantity_utils.dart';
+import '../../widgets/adaptive_image_preview.dart';
 import '../../widgets/workspace_ui.dart';
 
 class UploadBillView extends StatefulWidget {
@@ -24,7 +23,7 @@ class _UploadBillViewState extends State<UploadBillView> {
   List<dynamic> _categories = [];
 
   bool _isExtracting = false;
-  File? _pickedImageFile;
+  XFile? _pickedImageFile;
   List<ExtractedBillItem> _extractedItems = [];
 
   bool _isProcessing = false;
@@ -63,12 +62,12 @@ class _UploadBillViewState extends State<UploadBillView> {
       if (image == null) return;
 
       setState(() {
-        _pickedImageFile = File(image.path);
+        _pickedImageFile = image;
         _isExtracting = true;
         _extractedItems = [];
       });
 
-      final items = await BillUploadService.extractBill(image.path);
+      final items = await BillUploadService.extractBill(image);
       if (mounted) {
         setState(() {
           _extractedItems = items;
@@ -442,7 +441,7 @@ class _UploadBillExtractingState extends StatelessWidget {
     required this.imageFile,
   });
 
-  final File? imageFile;
+  final XFile? imageFile;
 
   @override
   Widget build(BuildContext context) {
@@ -457,11 +456,12 @@ class _UploadBillExtractingState extends StatelessWidget {
               if (imageFile != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(18),
-                  child: Image.file(
-                    imageFile!,
+                  child: AdaptiveImagePreview(
+                    pickedImage: imageFile,
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
+                    placeholder: const SizedBox.shrink(),
                   ),
                 ),
               const SizedBox(height: 18),
@@ -499,7 +499,7 @@ class _BillPreviewPanel extends StatelessWidget {
     required this.onRetake,
   });
 
-  final File imageFile;
+  final XFile imageFile;
   final int totalItems;
   final VoidCallback onRetake;
 
@@ -512,11 +512,12 @@ class _BillPreviewPanel extends StatelessWidget {
           final narrow = constraints.maxWidth < 520;
           final preview = ClipRRect(
             borderRadius: BorderRadius.circular(18),
-            child: Image.file(
-              imageFile,
+            child: AdaptiveImagePreview(
+              pickedImage: imageFile,
               width: 84,
               height: 84,
               fit: BoxFit.cover,
+              placeholder: const SizedBox.shrink(),
             ),
           );
           final text = Column(

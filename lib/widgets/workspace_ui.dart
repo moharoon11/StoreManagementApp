@@ -300,47 +300,54 @@ class SectionPanel extends StatelessWidget {
 
     return SurfacePanel(
       padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: .06),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: textTheme.titleLarge),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          subtitle!,
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurface.withValues(alpha: .65),
-                          ),
-                        ),
-                      ],
-                    ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final hasBoundedHeight = constraints.maxHeight.isFinite;
+          final body = Padding(padding: padding, child: child);
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: padding,
+                decoration: BoxDecoration(
+                  color: scheme.primary.withValues(alpha: .06),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
                   ),
                 ),
-                if (action != null) ...[
-                  const SizedBox(width: 12),
-                  action!,
-                ],
-              ],
-            ),
-          ),
-          Divider(height: 1, color: scheme.outlineVariant),
-          Padding(padding: padding, child: child),
-        ],
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: textTheme.titleLarge),
+                          if (subtitle != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              subtitle!,
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: scheme.onSurface.withValues(alpha: .65),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (action != null) ...[
+                      const SizedBox(width: 12),
+                      action!,
+                    ],
+                  ],
+                ),
+              ),
+              Divider(height: 1, color: scheme.outlineVariant),
+              if (hasBoundedHeight) Expanded(child: body) else body,
+            ],
+          );
+        },
       ),
     );
   }

@@ -259,6 +259,8 @@ class CartPanel extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 390;
+          final tightHeight = constraints.maxHeight < 520;
+          final sectionGap = tightHeight ? 10.0 : 16.0;
           return Column(children: [
             Row(children: [
               Expanded(
@@ -266,13 +268,22 @@ class CartPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Current sale',
-                        style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 4),
+                        style: tightHeight
+                            ? Theme.of(context).textTheme.titleMedium
+                            : Theme.of(context).textTheme.titleLarge),
+                    SizedBox(height: tightHeight ? 2 : 4),
                     Text(
                       'Review the basket before checkout.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurface.withValues(alpha: .62),
-                          ),
+                      maxLines: tightHeight ? 1 : 2,
+                      overflow: tightHeight
+                          ? TextOverflow.ellipsis
+                          : TextOverflow.clip,
+                      style: (tightHeight
+                              ? Theme.of(context).textTheme.bodySmall
+                              : Theme.of(context).textTheme.bodyMedium)
+                          ?.copyWith(
+                        color: scheme.onSurface.withValues(alpha: .62),
+                      ),
                     ),
                   ],
                 ),
@@ -286,17 +297,12 @@ class CartPanel extends StatelessWidget {
                 icon: Icon(Icons.delete_sweep_outlined, color: scheme.error),
               ),
             ]),
-            const SizedBox(height: 16),
+            SizedBox(height: sectionGap),
             Divider(height: 1, color: scheme.outlineVariant),
-            const SizedBox(height: 16),
+            SizedBox(height: sectionGap),
             Expanded(
               child: provider.cartItems.isEmpty
-                  ? const EmptyCanvas(
-                      icon: Icons.shopping_bag_outlined,
-                      title: 'No items in the current sale',
-                      detail:
-                          'Add products from the catalogue to start checkout.',
-                    )
+                  ? _CartEmptyState(compact: tightHeight)
                   : ListView.separated(
                       itemCount: provider.cartItems.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -318,19 +324,27 @@ class CartPanel extends StatelessWidget {
                       },
                     ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: sectionGap),
             Divider(height: 1, color: scheme.outlineVariant),
-            const SizedBox(height: 16),
+            SizedBox(height: sectionGap),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Total', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Total',
+                style: tightHeight
+                    ? Theme.of(context).textTheme.titleSmall
+                    : Theme.of(context).textTheme.titleMedium,
+              ),
               Text(
                 '₹${provider.cartTotal.toStringAsFixed(2)}',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: scheme.primary,
-                    ),
+                style: (tightHeight
+                        ? Theme.of(context).textTheme.titleLarge
+                        : Theme.of(context).textTheme.headlineSmall)
+                    ?.copyWith(
+                  color: scheme.primary,
+                ),
               ),
             ]),
-            const SizedBox(height: 12),
+            SizedBox(height: tightHeight ? 8 : 12),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -341,7 +355,9 @@ class CartPanel extends StatelessWidget {
                 label: Text(
                   _isProcessing
                       ? 'Processing...'
-                      : 'Checkout ${formatQuantity(provider.cartCount)} item${provider.cartCount == 1 ? '' : 's'}',
+                      : tightHeight
+                          ? 'Checkout'
+                          : 'Checkout ${formatQuantity(provider.cartCount)} item${provider.cartCount == 1 ? '' : 's'}',
                 ),
               ),
             ),
@@ -355,6 +371,69 @@ class CartPanel extends StatelessWidget {
     if (closeOverlayOnCheckout) Navigator.of(pageContext).pop();
     Navigator.of(pageContext).push(
       MaterialPageRoute(builder: (_) => const CheckoutScreen()),
+    );
+  }
+}
+
+class _CartEmptyState extends StatelessWidget {
+  const _CartEmptyState({this.compact = false});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 240,
+                maxHeight: constraints.maxHeight,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: compact ? 56 : 74,
+                    height: compact ? 56 : 74,
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withValues(alpha: .12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.shopping_bag_outlined,
+                      color: scheme.primary,
+                      size: compact ? 26 : 34,
+                    ),
+                  ),
+                  SizedBox(height: compact ? 10 : 16),
+                  Text(
+                    'No items in the current sale',
+                    textAlign: TextAlign.center,
+                    style: compact
+                        ? Theme.of(context).textTheme.titleMedium
+                        : Theme.of(context).textTheme.titleLarge,
+                  ),
+                  SizedBox(height: compact ? 4 : 8),
+                  Text(
+                    'Add products from the catalogue to start checkout.',
+                    textAlign: TextAlign.center,
+                    style: (compact
+                            ? Theme.of(context).textTheme.bodySmall
+                            : Theme.of(context).textTheme.bodyMedium)
+                        ?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: .62),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

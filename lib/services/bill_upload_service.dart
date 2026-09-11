@@ -1,8 +1,11 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+
 import '../config/api_config.dart';
-import 'storage_service.dart';
 import 'api_service.dart';
+import 'storage_service.dart';
 
 class ExtractedBillItem {
   int? productId;
@@ -56,7 +59,7 @@ class ExtractedBillItem {
 }
 
 class BillUploadService {
-  static Future<List<ExtractedBillItem>> extractBill(String filePath) async {
+  static Future<List<ExtractedBillItem>> extractBill(XFile imageFile) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.extractBill}');
       final request = http.MultipartRequest('POST', uri);
@@ -66,7 +69,13 @@ class BillUploadService {
         request.headers['Authorization'] = 'Bearer $token';
       }
 
-      request.files.add(await http.MultipartFile.fromPath('image', filePath));
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'image',
+          await imageFile.readAsBytes(),
+          filename: _uploadFilename(imageFile, fallback: 'bill.jpg'),
+        ),
+      );
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
@@ -98,6 +107,22 @@ class BillUploadService {
     } catch (e) {
       rethrow;
     }
+  }
+
+  static String _uploadFilename(XFile imageFile, {required String fallback}) {
+    final explicitName = imageFile.name.trim();
+    if (explicitName.isNotEmpty) {
+      return explicitName;
+    }
+
+    final path = imageFile.path.trim().replaceAll('\\', '/');
+    if (path.isEmpty) {
+      return fallback;
+    }
+
+    final parts = path.split('/');
+    final candidate = parts.isEmpty ? '' : parts.last.trim();
+    return candidate.isEmpty ? fallback : candidate;
   }
 
   static Future<void> processBill(List<ExtractedBillItem> items) async {
