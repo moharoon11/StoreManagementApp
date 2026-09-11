@@ -2,9 +2,9 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../config/api_config.dart';
+import '../../services/adaptive_image_service.dart';
 import '../../services/api_service.dart';
 import '../../utils/quantity_utils.dart';
 import '../../widgets/workspace_ui.dart';
@@ -80,7 +80,8 @@ class _ProductsViewState extends State<ProductsView> {
     }
   }
 
-  Future<void> _toggleFavourite(int productId, bool isCurrentlyFavourite) async {
+  Future<void> _toggleFavourite(
+      int productId, bool isCurrentlyFavourite) async {
     try {
       if (isCurrentlyFavourite) {
         await ApiService.delete('${ApiConfig.favourites}/$productId');
@@ -111,11 +112,13 @@ class _ProductsViewState extends State<ProductsView> {
       MaterialPageRoute(
         builder: (ctx) => StatefulBuilder(
           builder: (context, setModalState) {
-            Future<void> pickProductImage(ImageSource source) async {
+            Future<void> pickProductImage() async {
               try {
-                final picker = ImagePicker();
-                final image =
-                    await picker.pickImage(source: source, imageQuality: 80);
+                final image = await AdaptiveImageService.pickForUser(
+                  context,
+                  sheetTitle: 'Add product image',
+                  galleryLabel: 'Choose product image',
+                );
                 if (image == null) return;
 
                 setModalState(() {
@@ -134,7 +137,7 @@ class _ProductsViewState extends State<ProductsView> {
                 }
               } catch (e) {
                 setModalState(() => isUploading = false);
-                if (!mounted) return;
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
@@ -172,34 +175,7 @@ class _ProductsViewState extends State<ProductsView> {
             final wide = MediaQuery.sizeOf(context).width >= 860;
 
             Widget imagePicker() => GestureDetector(
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      builder: (sheetContext) => SafeArea(
-                        child: Wrap(
-                          children: [
-                            ListTile(
-                              leading:
-                                  const Icon(Icons.photo_library_outlined),
-                              title: const Text('Choose from gallery'),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                pickProductImage(ImageSource.gallery);
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.camera_alt_outlined),
-                              title: const Text('Take a photo'),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                pickProductImage(ImageSource.camera);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                  onTap: pickProductImage,
                   child: Container(
                     width: double.infinity,
                     height: 206,
@@ -289,16 +265,16 @@ class _ProductsViewState extends State<ProductsView> {
                     buildPair(
                       TextField(
                         controller: costPriceController,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         decoration: const InputDecoration(
                           labelText: 'Cost price (₹)',
                         ),
                       ),
                       TextField(
                         controller: sellingPriceController,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         decoration: const InputDecoration(
                           labelText: 'Selling price (₹) *',
                         ),
@@ -308,8 +284,8 @@ class _ProductsViewState extends State<ProductsView> {
                     buildPair(
                       TextField(
                         controller: stockController,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         decoration: const InputDecoration(
                           labelText: 'Initial stock quantity *',
                         ),
@@ -424,19 +400,17 @@ class _ProductsViewState extends State<ProductsView> {
 
                                     final body = <String, dynamic>{
                                       'name': nameController.text.trim(),
-                                      'costPrice':
-                                          double.tryParse(
-                                                costPriceController.text,
-                                              ) ??
-                                              0.0,
-                                      'sellingPrice':
-                                          double.tryParse(
-                                                sellingPriceController.text,
-                                              ) ??
-                                              0.0,
-                                      'stockQuantity':
-                                          double.tryParse(stockController.text) ??
-                                              0,
+                                      'costPrice': double.tryParse(
+                                            costPriceController.text,
+                                          ) ??
+                                          0.0,
+                                      'sellingPrice': double.tryParse(
+                                            sellingPriceController.text,
+                                          ) ??
+                                          0.0,
+                                      'stockQuantity': double.tryParse(
+                                              stockController.text) ??
+                                          0,
                                       'unit': selectedUnit,
                                       'imageUrl': productImageUrl,
                                     };
@@ -457,7 +431,9 @@ class _ProductsViewState extends State<ProductsView> {
                                     await _fetchProducts();
                                   },
                             child: Text(
-                              isUploading ? 'Uploading image...' : 'Create product',
+                              isUploading
+                                  ? 'Uploading image...'
+                                  : 'Create product',
                             ),
                           ),
                         );
@@ -705,7 +681,8 @@ class _CatalogueFilters extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Browse catalogue', style: Theme.of(context).textTheme.titleLarge),
+          Text('Browse catalogue',
+              style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 6),
           Text(
             'Switch between all products, favourites, or a single category.',
@@ -737,8 +714,8 @@ class _CatalogueFilters extends StatelessWidget {
                 return _FilterTile(
                   label: (category['name'] ?? 'Untitled').toString(),
                   icon: Icons.folder_outlined,
-                  selected:
-                      !showFavouritesOnly && selectedCategoryId == category['id'],
+                  selected: !showFavouritesOnly &&
+                      selectedCategoryId == category['id'],
                   onTap: () => onSelectCategory(category['id'] as int?),
                 );
               },
@@ -787,7 +764,8 @@ class _FilterStrip extends StatelessWidget {
         for (final category in categories) ...[
           _StripChip(
             label: (category['name'] ?? 'Untitled').toString(),
-            selected: !showFavouritesOnly && selectedCategoryId == category['id'],
+            selected:
+                !showFavouritesOnly && selectedCategoryId == category['id'],
             onTap: () => onSelectCategory(category['id'] as int?),
           ),
           const SizedBox(width: 8),
@@ -859,8 +837,8 @@ class _ProductGridPanel extends StatelessWidget {
                               mainAxisExtent: columns == 1 ? 166 : 256,
                             ),
                             itemBuilder: (_, index) => _ProductCard(
-                              product:
-                                  Map<String, dynamic>.from(products[index] as Map),
+                              product: Map<String, dynamic>.from(
+                                  products[index] as Map),
                               compact: columns == 1,
                               onEditProduct: onEditProduct,
                               onToggleFavourite: onToggleFavourite,
@@ -923,8 +901,8 @@ class _ProductCard extends StatelessWidget {
                             ),
                           ),
                           IconButton(
-                            onPressed: () =>
-                                onToggleFavourite(product['id'] as int, favourite),
+                            onPressed: () => onToggleFavourite(
+                                product['id'] as int, favourite),
                             icon: Icon(
                               favourite
                                   ? Icons.star_rounded
@@ -947,7 +925,8 @@ class _ProductCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       StatusPill(
-                        label: '${formatProductQuantity(stock, product)} in stock',
+                        label:
+                            '${formatProductQuantity(stock, product)} in stock',
                         color: stock <= 5 ? scheme.error : scheme.secondary,
                       ),
                     ],
@@ -1098,7 +1077,9 @@ class _FilterTile extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: selected ? scheme.primary : scheme.onSurface.withValues(alpha: .64),
+                color: selected
+                    ? scheme.primary
+                    : scheme.onSurface.withValues(alpha: .64),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1168,7 +1149,8 @@ class _ImagePlaceholder extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.add_photo_alternate_outlined, color: scheme.primary, size: 34),
+        Icon(Icons.add_photo_alternate_outlined,
+            color: scheme.primary, size: 34),
         const SizedBox(height: 8),
         Text(
           'Upload product image',

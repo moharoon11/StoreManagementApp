@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../config/api_config.dart';
+import '../../services/adaptive_image_service.dart';
 import '../../services/api_service.dart';
 import '../../utils/quantity_utils.dart';
 import '../../widgets/workspace_ui.dart';
@@ -63,10 +63,13 @@ class _ProductEditViewState extends State<ProductEditView> {
     super.dispose();
   }
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _pickImage() async {
     try {
-      final picker = ImagePicker();
-      final image = await picker.pickImage(source: source, imageQuality: 80);
+      final image = await AdaptiveImageService.pickForUser(
+        context,
+        sheetTitle: 'Product image',
+        galleryLabel: 'Choose product image',
+      );
       if (image == null) return;
 
       setState(() {
@@ -130,7 +133,8 @@ class _ProductEditViewState extends State<ProductEditView> {
         Navigator.pop(context, true);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res['message'] ?? 'Failed to update product.')),
+          SnackBar(
+              content: Text(res['message'] ?? 'Failed to update product.')),
         );
       }
     } catch (e) {
@@ -176,14 +180,15 @@ class _ProductEditViewState extends State<ProductEditView> {
 
     setState(() => _isLoading = true);
     try {
-      final res =
-          await ApiService.delete('${ApiConfig.products}/${widget.product['id']}');
+      final res = await ApiService.delete(
+          '${ApiConfig.products}/${widget.product['id']}');
       if (res['success'] == true) {
         if (!mounted) return;
         Navigator.pop(context, true);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res['message'] ?? 'Failed to delete product.')),
+          SnackBar(
+              content: Text(res['message'] ?? 'Failed to delete product.')),
         );
       }
     } catch (e) {
@@ -199,34 +204,6 @@ class _ProductEditViewState extends State<ProductEditView> {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  void _showImageOptions() {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Take a photo'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickImage(ImageSource.camera);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -271,7 +248,7 @@ class _ProductEditViewState extends State<ProductEditView> {
                             imageUrl: _productImageUrl,
                             pickedImageFile: _pickedImageFile,
                             isUploading: _isUploading,
-                            onTap: _showImageOptions,
+                            onTap: _pickImage,
                           );
                           final detailsPanel = SectionPanel(
                             title: 'Item details',
@@ -289,7 +266,9 @@ class _ProductEditViewState extends State<ProductEditView> {
                                 ),
                                 const SizedBox(height: 12),
                                 DropdownButtonFormField<int>(
-                                  value: hasSelectedCategory ? _selectedCategory : null,
+                                  value: hasSelectedCategory
+                                      ? _selectedCategory
+                                      : null,
                                   decoration: const InputDecoration(
                                     labelText: 'Category',
                                   ),
@@ -434,7 +413,8 @@ class _ProductEditViewState extends State<ProductEditView> {
                 final action = SizedBox(
                   width: narrow ? double.infinity : 220,
                   child: FilledButton.icon(
-                    onPressed: (_isLoading || _isUploading) ? null : _updateProduct,
+                    onPressed:
+                        (_isLoading || _isUploading) ? null : _updateProduct,
                     icon: const Icon(Icons.save_outlined, size: 18),
                     label: Text(
                       _isUploading ? 'Uploading image...' : 'Save changes',

@@ -1,10 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../config/api_config.dart';
+import '../../services/adaptive_image_service.dart';
 import '../../services/api_service.dart';
+import '../../services/platform_capabilities.dart';
 import '../../widgets/workspace_ui.dart';
 
 class StoreProfileView extends StatefulWidget {
@@ -74,10 +75,13 @@ class _StoreProfileViewState extends State<StoreProfileView> {
     if (mounted) setState(() => _isLoading = false);
   }
 
-  Future<void> _pickLogo(ImageSource source) async {
+  Future<void> _pickLogo() async {
     try {
-      final image =
-          await ImagePicker().pickImage(source: source, imageQuality: 80);
+      final image = await AdaptiveImageService.pickForUser(
+        context,
+        sheetTitle: 'Store logo',
+        galleryLabel: 'Choose logo image',
+      );
       if (image == null) return;
 
       setState(() {
@@ -142,7 +146,8 @@ class _StoreProfileViewState extends State<StoreProfileView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString().replaceAll("Exception: ", "")}'),
+            content:
+                Text('Error: ${e.toString().replaceAll("Exception: ", "")}'),
           ),
         );
       }
@@ -292,35 +297,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                 children: [
                   Center(
                     child: GestureDetector(
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (_) => SafeArea(
-                            child: Wrap(
-                              children: [
-                                ListTile(
-                                  leading:
-                                      const Icon(Icons.photo_library_outlined),
-                                  title: const Text('Choose from gallery'),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    _pickLogo(ImageSource.gallery);
-                                  },
-                                ),
-                                ListTile(
-                                  leading:
-                                      const Icon(Icons.camera_alt_outlined),
-                                  title: const Text('Take a photo'),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    _pickLogo(ImageSource.camera);
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                      onTap: _pickLogo,
                       child: Stack(
                         children: [
                           _LogoBadge(
@@ -339,8 +316,10 @@ class _StoreProfileViewState extends State<StoreProfileView> {
                                 color: Theme.of(context).colorScheme.primary,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
-                                Icons.camera_alt_rounded,
+                              child: Icon(
+                                PlatformCapabilities.supportsCameraCapture
+                                    ? Icons.camera_alt_rounded
+                                    : Icons.upload_file_rounded,
                                 color: Colors.white,
                                 size: 18,
                               ),
@@ -432,15 +411,18 @@ class _LogoBadge extends StatelessWidget {
         color: scheme.surfaceContainerHighest.withValues(alpha: .24),
         shape: BoxShape.circle,
         image: pickedLogoFile != null
-            ? DecorationImage(image: FileImage(pickedLogoFile!), fit: BoxFit.cover)
+            ? DecorationImage(
+                image: FileImage(pickedLogoFile!), fit: BoxFit.cover)
             : (logoUrl.isNotEmpty
-                ? DecorationImage(image: NetworkImage(logoUrl), fit: BoxFit.cover)
+                ? DecorationImage(
+                    image: NetworkImage(logoUrl), fit: BoxFit.cover)
                 : null),
       ),
       child: loading
           ? const Center(child: CircularProgressIndicator())
           : (pickedLogoFile == null && logoUrl.isEmpty
-              ? Icon(Icons.storefront_rounded, color: scheme.primary, size: size / 2.4)
+              ? Icon(Icons.storefront_rounded,
+                  color: scheme.primary, size: size / 2.4)
               : null),
     );
   }
@@ -469,9 +451,7 @@ class _IdentityText extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          ownerName.isEmpty
-              ? 'Independent business'
-              : 'Managed by $ownerName',
+          ownerName.isEmpty ? 'Independent business' : 'Managed by $ownerName',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurface.withValues(alpha: .62),
               ),

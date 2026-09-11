@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../config/api_config.dart';
+import '../../config/feature_flags.dart';
+import '../../services/adaptive_image_service.dart';
 import '../../services/api_service.dart';
 import '../../services/bill_upload_service.dart';
+import '../../services/platform_capabilities.dart';
 import '../../utils/quantity_utils.dart';
 import '../../widgets/workspace_ui.dart';
 
@@ -29,6 +32,9 @@ class _UploadBillViewState extends State<UploadBillView> {
   @override
   void initState() {
     super.initState();
+    if (!FeatureFlags.enableUploadBill) {
+      return;
+    }
     _fetchCategories();
   }
 
@@ -52,8 +58,8 @@ class _UploadBillViewState extends State<UploadBillView> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final picker = ImagePicker();
-      final image = await picker.pickImage(source: source, imageQuality: 80);
+      final image =
+          await AdaptiveImageService.pickDirect(source, imageQuality: 80);
       if (image == null) return;
 
       setState(() {
@@ -159,6 +165,22 @@ class _UploadBillViewState extends State<UploadBillView> {
 
   @override
   Widget build(BuildContext context) {
+    if (!FeatureFlags.enableUploadBill) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Upload bill'),
+        ),
+        body: const WorkspacePage(
+          child: EmptyCanvas(
+            icon: Icons.toggle_off_rounded,
+            title: 'Upload bill is disabled',
+            detail:
+                'Set ENABLE_UPLOAD_BILL=true when starting the app to turn this feature back on.',
+          ),
+        ),
+      );
+    }
+
     final reviewing = _pickedImageFile != null && !_isExtracting;
     final scheme = Theme.of(context).colorScheme;
 
@@ -194,6 +216,8 @@ class _UploadBillViewState extends State<UploadBillView> {
                         ? _UploadBillEmptyState(
                             onCamera: () => _pickImage(ImageSource.camera),
                             onGallery: () => _pickImage(ImageSource.gallery),
+                            supportsCamera:
+                                PlatformCapabilities.supportsCameraCapture,
                           )
                         : _isExtracting
                             ? _UploadBillExtractingState(
@@ -213,7 +237,8 @@ class _UploadBillViewState extends State<UploadBillView> {
                                       StatTile(
                                         label: 'Ready to import',
                                         value: '$_readyItems',
-                                        icon: Icons.check_circle_outline_rounded,
+                                        icon:
+                                            Icons.check_circle_outline_rounded,
                                         color: scheme.secondary,
                                       ),
                                     ],
@@ -294,7 +319,8 @@ class _UploadBillViewState extends State<UploadBillView> {
                       final action = SizedBox(
                         width: narrow ? double.infinity : 250,
                         child: FilledButton.icon(
-                          onPressed: _extractedItems.isEmpty ? null : _processBill,
+                          onPressed:
+                              _extractedItems.isEmpty ? null : _processBill,
                           icon: const Icon(Icons.inventory_rounded, size: 18),
                           label: const Text('Confirm & update'),
                         ),
@@ -333,10 +359,12 @@ class _UploadBillEmptyState extends StatelessWidget {
   const _UploadBillEmptyState({
     required this.onCamera,
     required this.onGallery,
+    required this.supportsCamera,
   });
 
   final VoidCallback onCamera;
   final VoidCallback onGallery;
+  final bool supportsCamera;
 
   @override
   Widget build(BuildContext context) {
@@ -382,15 +410,23 @@ class _UploadBillEmptyState extends StatelessWidget {
                 alignment: WrapAlignment.center,
                 children: [
                   FilledButton.icon(
-                    onPressed: onCamera,
-                    icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                    label: const Text('Use camera'),
-                  ),
-                  OutlinedButton.icon(
                     onPressed: onGallery,
-                    icon: const Icon(Icons.photo_library_outlined, size: 18),
-                    label: const Text('Choose image'),
+                    icon: Icon(
+                      supportsCamera
+                          ? Icons.photo_library_outlined
+                          : Icons.upload_file_outlined,
+                      size: 18,
+                    ),
+                    label: Text(
+                      supportsCamera ? 'Choose image' : 'Browse bill image',
+                    ),
                   ),
+                  if (supportsCamera)
+                    OutlinedButton.icon(
+                      onPressed: onCamera,
+                      icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                      label: const Text('Use camera'),
+                    ),
                 ],
               ),
             ],
@@ -552,7 +588,8 @@ class _ExtractedBillItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final canUseCategory = categories.any((category) => category['id'] == item.categoryId);
+    final canUseCategory =
+        categories.any((category) => category['id'] == item.categoryId);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -612,7 +649,9 @@ class _ExtractedBillItemCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: productUnits.contains(item.unit) ? item.unit : productUnits.first,
+              value: productUnits.contains(item.unit)
+                  ? item.unit
+                  : productUnits.first,
               decoration: const InputDecoration(
                 labelText: 'Unit',
               ),

@@ -211,7 +211,8 @@ class _ManualBillingViewState extends State<ManualBillingView> {
                                   child:
                                       CircularProgressIndicator(strokeWidth: 2),
                                 )
-                              : const Icon(Icons.lock_outline_rounded, size: 18),
+                              : const Icon(Icons.lock_outline_rounded,
+                                  size: 18),
                           label: Text(
                             _isOpeningCheckout
                                 ? 'Opening checkout...'
@@ -241,7 +242,8 @@ class _ManualBillingViewState extends State<ManualBillingView> {
                                   child:
                                       CircularProgressIndicator(strokeWidth: 2),
                                 )
-                              : const Icon(Icons.lock_outline_rounded, size: 18),
+                              : const Icon(Icons.lock_outline_rounded,
+                                  size: 18),
                           label: Text(
                             _isOpeningCheckout ? 'Opening...' : 'Checkout',
                           ),
@@ -338,7 +340,8 @@ class _ManualBillLineCard extends StatelessWidget {
                 IconButton(
                   onPressed: onDelete,
                   tooltip: 'Remove row',
-                  icon: Icon(Icons.close_rounded, color: scheme.error, size: 18),
+                  icon:
+                      Icon(Icons.close_rounded, color: scheme.error, size: 18),
                 ),
               ],
             ],

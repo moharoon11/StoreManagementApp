@@ -112,9 +112,10 @@ class ApiService {
           data['success'] == true) {
         return data['data']['url'] as String?;
       } else {
-        final message = (data != null && data is Map && data.containsKey('message'))
-            ? data['message']
-            : 'Failed to upload image (Status ${response.statusCode})';
+        final message =
+            (data != null && data is Map && data.containsKey('message'))
+                ? data['message']
+                : 'Failed to upload image (Status ${response.statusCode})';
         throw Exception(message);
       }
     } catch (e) {
@@ -132,9 +133,10 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body ?? response.body;
     } else {
-      final message = (body != null && body is Map && body.containsKey('message'))
-          ? body['message']
-          : 'An error occurred (Status ${response.statusCode})';
+      final message =
+          (body != null && body is Map && body.containsKey('message'))
+              ? body['message']
+              : 'An error occurred (Status ${response.statusCode})';
       throw Exception(message);
     }
   }

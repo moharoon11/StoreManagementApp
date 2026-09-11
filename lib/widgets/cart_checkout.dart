@@ -6,6 +6,7 @@ import '../config/api_config.dart';
 import '../providers/app_provider.dart';
 import '../services/api_service.dart';
 import '../services/invoice_pdf_service.dart';
+import '../services/platform_capabilities.dart';
 import '../views/billing/checkout_screen.dart';
 import '../utils/quantity_utils.dart';
 import 'workspace_ui.dart';
@@ -264,7 +265,8 @@ class CartPanel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Current sale', style: Theme.of(context).textTheme.titleLarge),
+                    Text('Current sale',
+                        style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 4),
                     Text(
                       'Review the basket before checkout.',
@@ -292,7 +294,8 @@ class CartPanel extends StatelessWidget {
                   ? const EmptyCanvas(
                       icon: Icons.shopping_bag_outlined,
                       title: 'No items in the current sale',
-                      detail: 'Add products from the catalogue to start checkout.',
+                      detail:
+                          'Add products from the catalogue to start checkout.',
                     )
                   : ListView.separated(
                       itemCount: provider.cartItems.length,
@@ -309,8 +312,8 @@ class CartPanel extends StatelessWidget {
                           onDecrease: () =>
                               provider.removeFromCart(product['id'] as int),
                           onIncrease: () => provider.addToCart(product),
-                          onEdit: () =>
-                              _editCartQuantity(context, provider, product, qty),
+                          onEdit: () => _editCartQuantity(
+                              context, provider, product, qty),
                         );
                       },
                     ),
@@ -580,7 +583,8 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: .18),
+                    color:
+                        scheme.surfaceContainerHighest.withValues(alpha: .18),
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: scheme.outlineVariant),
                   ),
@@ -816,8 +820,15 @@ void _showInvoiceSuccess(BuildContext context, dynamic invoice) {
                     final wasSaved =
                         await InvoicePdfService.save(bytes, pdfFilename);
                     if (ctx.mounted && wasSaved) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-                          content: Text('PDF saved successfully.')));
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            PlatformCapabilities.isDesktop
+                                ? 'PDF saved locally.'
+                                : 'PDF saved successfully.',
+                          ),
+                        ),
+                      );
                     }
                   } catch (e) {
                     if (ctx.mounted) {
@@ -828,9 +839,18 @@ void _showInvoiceSuccess(BuildContext context, dynamic invoice) {
                 },
               ),
               IconButton(
-                icon:
-                    const Icon(Icons.share, color: Color(0xFF25D366), size: 26),
-                tooltip: 'Share on WhatsApp',
+                icon: Icon(
+                  PlatformCapabilities.opensPdfInsteadOfShare
+                      ? Icons.open_in_new_rounded
+                      : Icons.share,
+                  color: PlatformCapabilities.opensPdfInsteadOfShare
+                      ? scheme.secondary
+                      : const Color(0xFF25D366),
+                  size: 26,
+                ),
+                tooltip: PlatformCapabilities.opensPdfInsteadOfShare
+                    ? 'Open PDF'
+                    : 'Share PDF',
                 onPressed: () async {
                   try {
                     final bytes = await InvoicePdfService.fetch(invoiceId);
@@ -844,7 +864,14 @@ void _showInvoiceSuccess(BuildContext context, dynamic invoice) {
                   } catch (e) {
                     if (ctx.mounted) {
                       ScaffoldMessenger.of(ctx).showSnackBar(
-                          SnackBar(content: Text('Error sharing PDF: $e')));
+                        SnackBar(
+                          content: Text(
+                            PlatformCapabilities.opensPdfInsteadOfShare
+                                ? 'Error opening PDF: $e'
+                                : 'Error sharing PDF: $e',
+                          ),
+                        ),
+                      );
                     }
                   }
                 },

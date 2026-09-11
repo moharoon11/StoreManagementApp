@@ -4,6 +4,127 @@ import 'package:flutter/material.dart';
 
 import 'ui_breakpoints.dart';
 
+/// Reusable atmospheric backdrop shared by the auth flow and workspace.
+class WorkspaceBackdrop extends StatelessWidget {
+  const WorkspaceBackdrop({
+    super.key,
+    this.child,
+  });
+
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final background = Theme.of(context).scaffoldBackgroundColor;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _blend(background, scheme.primary, .025),
+            _blend(background, scheme.secondary, .035),
+            _blend(background, scheme.surface, .01),
+          ],
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _BackdropGridPainter(
+                color: scheme.onSurface.withValues(
+                  alpha: Theme.of(context).brightness == Brightness.dark
+                      ? .055
+                      : .03,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: -120,
+            right: -80,
+            child: _BackdropGlow(
+              size: 320,
+              color: scheme.primary.withValues(alpha: .18),
+            ),
+          ),
+          Positioned(
+            bottom: -140,
+            left: -90,
+            child: _BackdropGlow(
+              size: 360,
+              color: scheme.secondary.withValues(alpha: .12),
+            ),
+          ),
+          if (child != null) child!,
+        ],
+      ),
+    );
+  }
+
+  static Color _blend(Color a, Color b, double amount) =>
+      Color.lerp(a, b, amount) ?? a;
+}
+
+class _BackdropGlow extends StatelessWidget {
+  const _BackdropGlow({
+    required this.size,
+    required this.color,
+  });
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              color,
+              color.withValues(alpha: 0),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BackdropGridPainter extends CustomPainter {
+  const _BackdropGridPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const spacing = 56.0;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+
+    for (var x = 0.0; x <= size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+
+    for (var y = 0.0; y <= size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BackdropGridPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
 /// Shared page scaffolding and building blocks for the redesigned workspace.
 class WorkspacePage extends StatelessWidget {
   const WorkspacePage({
@@ -21,9 +142,15 @@ class WorkspacePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      child: Padding(
-        padding: padding ?? Ui.pagePadding(context),
-        child: child,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: Ui.maxContentWidth),
+          child: Padding(
+            padding: padding ?? Ui.pagePadding(context),
+            child: child,
+          ),
+        ),
       ),
     );
   }
@@ -47,43 +174,62 @@ class PageIntro extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.end,
-      runSpacing: 16,
-      spacing: 16,
-      children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 580),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                eyebrow.toUpperCase(),
-                style: textTheme.labelSmall?.copyWith(
-                  color: scheme.primary,
-                  letterSpacing: 2.4,
+
+    return SurfacePanel(
+      color: _blend(scheme.surface, scheme.primary, .025),
+      padding: EdgeInsets.all(Ui.isCompact(context) ? 18 : 22),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 18,
+        runSpacing: 18,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 660),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: scheme.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      eyebrow.toUpperCase(),
+                      style: textTheme.labelSmall?.copyWith(
+                        color: scheme.primary,
+                        letterSpacing: 2.2,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                style: textTheme.headlineMedium?.copyWith(
-                  fontSize: Ui.headingSize(context),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: textTheme.headlineLarge?.copyWith(
+                    fontSize: Ui.headingSize(context),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                description,
-                style: textTheme.bodyLarge?.copyWith(
-                  color: scheme.onSurface.withValues(alpha: .68),
+                const SizedBox(height: 8),
+                Text(
+                  description,
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: scheme.onSurface.withValues(alpha: .7),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        if (action != null) action!,
-      ],
+          if (action != null) action!,
+        ],
+      ),
     );
   }
 }
@@ -92,7 +238,7 @@ class SurfacePanel extends StatelessWidget {
   const SurfacePanel({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(18),
     this.color,
   });
 
@@ -103,17 +249,26 @@ class SurfacePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final panelColor = color ?? scheme.surface;
+
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: color ?? scheme.surface,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(color: scheme.outlineVariant),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            panelColor,
+            _blend(panelColor, scheme.primary, .018),
+          ],
+        ),
         boxShadow: [
           BoxShadow(
             color: scheme.shadow.withValues(alpha: .08),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            blurRadius: 30,
+            offset: const Offset(0, 16),
           ),
         ],
       ),
@@ -129,7 +284,7 @@ class SectionPanel extends StatelessWidget {
     required this.child,
     this.subtitle,
     this.action,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(18),
   });
 
   final String title;
@@ -142,13 +297,20 @@ class SectionPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+
     return SurfacePanel(
       padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
+          Container(
             padding: padding,
+            decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: .06),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -162,7 +324,7 @@ class SectionPanel extends StatelessWidget {
                         Text(
                           subtitle!,
                           style: textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurface.withValues(alpha: .62),
+                            color: scheme.onSurface.withValues(alpha: .65),
                           ),
                         ),
                       ],
@@ -245,40 +407,60 @@ class StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+
     return SurfacePanel(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  label.toUpperCase(),
-                  style: textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurface.withValues(alpha: .55),
-                    letterSpacing: 1.8,
-                  ),
-                ),
-              ),
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: .14),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(icon, size: 18, color: color),
+                child: Icon(icon, size: 20, color: color),
+              ),
+              const Spacer(),
+              Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .18),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: .72,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
+          Text(
+            label.toUpperCase(),
+            style: textTheme.labelSmall?.copyWith(
+              color: scheme.onSurface.withValues(alpha: .58),
+              letterSpacing: 1.6,
+            ),
+          ),
+          const SizedBox(height: 8),
           Text(value, style: textTheme.headlineSmall),
           if (note != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               note!,
               style: textTheme.bodySmall?.copyWith(
-                color: scheme.onSurface.withValues(alpha: .62),
+                color: scheme.onSurface.withValues(alpha: .66),
               ),
             ),
           ],
@@ -306,7 +488,8 @@ class StatusPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: background ?? color.withValues(alpha: .11),
-        borderRadius: BorderRadius.circular(99),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: .18)),
       ),
       child: Text(
         label,
@@ -331,24 +514,26 @@ class EmptyCanvas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+
     return Center(
-      child: SurfacePanel(
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
-        color: scheme.surface.withValues(alpha: .8),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 340),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: SurfacePanel(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          color: _blend(scheme.surface, scheme.primary, .015),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(18),
+                width: 74,
+                height: 74,
                 decoration: BoxDecoration(
                   color: scheme.primary.withValues(alpha: .12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: scheme.primary, size: 28),
+                child: Icon(icon, color: scheme.primary, size: 30),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               Text(
                 title,
                 textAlign: TextAlign.center,
@@ -359,7 +544,7 @@ class EmptyCanvas extends StatelessWidget {
                 detail,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurface.withValues(alpha: .62),
+                      color: scheme.onSurface.withValues(alpha: .66),
                     ),
               ),
             ],
@@ -369,3 +554,5 @@ class EmptyCanvas extends StatelessWidget {
     );
   }
 }
+
+Color _blend(Color a, Color b, double amount) => Color.lerp(a, b, amount) ?? a;

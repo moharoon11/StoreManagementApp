@@ -7,6 +7,7 @@ import '../../config/api_config.dart';
 import '../../providers/app_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/invoice_pdf_service.dart';
+import '../../services/platform_capabilities.dart';
 import '../../utils/quantity_utils.dart';
 import '../../widgets/workspace_ui.dart';
 
@@ -62,6 +63,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() => _isProcessing = true);
     final messenger = ScaffoldMessenger.of(context);
     final provider = context.read<AppProvider>();
+    final errorColor = Theme.of(context).colorScheme.error;
 
     try {
       final customerName = _nameController.text.trim();
@@ -108,7 +110,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         if (!mounted) return;
         final navigator = Navigator.of(context);
         navigator.pop();
-        await _showInvoiceSuccessDialog(navigator.context, invoice, _invoiceDate);
+        await _showInvoiceSuccessDialog(
+            navigator.context, invoice, _invoiceDate);
       } else {
         messenger.showSnackBar(
           SnackBar(
@@ -123,7 +126,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           content: Text(
             'Checkout error: ${e.toString().replaceAll('Exception: ', '')}',
           ),
-          backgroundColor: Theme.of(context).colorScheme.error,
+          backgroundColor: errorColor,
         ),
       );
     } finally {
@@ -152,8 +155,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return items.asMap().entries.map((entry) {
         final item = entry.value;
         final qty = quantityValue(item['quantity'] ?? item['qty']);
-        final price =
-            (item['rate'] as num?)?.toDouble() ?? (item['price'] as num?)?.toDouble() ?? 0.0;
+        final price = (item['rate'] as num?)?.toDouble() ??
+            (item['price'] as num?)?.toDouble() ??
+            0.0;
         return _PreviewLine(
           title: 'Manual item ${entry.key + 1}',
           quantity: qty,
@@ -232,9 +236,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     _InvoiceMetaRow(
                       label: 'Balance due',
                       value: '₹${invoice['balanceDue'] ?? '0.00'}',
-                      accent: ((invoice['balanceDue'] as num?)?.toDouble() ?? 0) > 0
-                          ? scheme.error
-                          : scheme.secondary,
+                      accent:
+                          ((invoice['balanceDue'] as num?)?.toDouble() ?? 0) > 0
+                              ? scheme.error
+                              : scheme.secondary,
                     ),
                   ],
                 ),
@@ -255,8 +260,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             await InvoicePdfService.save(bytes, pdfFilename);
                         if (dialogContext.mounted && wasSaved) {
                           ScaffoldMessenger.of(dialogContext).showSnackBar(
-                            const SnackBar(
-                              content: Text('PDF saved successfully.'),
+                            SnackBar(
+                              content: Text(
+                                PlatformCapabilities.isDesktop
+                                    ? 'PDF saved locally.'
+                                    : 'PDF saved successfully.',
+                              ),
                             ),
                           );
                         }
@@ -270,8 +279,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     },
                   ),
                   _InvoiceActionButton(
-                    icon: Icons.share_outlined,
-                    label: 'Share',
+                    icon: PlatformCapabilities.opensPdfInsteadOfShare
+                        ? Icons.open_in_new_rounded
+                        : Icons.share_outlined,
+                    label: PlatformCapabilities.opensPdfInsteadOfShare
+                        ? 'Open PDF'
+                        : 'Share',
                     color: scheme.secondary,
                     onTap: () async {
                       try {
@@ -286,7 +299,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       } catch (e) {
                         if (dialogContext.mounted) {
                           ScaffoldMessenger.of(dialogContext).showSnackBar(
-                            SnackBar(content: Text('Error sharing PDF: $e')),
+                            SnackBar(
+                              content: Text(
+                                PlatformCapabilities.opensPdfInsteadOfShare
+                                    ? 'Error opening PDF: $e'
+                                    : 'Error sharing PDF: $e',
+                              ),
+                            ),
                           );
                         }
                       }
@@ -335,7 +354,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         widget.isManual ? widget.manualTotal ?? 0.0 : provider.cartTotal;
     final amountReceived = double.tryParse(_amountReceivedController.text) ??
         (_isReceived ? grandTotal : 0.0);
-    final balanceDue = (grandTotal - amountReceived).clamp(0.0, double.infinity);
+    final balanceDue =
+        (grandTotal - amountReceived).clamp(0.0, double.infinity);
     final wide = MediaQuery.sizeOf(context).width >= 940;
     final scheme = Theme.of(context).colorScheme;
 
@@ -480,11 +500,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.check_circle_outline_rounded, size: 18),
+                        : const Icon(Icons.check_circle_outline_rounded,
+                            size: 18),
                     label: Text(
-                      _isProcessing
-                          ? 'Processing...'
-                          : 'Complete checkout',
+                      _isProcessing ? 'Processing...' : 'Complete checkout',
                     ),
                   ),
                 );
@@ -707,7 +726,8 @@ class _CheckoutReviewPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return SectionPanel(
       title: 'Bill review',
-      subtitle: '${lines.length} line${lines.length == 1 ? '' : 's'} in this sale.',
+      subtitle:
+          '${lines.length} line${lines.length == 1 ? '' : 's'} in this sale.',
       child: Column(
         children: [
           for (var i = 0; i < lines.length; i++) ...[
@@ -715,7 +735,8 @@ class _CheckoutReviewPanel extends StatelessWidget {
             if (i != lines.length - 1) const SizedBox(height: 10),
           ],
           const SizedBox(height: 14),
-          Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+          Divider(
+              height: 1, color: Theme.of(context).colorScheme.outlineVariant),
           const SizedBox(height: 14),
           Row(
             children: [

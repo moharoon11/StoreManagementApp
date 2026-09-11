@@ -266,11 +266,13 @@ class _ProductBrowser extends StatelessWidget {
                         ? const EmptyCanvas(
                             icon: Icons.point_of_sale_outlined,
                             title: 'No products found',
-                            detail: 'Try another category or a different search.',
+                            detail:
+                                'Try another category or a different search.',
                           )
                         : GridView.builder(
                             controller: controller,
-                            itemCount: products.length + (isLoadingMore ? 1 : 0),
+                            itemCount:
+                                products.length + (isLoadingMore ? 1 : 0),
                             gridDelegate:
                                 SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: columns,
@@ -284,8 +286,8 @@ class _ProductBrowser extends StatelessWidget {
                                   child: CircularProgressIndicator(),
                                 );
                               }
-                              final product =
-                                  Map<String, dynamic>.from(products[index] as Map);
+                              final product = Map<String, dynamic>.from(
+                                  products[index] as Map);
                               return _SellProductCard(
                                 product: product,
                                 compact: columns == 1,
@@ -326,7 +328,9 @@ class _SellProductCard extends StatelessWidget {
         height: 42,
         decoration: BoxDecoration(
           color: stock > 0
-              ? (inCart ? scheme.primary : scheme.primary.withValues(alpha: .12))
+              ? (inCart
+                  ? scheme.primary
+                  : scheme.primary.withValues(alpha: .12))
               : scheme.surfaceContainerHighest.withValues(alpha: .42),
           borderRadius: BorderRadius.circular(16),
         ),

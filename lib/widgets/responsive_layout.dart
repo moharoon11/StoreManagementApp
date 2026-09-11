@@ -14,6 +14,7 @@ import '../views/stock/stock_management_view.dart';
 import '../views/store/store_profile_view.dart';
 import 'cart_checkout.dart';
 import 'ui_breakpoints.dart';
+import 'workspace_ui.dart';
 
 const _navItems = <_Destination>[
   _Destination(
@@ -83,106 +84,40 @@ class ResponsiveLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final width = MediaQuery.sizeOf(context).width;
-    final expanded = width >= Ui.mediumMax;
-    final scheme = Theme.of(context).colorScheme;
+    final compact = MediaQuery.sizeOf(context).width < Ui.compactMax;
     final active = _navItems[provider.selectedNavIndex];
+    final content = IndexedStack(
+      index: provider.selectedNavIndex,
+      children: _views,
+    );
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      extendBody: true,
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Theme.of(context).scaffoldBackgroundColor,
-              Color.lerp(
-                    Theme.of(context).scaffoldBackgroundColor,
-                    scheme.primary,
-                    .08,
-                  ) ??
-                  Theme.of(context).scaffoldBackgroundColor,
-            ],
-          ),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: -160,
-              right: -110,
-              child: _Orb(
-                size: 280,
-                color: scheme.primary.withValues(alpha: .09),
-              ),
-            ),
-            Positioned(
-              bottom: -130,
-              left: -80,
-              child: _Orb(
-                size: 220,
-                color: scheme.secondary.withValues(alpha: .08),
-              ),
-            ),
-            SafeArea(
-              child: expanded
-                  ? Row(
-                      children: [
-                        const SizedBox(width: 18),
-                        _NavigationPanel(
-                          selectedIndex: provider.selectedNavIndex,
-                          onSelect: provider.setNavIndex,
-                        ),
-                        const SizedBox(width: 18),
-                        Expanded(
-                          child: _ContentShell(
-                            active: active,
-                            child: IndexedStack(
-                              index: provider.selectedNavIndex,
-                              children: _views,
-                            ),
-                            onQuickSale: () => provider.setNavIndex(1),
-                            onOpenCart: () => openCart(context),
-                            onOpenBusiness: () => provider.setNavIndex(7),
-                          ),
-                        ),
-                        const SizedBox(width: 18),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        _CompactHeader(
-                          active: active,
-                          onOpenCart: () => openCart(context),
-                          onOpenBusiness: () => provider.setNavIndex(7),
-                          onShowMore: () => _showMore(context),
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-                            child: _ContentShell(
-                              active: active,
-                              compact: true,
-                              child: IndexedStack(
-                                index: provider.selectedNavIndex,
-                                children: _views,
-                              ),
-                              onQuickSale: () => provider.setNavIndex(1),
-                              onOpenCart: () => openCart(context),
-                              onOpenBusiness: () => provider.setNavIndex(7),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
-          ],
+      body: WorkspaceBackdrop(
+        child: SafeArea(
+          child: compact
+              ? _CompactWorkspace(
+                  active: active,
+                  child: content,
+                  onQuickSale: () => provider.setNavIndex(1),
+                  onOpenCart: () => openCart(context),
+                  onOpenBusiness: () => provider.setNavIndex(7),
+                  onShowMore: () => _showMore(context),
+                )
+              : _DesktopWorkspace(
+                  active: active,
+                  selectedIndex: provider.selectedNavIndex,
+                  onSelect: provider.setNavIndex,
+                  child: content,
+                  onQuickSale: () => provider.setNavIndex(1),
+                  onOpenCart: () => openCart(context),
+                  onOpenBusiness: () => provider.setNavIndex(7),
+                  onShowMore: () => _showMore(context),
+                ),
         ),
       ),
-      bottomNavigationBar: expanded
-          ? null
-          : _BottomDock(
+      bottomNavigationBar: compact
+          ? _BottomWorkspaceBar(
               selectedIndex: _bottomIndex(provider.selectedNavIndex),
               onSelect: (index) {
                 if (index == 4) {
@@ -191,7 +126,8 @@ class ResponsiveLayout extends StatelessWidget {
                 }
                 provider.setNavIndex([0, 1, 2, 3][index]);
               },
-            ),
+            )
+          : null,
     );
   }
 
@@ -199,231 +135,335 @@ class ResponsiveLayout extends StatelessWidget {
       switch (index) { 0 => 0, 1 => 1, 2 => 2, 3 => 3, _ => 4 };
 
   void _showMore(BuildContext context) {
-    final provider = context.read<AppProvider>();
-    final scheme = Theme.of(context).colorScheme;
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Workspace menu',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Switch tools, change mood, or sign out.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurface.withValues(alpha: .62),
-                    ),
-              ),
-              const SizedBox(height: 18),
-              GridView.count(
-                shrinkWrap: true,
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.95,
+      isScrollControlled: true,
+      builder: (sheetContext) => Consumer<AppProvider>(
+        builder: (context, provider, _) {
+          final scheme = Theme.of(context).colorScheme;
+          final width = MediaQuery.sizeOf(context).width;
+          final crossAxisCount = width >= 720 ? 3 : 2;
+
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final index in [4, 5, 6, 7])
-                    _MenuTile(
-                      item: _navItems[index],
-                      selected: provider.selectedNavIndex == index,
-                      onTap: () {
-                        provider.setNavIndex(index);
+                  Text(
+                    'Workspace menu',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Jump between tools, switch themes, or sign out.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurface.withValues(alpha: .66),
+                        ),
+                  ),
+                  const SizedBox(height: 18),
+                  GridView.count(
+                    shrinkWrap: true,
+                    crossAxisCount: crossAxisCount,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: width >= 720 ? 2.05 : 1.85,
+                    children: [
+                      for (var index = 0; index < _navItems.length; index++)
+                        _MenuTile(
+                          item: _navItems[index],
+                          selected: provider.selectedNavIndex == index,
+                          onTap: () {
+                            provider.setNavIndex(index);
+                            Navigator.pop(sheetContext);
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Appearance',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final narrow = constraints.maxWidth < 480;
+                      final first = _ThemeChoice(
+                        option: AppThemeOption.light,
+                        selected: provider.themeOption == AppThemeOption.light,
+                        onTap: () => provider.setThemeOption(
+                          AppThemeOption.light,
+                        ),
+                        compact: true,
+                      );
+                      final second = _ThemeChoice(
+                        option: AppThemeOption.nightOwl,
+                        selected:
+                            provider.themeOption == AppThemeOption.nightOwl,
+                        onTap: () => provider.setThemeOption(
+                          AppThemeOption.nightOwl,
+                        ),
+                        compact: true,
+                      );
+                      final third = _ThemeChoice(
+                        option: AppThemeOption.evergreen,
+                        selected:
+                            provider.themeOption == AppThemeOption.evergreen,
+                        onTap: () => provider.setThemeOption(
+                          AppThemeOption.evergreen,
+                        ),
+                        compact: true,
+                      );
+
+                      if (narrow) {
+                        return Column(
+                          children: [
+                            SizedBox(width: double.infinity, child: first),
+                            const SizedBox(height: 10),
+                            SizedBox(width: double.infinity, child: second),
+                            const SizedBox(height: 10),
+                            SizedBox(width: double.infinity, child: third),
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          Expanded(child: first),
+                          const SizedBox(width: 10),
+                          Expanded(child: second),
+                          const SizedBox(width: 10),
+                          Expanded(child: third),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
                         Navigator.pop(sheetContext);
+                        provider.logout();
                       },
-                    ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'Appearance',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  for (final option in AppThemeOption.values) ...[
-                    Expanded(
-                      child: _ThemeChoice(
-                        option: option,
-                        selected: provider.themeOption == option,
-                        onTap: () => provider.setThemeOption(option),
+                      icon: Icon(Icons.logout_rounded, color: scheme.error),
+                      label: Text(
+                        'Sign out',
+                        style: TextStyle(color: scheme.error),
                       ),
                     ),
-                    if (option != AppThemeOption.values.last)
-                      const SizedBox(width: 10),
-                  ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    provider.logout();
-                  },
-                  icon: Icon(Icons.logout_rounded, color: scheme.error),
-                  label: Text(
-                    'Sign out',
-                    style: TextStyle(color: scheme.error),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-class _NavigationPanel extends StatelessWidget {
-  const _NavigationPanel({
+class _DesktopWorkspace extends StatelessWidget {
+  const _DesktopWorkspace({
+    required this.active,
     required this.selectedIndex,
     required this.onSelect,
+    required this.child,
+    required this.onQuickSale,
+    required this.onOpenCart,
+    required this.onOpenBusiness,
+    required this.onShowMore,
   });
 
+  final _Destination active;
   final int selectedIndex;
   final ValueChanged<int> onSelect;
+  final Widget child;
+  final VoidCallback onQuickSale;
+  final VoidCallback onOpenCart;
+  final VoidCallback onOpenBusiness;
+  final VoidCallback onShowMore;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      child: Column(
+        children: [
+          _WorkspaceCommandBar(
+            active: active,
+            selectedIndex: selectedIndex,
+            onSelect: onSelect,
+            onQuickSale: onQuickSale,
+            onOpenCart: onOpenCart,
+            onOpenBusiness: onOpenBusiness,
+            onShowMore: onShowMore,
+          ),
+          const SizedBox(height: 18),
+          Expanded(child: _ContentViewport(child: child)),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkspaceCommandBar extends StatelessWidget {
+  const _WorkspaceCommandBar({
+    required this.active,
+    required this.selectedIndex,
+    required this.onSelect,
+    required this.onQuickSale,
+    required this.onOpenCart,
+    required this.onOpenBusiness,
+    required this.onShowMore,
+  });
+
+  final _Destination active;
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+  final VoidCallback onQuickSale;
+  final VoidCallback onOpenCart;
+  final VoidCallback onOpenBusiness;
+  final VoidCallback onShowMore;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final provider = context.watch<AppProvider>();
-    final username = provider.username.trim();
 
-    return SizedBox(
-      width: 252,
-      child: Column(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: scheme.surface.withValues(alpha: .92),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: scheme.outlineVariant),
-                boxShadow: [
-                  BoxShadow(
-                    color: scheme.shadow.withValues(alpha: .08),
-                    blurRadius: 28,
-                    offset: const Offset(0, 14),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: scheme.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.auto_graph_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Nexora Commerce',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      username.isEmpty
-                          ? 'A refined control room for sales, stock, and store operations.'
-                          : 'Welcome back, $username. Your workspace opens directly into action.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurface.withValues(alpha: .68),
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: ListView.separated(
-                        itemCount: _navItems.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) => _NavTile(
-                          item: _navItems[index],
-                          selected: index == selectedIndex,
-                          onTap: () => onSelect(index),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: scheme.primary.withValues(alpha: .08),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Current sale',
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: scheme.primary,
-                                ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            formatQuantity(provider.cartCount),
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  color: scheme.onSurface,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'items in cart · ₹${provider.cartTotal.toStringAsFixed(0)}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        for (final option in AppThemeOption.values) ...[
-                          Expanded(
-                            child: _ThemeChoice(
-                              option: option,
-                              selected: provider.themeOption == option,
-                              compact: true,
-                              onTap: () => provider.setThemeOption(option),
-                            ),
-                          ),
-                          if (option != AppThemeOption.values.last)
-                            const SizedBox(width: 8),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: provider.logout,
-                        icon: Icon(Icons.logout_rounded, color: scheme.error),
-                        label: Text(
-                          'Sign out',
-                          style: TextStyle(color: scheme.error),
-                        ),
-                      ),
-                    ),
-                  ],
+    Widget actions() => Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          alignment: WrapAlignment.end,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (provider.username.trim().isNotEmpty)
+              _UserBadge(username: provider.username.trim()),
+            OutlinedButton.icon(
+              onPressed: onOpenBusiness,
+              icon: const Icon(Icons.storefront_outlined, size: 18),
+              label: const Text('Business'),
+            ),
+            FilledButton.icon(
+              onPressed: onQuickSale,
+              icon: const Icon(Icons.bolt_rounded, size: 18),
+              label: const Text('New sale'),
+            ),
+            _HeaderActionIcon(
+              onPressed: onOpenCart,
+              tooltip: 'Current sale',
+              child: Badge(
+                isLabelVisible: provider.cartCount > 0,
+                label: Text(formatQuantity(provider.cartCount)),
+                backgroundColor: scheme.primary,
+                textColor: scheme.onPrimary,
+                child: Icon(
+                  Icons.shopping_bag_outlined,
+                  color: scheme.onSurface.withValues(alpha: .82),
                 ),
               ),
+            ),
+            _HeaderActionIcon(
+              onPressed: onShowMore,
+              tooltip: 'Menu',
+              child: const Icon(Icons.tune_rounded),
+            ),
+          ],
+        );
+
+    return SurfacePanel(
+      padding: EdgeInsets.zero,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final stacked = constraints.maxWidth < 1120;
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: stacked
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _BrandSummary(active: active),
+                          const SizedBox(height: 16),
+                          actions(),
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _BrandSummary(active: active)),
+                          const SizedBox(width: 16),
+                          Flexible(child: actions()),
+                        ],
+                      ),
+              ),
+              Divider(height: 1, color: scheme.outlineVariant),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (var index = 0; index < _navItems.length; index++)
+                        _WorkspaceTab(
+                          item: _navItems[index],
+                          selected: selectedIndex == index,
+                          onTap: () => onSelect(index),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CompactWorkspace extends StatelessWidget {
+  const _CompactWorkspace({
+    required this.active,
+    required this.child,
+    required this.onQuickSale,
+    required this.onOpenCart,
+    required this.onOpenBusiness,
+    required this.onShowMore,
+  });
+
+  final _Destination active;
+  final Widget child;
+  final VoidCallback onQuickSale;
+  final VoidCallback onOpenCart;
+  final VoidCallback onOpenBusiness;
+  final VoidCallback onShowMore;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+      child: Column(
+        children: [
+          _CompactHeader(
+            active: active,
+            onQuickSale: onQuickSale,
+            onOpenCart: onOpenCart,
+            onOpenBusiness: onOpenBusiness,
+            onShowMore: onShowMore,
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _ContentViewport(
+              compact: true,
+              child: child,
             ),
           ),
         ],
@@ -432,161 +472,67 @@ class _NavigationPanel extends StatelessWidget {
   }
 }
 
-class _ContentShell extends StatelessWidget {
-  const _ContentShell({
-    required this.active,
-    required this.child,
-    required this.onQuickSale,
-    required this.onOpenCart,
-    required this.onOpenBusiness,
-    this.compact = false,
-  });
-
-  final _Destination active;
-  final Widget child;
-  final VoidCallback onQuickSale;
-  final VoidCallback onOpenCart;
-  final VoidCallback onOpenBusiness;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: Ui.maxContentWidth),
-        child: Container(
-          margin: EdgeInsets.fromLTRB(
-            0,
-            compact ? 4 : 14,
-            0,
-            compact ? 84 : 18,
-          ),
-          decoration: BoxDecoration(
-            color: scheme.surface.withValues(alpha: .58),
-            borderRadius: BorderRadius.circular(compact ? 24 : 28),
-            border: Border.all(color: scheme.outlineVariant),
-            boxShadow: [
-              BoxShadow(
-                color: scheme.shadow.withValues(alpha: .08),
-                blurRadius: 28,
-                offset: const Offset(0, 14),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(compact ? 24 : 28),
-            child: Column(
-              children: [
-                _WorkspaceHeader(
-                  active: active,
-                  compact: compact,
-                  onQuickSale: onQuickSale,
-                  onOpenCart: onOpenCart,
-                  onOpenBusiness: onOpenBusiness,
-                ),
-                Divider(height: 1, color: scheme.outlineVariant),
-                Expanded(
-                  child: Container(
-                    color: scheme.surface.withValues(alpha: .22),
-                    child: child,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _WorkspaceHeader extends StatelessWidget {
-  const _WorkspaceHeader({
+class _CompactHeader extends StatelessWidget {
+  const _CompactHeader({
     required this.active,
     required this.onQuickSale,
     required this.onOpenCart,
     required this.onOpenBusiness,
-    this.compact = false,
+    required this.onShowMore,
   });
 
   final _Destination active;
   final VoidCallback onQuickSale;
   final VoidCallback onOpenCart;
   final VoidCallback onOpenBusiness;
-  final bool compact;
+  final VoidCallback onShowMore;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final date = DateTime.now();
     final provider = context.watch<AppProvider>();
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        compact ? 14 : 18,
-        compact ? 14 : 16,
-        compact ? 14 : 18,
-        compact ? 12 : 14,
-      ),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        runSpacing: 16,
-        spacing: 16,
+    return SurfacePanel(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: compact ? 220 : 500),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${_month(date.month)} ${date.day}, ${date.year}'.toUpperCase(),
-                  style: textTheme.labelSmall?.copyWith(
-                    color: scheme.primary,
-                    letterSpacing: 2.2,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  active.title,
-                  style: compact ? textTheme.headlineSmall : textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  active.subtitle,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurface.withValues(alpha: .66),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          Row(
             children: [
-              FilledButton.icon(
-                onPressed: onQuickSale,
-                icon: const Icon(Icons.bolt_rounded, size: 18),
-                label: Text(compact ? 'Sale' : 'New sale'),
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child:
+                    const Icon(Icons.auto_graph_rounded, color: Colors.white),
               ),
-              OutlinedButton.icon(
-                onPressed: onOpenBusiness,
-                icon: const Icon(Icons.storefront_outlined, size: 18),
-                label: Text(compact ? 'Store' : 'Business'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Nexora Commerce',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _formatToday(DateTime.now()).toUpperCase(),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: scheme.primary,
+                            letterSpacing: 1.6,
+                          ),
+                    ),
+                  ],
+                ),
               ),
-              IconButton(
+              _HeaderActionIcon(
                 onPressed: onOpenCart,
                 tooltip: 'Current sale',
-                style: IconButton.styleFrom(
-                  backgroundColor: scheme.surface,
-                  padding: const EdgeInsets.all(12),
-                  side: BorderSide(color: scheme.outlineVariant),
-                ),
-                icon: Badge(
+                child: Badge(
                   isLabelVisible: provider.cartCount > 0,
                   label: Text(formatQuantity(provider.cartCount)),
                   backgroundColor: scheme.primary,
@@ -597,104 +543,153 @@ class _WorkspaceHeader extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(width: 6),
+              _HeaderActionIcon(
+                onPressed: onShowMore,
+                tooltip: 'Menu',
+                child: const Icon(Icons.tune_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          StatusPill(label: active.title, color: scheme.primary),
+          const SizedBox(height: 10),
+          Text(
+            active.subtitle,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: .68),
+                ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              FilledButton.icon(
+                onPressed: onQuickSale,
+                icon: const Icon(Icons.bolt_rounded, size: 18),
+                label: const Text('New sale'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onOpenBusiness,
+                icon: const Icon(Icons.storefront_outlined, size: 18),
+                label: const Text('Business'),
+              ),
             ],
           ),
         ],
       ),
     );
   }
-
-  static String _month(int month) => const [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ][month - 1];
 }
 
-class _CompactHeader extends StatelessWidget {
-  const _CompactHeader({
-    required this.active,
-    required this.onOpenCart,
-    required this.onOpenBusiness,
-    required this.onShowMore,
-  });
+class _BrandSummary extends StatelessWidget {
+  const _BrandSummary({required this.active});
 
   final _Destination active;
-  final VoidCallback onOpenCart;
-  final VoidCallback onOpenBusiness;
-  final VoidCallback onShowMore;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: scheme.primary,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(Icons.auto_graph_rounded, color: Colors.white),
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: scheme.primary,
+            borderRadius: BorderRadius.circular(18),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Nexora Commerce',
-                  style: Theme.of(context).textTheme.titleMedium,
+          child: const Icon(Icons.auto_graph_rounded, color: Colors.white),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Nexora Commerce',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'A cleaner cross-platform control center for retail operations.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: .72),
+                    ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  StatusPill(
+                    label: _formatToday(DateTime.now()),
+                    color: scheme.primary,
+                  ),
+                  StatusPill(
+                    label: active.title,
+                    color: scheme.secondary,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ContentViewport extends StatelessWidget {
+  const _ContentViewport({
+    required this.child,
+    this.compact = false,
+  });
+
+  final Widget child;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return SurfacePanel(
+      padding: EdgeInsets.zero,
+      color: _blend(scheme.surface, scheme.primary, .012),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Column(
+          children: [
+            Container(
+              height: compact ? 6 : 8,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    scheme.primary,
+                    scheme.secondary,
+                    scheme.tertiary,
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  active.title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: .64),
-                      ),
-                ),
-              ],
+              ),
             ),
-          ),
-          IconButton(
-            onPressed: onOpenBusiness,
-            tooltip: 'Business',
-            style: IconButton.styleFrom(
-              backgroundColor: scheme.surface.withValues(alpha: .84),
-              side: BorderSide(color: scheme.outlineVariant),
+            Expanded(
+              child: ColoredBox(
+                color: _blend(scheme.surface, scheme.primary, .01),
+                child: child,
+              ),
             ),
-            icon: const Icon(Icons.storefront_outlined),
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            onPressed: onShowMore,
-            tooltip: 'Menu',
-            style: IconButton.styleFrom(
-              backgroundColor: scheme.surface.withValues(alpha: .84),
-              side: BorderSide(color: scheme.outlineVariant),
-            ),
-            icon: const Icon(Icons.grid_view_rounded),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _BottomDock extends StatelessWidget {
-  const _BottomDock({
+class _BottomWorkspaceBar extends StatelessWidget {
+  const _BottomWorkspaceBar({
     required this.selectedIndex,
     required this.onSelect,
   });
@@ -704,47 +699,45 @@ class _BottomDock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    const items = [
-      ('Home', Icons.home_outlined, Icons.home_rounded),
-      ('Sell', Icons.point_of_sale_outlined, Icons.point_of_sale_rounded),
-      ('Items', Icons.inventory_2_outlined, Icons.inventory_2_rounded),
-      ('Groups', Icons.account_tree_outlined, Icons.account_tree_rounded),
-      ('More', Icons.dashboard_customize_outlined, Icons.dashboard_customize_rounded),
-    ];
-
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        child: Container(
-          height: 68,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: scheme.surface.withValues(alpha: .96),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: scheme.outlineVariant),
-            boxShadow: [
-              BoxShadow(
-                color: scheme.shadow.withValues(alpha: .10),
-                blurRadius: 26,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              for (var i = 0; i < items.length; i++)
-                Expanded(
-                  child: _DockItem(
-                    label: items[i].$1,
-                    icon: items[i].$2,
-                    selectedIcon: items[i].$3,
-                    selected: selectedIndex == i,
-                    onTap: () => onSelect(i),
-                  ),
+        padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+        child: SurfacePanel(
+          padding: EdgeInsets.zero,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: NavigationBar(
+              selectedIndex: selectedIndex,
+              onDestinationSelected: onSelect,
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded),
+                  label: 'Home',
                 ),
-            ],
+                NavigationDestination(
+                  icon: Icon(Icons.point_of_sale_outlined),
+                  selectedIcon: Icon(Icons.point_of_sale_rounded),
+                  label: 'Sell',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.inventory_2_outlined),
+                  selectedIcon: Icon(Icons.inventory_2_rounded),
+                  label: 'Products',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.account_tree_outlined),
+                  selectedIcon: Icon(Icons.account_tree_rounded),
+                  label: 'Categories',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.dashboard_customize_outlined),
+                  selectedIcon: Icon(Icons.dashboard_customize_rounded),
+                  label: 'More',
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -752,64 +745,8 @@ class _BottomDock extends StatelessWidget {
   }
 }
 
-class _DockItem extends StatelessWidget {
-  const _DockItem({
-    required this.label,
-    required this.icon,
-    required this.selectedIcon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: selected ? scheme.primary.withValues(alpha: .14) : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                selected ? selectedIcon : icon,
-                color: selected ? scheme.primary : scheme.onSurface.withValues(alpha: .68),
-                size: 21,
-              ),
-              const SizedBox(height: 5),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: selected ? scheme.primary : scheme.onSurface.withValues(alpha: .68),
-                      letterSpacing: .2,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavTile extends StatelessWidget {
-  const _NavTile({
+class _WorkspaceTab extends StatelessWidget {
+  const _WorkspaceTab({
     required this.item,
     required this.selected,
     required this.onTap,
@@ -822,65 +759,50 @@ class _NavTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          decoration: BoxDecoration(
-            color: selected
-                ? scheme.primary.withValues(alpha: .15)
-                : scheme.surface.withValues(alpha: .5),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: selected ? scheme.primary.withValues(alpha: .28) : Colors.transparent,
+
+    return Tooltip(
+      message: item.subtitle,
+      child: Material(
+        color: selected
+            ? scheme.primary.withValues(alpha: .14)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: selected
+                    ? scheme.primary.withValues(alpha: .22)
+                    : scheme.outlineVariant,
+              ),
             ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  selected ? item.selectedIcon : item.icon,
+                  size: 18,
                   color: selected
                       ? scheme.primary
-                      : scheme.surfaceContainerHighest.withValues(alpha: .55),
-                  borderRadius: BorderRadius.circular(16),
+                      : scheme.onSurface.withValues(alpha: .68),
                 ),
-                child: Icon(
-                  selected ? item.selectedIcon : item.icon,
-                  color: selected ? scheme.onPrimary : scheme.onSurface.withValues(alpha: .72),
-                  size: 20,
+                const SizedBox(width: 10),
+                Text(
+                  item.title,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: selected
+                            ? scheme.primary
+                            : scheme.onSurface.withValues(alpha: .82),
+                      ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: selected ? scheme.primary : scheme.onSurface,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurface.withValues(alpha: .58),
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -902,10 +824,11 @@ class _MenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+
     return Material(
       color: selected
           ? scheme.primary.withValues(alpha: .14)
-          : scheme.surfaceContainerHighest.withValues(alpha: .42),
+          : scheme.surfaceContainerHighest.withValues(alpha: .34),
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         onTap: onTap,
@@ -914,17 +837,45 @@ class _MenuTile extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Icon(
-                selected ? item.selectedIcon : item.icon,
-                color: selected ? scheme.primary : scheme.onSurface.withValues(alpha: .72),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? scheme.primary
+                      : scheme.surface.withValues(alpha: .84),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  selected ? item.selectedIcon : item.icon,
+                  color: selected
+                      ? scheme.onPrimary
+                      : scheme.onSurface.withValues(alpha: .72),
+                  size: 20,
+                ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  item.title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: selected ? scheme.primary : scheme.onSurface,
-                      ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      item.title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: selected ? scheme.primary : scheme.onSurface,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurface.withValues(alpha: .58),
+                          ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -952,9 +903,9 @@ class _ThemeChoice extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final (label, swatch) = switch (option) {
-      AppThemeOption.light => ('Ivory', AppColors.bronze),
-      AppThemeOption.nightOwl => ('Noir', const Color(0xFFD9B687)),
-      AppThemeOption.evergreen => ('Sage', const Color(0xFF556B5B)),
+      AppThemeOption.light => ('Slate', AppColors.brand),
+      AppThemeOption.nightOwl => ('Midnight', const Color(0xFF67E8F9)),
+      AppThemeOption.evergreen => ('Spruce', const Color(0xFF1F6F5C)),
     };
 
     return Material(
@@ -965,7 +916,7 @@ class _ThemeChoice extends StatelessWidget {
         borderRadius: BorderRadius.circular(compact ? 18 : 20),
         child: Container(
           padding: EdgeInsets.symmetric(
-            horizontal: compact ? 12 : 10,
+            horizontal: compact ? 12 : 14,
             vertical: compact ? 12 : 14,
           ),
           decoration: BoxDecoration(
@@ -974,71 +925,111 @@ class _ThemeChoice extends StatelessWidget {
               color: selected ? scheme.primary : scheme.outlineVariant,
             ),
           ),
-          child: compact
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: swatch,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        label,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: scheme.onSurface,
-                            ),
-                      ),
-                    ),
-                  ],
-                )
-              : Column(
-                  children: [
-                    Container(
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: swatch,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      label,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: scheme.onSurface,
-                          ),
-                    ),
-                  ],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: compact ? 14 : 16,
+                height: compact ? 14 : 16,
+                decoration: BoxDecoration(
+                  color: swatch,
+                  shape: BoxShape.circle,
                 ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurface,
+                      ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _Orb extends StatelessWidget {
-  const _Orb({required this.size, required this.color});
+class _UserBadge extends StatelessWidget {
+  const _UserBadge({required this.username});
 
-  final double size;
-  final Color color;
+  final String username;
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.secondary.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.person_outline_rounded, size: 18, color: scheme.secondary),
+          const SizedBox(width: 8),
+          Text(
+            username,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: scheme.onSurface,
+                ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _HeaderActionIcon extends StatelessWidget {
+  const _HeaderActionIcon({
+    required this.onPressed,
+    required this.tooltip,
+    required this.child,
+  });
+
+  final VoidCallback onPressed;
+  final String tooltip;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return IconButton(
+      onPressed: onPressed,
+      tooltip: tooltip,
+      style: IconButton.styleFrom(
+        backgroundColor: scheme.surface.withValues(alpha: .92),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
+      icon: child,
+    );
+  }
+}
+
+String _formatToday(DateTime date) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${months[date.month - 1]} ${date.day}, ${date.year}';
 }
 
 class _Destination {
@@ -1054,3 +1045,5 @@ class _Destination {
   final IconData icon;
   final IconData selectedIcon;
 }
+
+Color _blend(Color a, Color b, double amount) => Color.lerp(a, b, amount) ?? a;

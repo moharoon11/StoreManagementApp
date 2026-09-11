@@ -98,7 +98,8 @@ class _DashboardViewState extends State<DashboardView> {
           children: [
             PageIntro(
               eyebrow: 'Overview',
-              title: '$greeting${provider.username.isEmpty ? '' : ', ${provider.username}'}',
+              title:
+                  '$greeting${provider.username.isEmpty ? '' : ', ${provider.username}'}',
               description:
                   'Start selling, check stock pressure, and keep the store moving from one calmer workspace.',
               action: Wrap(
@@ -199,7 +200,8 @@ class _DashboardViewState extends State<DashboardView> {
                   subtitle: 'What is moving fastest today',
                   icon: Icons.auto_awesome_outlined,
                   items: mostSoldProducts,
-                  emptyLabel: 'Sales activity will appear here once billing starts.',
+                  emptyLabel:
+                      'Sales activity will appear here once billing starts.',
                   accent: Theme.of(context).colorScheme.secondary,
                   rowBuilder: (context, item) => _SimpleMetricRow(
                     title: (item['productName'] ?? 'Product').toString(),
@@ -231,29 +233,10 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final wide = MediaQuery.sizeOf(context).width >= 960;
 
-    return Container(
+    return SurfacePanel(
       padding: EdgeInsets.all(wide ? 24 : 20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.lerp(scheme.primary, Colors.black, .28) ?? scheme.primary,
-            Color.lerp(scheme.secondary, scheme.primary, .45) ?? scheme.secondary,
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withValues(alpha: .14),
-            blurRadius: 28,
-            offset: const Offset(0, 14),
-          ),
-        ],
-      ),
       child: wide
           ? Row(
               children: [
@@ -309,28 +292,27 @@ class _HeroCopy extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Daily control room',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: Colors.white.withValues(alpha: .74),
-                letterSpacing: 1.1,
-              ),
+        StatusPill(
+          label: 'Operations snapshot',
+          color: scheme.primary,
         ),
         const SizedBox(height: 10),
         Text(
-          'Move between billing, stock, and reporting without the old welcome step.',
+          'Move between billing, stock, and reporting without losing context.',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: Colors.white,
+                fontSize: 30,
               ),
         ),
         const SizedBox(height: 12),
         Text(
-          'The new layout brings the day’s numbers, urgent products, and quick actions closer together so the workspace feels more deliberate and less cluttered.',
+          'Today’s sales, urgent stock pressure, and the catalogue footprint are grouped into one denser panel so the workspace feels calm on mobile and clear on desktop.',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.white.withValues(alpha: .78),
+                color: scheme.onSurface.withValues(alpha: .7),
               ),
         ),
       ],
@@ -351,12 +333,14 @@ class _HeroLedger extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .12),
+        color: scheme.primary.withValues(alpha: .06),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: .15)),
+        border: Border.all(color: scheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,16 +348,19 @@ class _HeroLedger extends StatelessWidget {
           _HeroStat(
             label: 'Today sales',
             value: '₹$sales',
+            color: scheme.primary,
           ),
           const SizedBox(height: 14),
           _HeroStat(
             label: 'Bills completed',
             value: '$invoices',
+            color: scheme.secondary,
           ),
           const SizedBox(height: 14),
           _HeroStat(
             label: 'Products live',
             value: '$products',
+            color: scheme.tertiary,
           ),
         ],
       ),
@@ -382,26 +369,33 @@ class _HeroLedger extends StatelessWidget {
 }
 
 class _HeroStat extends StatelessWidget {
-  const _HeroStat({required this.label, required this.value});
+  const _HeroStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   final String label;
   final String value;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Row(
       children: [
         Container(
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .14),
+            color: color.withValues(alpha: .14),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.circle,
             size: 12,
-            color: Color(0xFFF7E7C6),
+            color: color,
           ),
         ),
         const SizedBox(width: 12),
@@ -412,7 +406,7 @@ class _HeroStat extends StatelessWidget {
               Text(
                 label.toUpperCase(),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Colors.white.withValues(alpha: .68),
+                      color: scheme.onSurface.withValues(alpha: .6),
                       letterSpacing: 1.4,
                     ),
               ),
@@ -420,7 +414,7 @@ class _HeroStat extends StatelessWidget {
               Text(
                 value,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
+                      color: scheme.onSurface,
                     ),
               ),
             ],
@@ -560,18 +554,21 @@ class _InvoicePanel extends StatelessWidget {
         child: const Text('View all'),
       ),
       child: invoices.isEmpty
-          ? const Text('Completed invoices will appear here once billing starts.')
+          ? const Text(
+              'Completed invoices will appear here once billing starts.')
           : Column(
               children: [
                 for (final invoice in invoices.take(4)) ...[
                   _SimpleMetricRow(
                     title: (invoice['invoiceNumber'] ?? 'Invoice').toString(),
-                    subtitle:
-                        '${invoice['createdAt'] ?? ''}'.toString().replaceFirst('T', ' '),
+                    subtitle: '${invoice['createdAt'] ?? ''}'
+                        .toString()
+                        .replaceFirst('T', ' '),
                     trailing: '₹${invoice['grandTotal']}',
                     trailingColor: Theme.of(context).colorScheme.primary,
                   ),
-                  if (invoice != invoices.take(4).last) const SizedBox(height: 12),
+                  if (invoice != invoices.take(4).last)
+                    const SizedBox(height: 12),
                 ],
               ],
             ),

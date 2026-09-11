@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../config/api_config.dart';
+import '../../config/feature_flags.dart';
 import '../../services/api_service.dart';
 import '../../utils/quantity_utils.dart';
 import '../../widgets/workspace_ui.dart';
@@ -76,7 +77,8 @@ class _StockManagementViewState extends State<StockManagementView> {
               children: [
                 DropdownButtonFormField<int>(
                   value: selectedProductId,
-                  decoration: const InputDecoration(labelText: 'Select product'),
+                  decoration:
+                      const InputDecoration(labelText: 'Select product'),
                   items: _products.map<DropdownMenuItem<int>>((product) {
                     return DropdownMenuItem<int>(
                       value: product['id'],
@@ -164,19 +166,22 @@ class _StockManagementViewState extends State<StockManagementView> {
               spacing: 10,
               runSpacing: 10,
               children: [
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const UploadBillView()),
-                    );
-                    if (result == true) {
-                      _loadData();
-                    }
-                  },
-                  icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                  label: const Text('Upload bill'),
-                ),
+                if (FeatureFlags.enableUploadBill)
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const UploadBillView(),
+                        ),
+                      );
+                      if (result == true) {
+                        _loadData();
+                      }
+                    },
+                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                    label: const Text('Upload bill'),
+                  ),
                 FilledButton.icon(
                   onPressed: _showAdjustStockDialog,
                   icon: const Icon(Icons.edit_note_rounded, size: 18),
@@ -222,10 +227,11 @@ class _StockManagementViewState extends State<StockManagementView> {
                         )
                       : ListView.separated(
                           itemCount: _movements.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
                           itemBuilder: (context, index) {
-                            final movement =
-                                Map<String, dynamic>.from(_movements[index] as Map);
+                            final movement = Map<String, dynamic>.from(
+                                _movements[index] as Map);
                             return _MovementCard(movement: movement);
                           },
                         ),

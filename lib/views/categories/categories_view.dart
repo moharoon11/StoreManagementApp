@@ -3,11 +3,11 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/api_config.dart';
 import '../../providers/app_provider.dart';
+import '../../services/adaptive_image_service.dart';
 import '../../services/api_service.dart';
 import '../../utils/quantity_utils.dart';
 import '../../widgets/cart_checkout.dart';
@@ -195,11 +195,12 @@ class _CategoriesViewState extends State<CategoriesView> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
-          Future<void> pick(ImageSource source) async {
+          Future<void> pick() async {
             try {
-              final image = await ImagePicker().pickImage(
-                source: source,
-                imageQuality: 80,
+              final image = await AdaptiveImageService.pickForUser(
+                context,
+                sheetTitle: 'Category image',
+                galleryLabel: 'Choose category image',
               );
               if (image == null) return;
               setDialogState(() {
@@ -234,31 +235,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   GestureDetector(
-                    onTap: () => showModalBottomSheet(
-                      context: context,
-                      builder: (_) => SafeArea(
-                        child: Wrap(
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.photo_library_outlined),
-                              title: const Text('Choose from gallery'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                pick(ImageSource.gallery);
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.camera_alt_outlined),
-                              title: const Text('Take a photo'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                pick(ImageSource.camera);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    onTap: pick,
                     child: Container(
                       width: 124,
                       height: 96,
@@ -282,7 +259,8 @@ class _CategoriesViewState extends State<CategoriesView> {
                                       ),
                                     )
                                   : Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Icon(
                                           Icons.add_photo_alternate_outlined,
@@ -375,7 +353,8 @@ class _CategoriesViewState extends State<CategoriesView> {
               child: EmptyCanvas(
                 icon: Icons.account_tree_outlined,
                 title: 'No categories yet',
-                detail: 'Create your first category to start organising products.',
+                detail:
+                    'Create your first category to start organising products.',
               ),
             ),
           ],
@@ -446,8 +425,8 @@ class _CategoriesViewState extends State<CategoriesView> {
                               ),
                               onEditCategory: currentCategory == null
                                   ? null
-                                  : () =>
-                                      _showCategoryDialog(category: currentCategory),
+                                  : () => _showCategoryDialog(
+                                      category: currentCategory),
                               onDeleteCategory: currentCategory == null
                                   ? null
                                   : () => _deleteCategory(currentCategory),
@@ -481,8 +460,8 @@ class _CategoriesViewState extends State<CategoriesView> {
                               ),
                               onEditCategory: currentCategory == null
                                   ? null
-                                  : () =>
-                                      _showCategoryDialog(category: currentCategory),
+                                  : () => _showCategoryDialog(
+                                      category: currentCategory),
                               onDeleteCategory: currentCategory == null
                                   ? null
                                   : () => _deleteCategory(currentCategory),
@@ -497,7 +476,8 @@ class _CategoriesViewState extends State<CategoriesView> {
               },
             ),
           ),
-          if (!context.select<AppProvider, bool>((p) => p.cartItems.isEmpty)) ...[
+          if (!context
+              .select<AppProvider, bool>((p) => p.cartItems.isEmpty)) ...[
             const SizedBox(height: 14),
             const CartSummaryBar(),
           ],
@@ -525,7 +505,8 @@ class _CategoryLibrary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Category library', style: Theme.of(context).textTheme.titleLarge),
+          Text('Category library',
+              style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 6),
           Text(
             'Choose the collection you want to review.',
@@ -621,7 +602,9 @@ class _CategoryTile extends StatelessWidget {
                 : scheme.surfaceContainerHighest.withValues(alpha: .22),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: selected ? scheme.primary.withValues(alpha: .22) : scheme.outlineVariant,
+              color: selected
+                  ? scheme.primary.withValues(alpha: .22)
+                  : scheme.outlineVariant,
             ),
           ),
           child: Row(
@@ -639,7 +622,9 @@ class _CategoryTile extends StatelessWidget {
                 child: imageUrl.isEmpty
                     ? Icon(
                         Icons.category_outlined,
-                        color: selected ? scheme.primary : scheme.onSurface.withValues(alpha: .55),
+                        color: selected
+                            ? scheme.primary
+                            : scheme.onSurface.withValues(alpha: .55),
                       )
                     : Image.network(
                         imageUrl,
@@ -667,7 +652,9 @@ class _CategoryTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      selected ? 'Selected collection' : 'Tap to explore products',
+                      selected
+                          ? 'Selected collection'
+                          : 'Tap to explore products',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -741,7 +728,8 @@ class _ProductCollection extends StatelessWidget {
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _CollectionHeading(imageUrl: imageUrl, category: category!),
+                        _CollectionHeading(
+                            imageUrl: imageUrl, category: category!),
                         const SizedBox(height: 12),
                         _CollectionMenu(
                           onEditCategory: onEditCategory,
@@ -802,8 +790,10 @@ class _ProductCollection extends StatelessWidget {
                           )
                         : GridView.builder(
                             controller: controller,
-                            itemCount: products.length + (isLoadingMore ? 1 : 0),
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            itemCount:
+                                products.length + (isLoadingMore ? 1 : 0),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: columns,
                               crossAxisSpacing: 14,
                               mainAxisSpacing: 14,
@@ -816,8 +806,8 @@ class _ProductCollection extends StatelessWidget {
                                 );
                               }
                               return _ProductCard(
-                                product:
-                                    Map<String, dynamic>.from(products[index] as Map),
+                                product: Map<String, dynamic>.from(
+                                    products[index] as Map),
                                 compact: columns == 1,
                               );
                             },
@@ -858,7 +848,8 @@ class _CollectionHeading extends StatelessWidget {
               : Image.network(
                   imageUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.category_outlined),
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.category_outlined),
                 ),
         ),
         const SizedBox(width: 14),
@@ -947,8 +938,8 @@ class _ProductCard extends StatelessWidget {
 
     if (compact) {
       return SurfacePanel(
-      padding: const EdgeInsets.all(10),
-      child: Row(
+        padding: const EdgeInsets.all(10),
+        child: Row(
           children: [
             _ProductImage(image: image, compact: true),
             const SizedBox(width: 12),
@@ -975,12 +966,14 @@ class _ProductCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           '₹${product['sellingPrice'] ?? '—'}',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: scheme.onSurface,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: scheme.onSurface,
+                                  ),
                         ),
                       ),
-                      _CartAction(product: product, stock: stock, inCart: inCart),
+                      _CartAction(
+                          product: product, stock: stock, inCart: inCart),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -1116,7 +1109,9 @@ class _CartAction extends StatelessWidget {
         height: 48,
         decoration: BoxDecoration(
           color: stock > 0
-              ? (inCart ? scheme.primary : scheme.primary.withValues(alpha: .12))
+              ? (inCart
+                  ? scheme.primary
+                  : scheme.primary.withValues(alpha: .12))
               : scheme.surfaceContainerHighest.withValues(alpha: .55),
           borderRadius: BorderRadius.circular(18),
         ),

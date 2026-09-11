@@ -8,7 +8,7 @@ class ApiConfig {
   /// It intentionally includes `/api`, because every endpoint below is
   /// relative to that API root. Leaving it blank retains local development
   /// addresses, so no code needs changing between environments.
-  /// 
+  ///
   static const API_URL = "https://easybilling.runasp.net/api";
   // static const Local_URL = "http://localhost:5009/api";
   static const String _configuredBaseUrl =

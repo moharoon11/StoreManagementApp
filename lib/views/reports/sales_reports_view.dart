@@ -120,7 +120,8 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                         title: 'Top sold products',
                         subtitle: 'Best performing items for this period',
                         items: topSoldProducts,
-                        emptyLabel: 'No product sales recorded for this period.',
+                        emptyLabel:
+                            'No product sales recorded for this period.',
                         builder: (context, item) => _ReportRow(
                           title: (item['productName'] ?? '').toString(),
                           subtitle:
@@ -132,7 +133,8 @@ class _SalesReportsViewState extends State<SalesReportsView> {
                         title: 'Sales by category',
                         subtitle: 'How each category contributed',
                         items: salesByCategory,
-                        emptyLabel: 'No category-level data recorded for this period.',
+                        emptyLabel:
+                            'No category-level data recorded for this period.',
                         builder: (context, item) => _ReportRow(
                           title: (item['categoryName'] ?? '').toString(),
                           subtitle:

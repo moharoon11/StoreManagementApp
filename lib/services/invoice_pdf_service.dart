@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -32,8 +34,8 @@ class InvoicePdfService {
     final document = pw.Document();
     final invoiceNumber = _text(invoice['invoiceNumber'], fallback: 'Invoice');
     final date = _formatDate(invoice['invoiceDate'] ?? invoice['createdAt']);
-    final isManualInvoice = items.isNotEmpty &&
-        items.every((item) => item['productId'] == null);
+    final isManualInvoice =
+        items.isNotEmpty && items.every((item) => item['productId'] == null);
 
     document.addPage(
       pw.MultiPage(
@@ -52,7 +54,8 @@ class InvoicePdfService {
               child: pw.Column(children: [
                 _totalRow('Subtotal', _money(invoice['subtotal'])),
                 pw.SizedBox(height: 5),
-                _totalRow('Grand Total', _money(invoice['grandTotal']), bold: true),
+                _totalRow('Grand Total', _money(invoice['grandTotal']),
+                    bold: true),
               ]),
             ),
           ),
@@ -69,28 +72,33 @@ class InvoicePdfService {
     return pw.Column(children: [
       pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
         pw.Expanded(
-          child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-            pw.Text(storeName,
-                style: pw.TextStyle(
-                    fontSize: 20,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.blue800)),
-            _optionalText('Owner: ', store['ownerName']),
-            _optionalText('', store['address']),
-            _optionalText('', _join([store['city'], store['pincode']], ' - ')),
-            _optionalText('Phone: ', store['phone']),
-            _optionalText('GSTIN: ', store['gstNumber']),
-          ]),
+          child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(storeName,
+                    style: pw.TextStyle(
+                        fontSize: 20,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blue800)),
+                _optionalText('Owner: ', store['ownerName']),
+                _optionalText('', store['address']),
+                _optionalText(
+                    '', _join([store['city'], store['pincode']], ' - ')),
+                _optionalText('Phone: ', store['phone']),
+                _optionalText('GSTIN: ', store['gstNumber']),
+              ]),
         ),
         pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
           pw.Text('TAX INVOICE',
-              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              style:
+                  pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 4),
           pw.Text('Invoice No: $invoiceNumber'),
           pw.Text('Date: $date'),
           if (_text(invoice['customerName']).isNotEmpty) ...[
             pw.SizedBox(height: 7),
-            pw.Text('Bill To', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+            pw.Text('Bill To',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
             pw.Text(_text(invoice['customerName'])),
           ],
           if (_text(invoice['customerMobileNumber']).isNotEmpty)
@@ -104,7 +112,8 @@ class InvoicePdfService {
     ]);
   }
 
-  static pw.Widget _itemsTable(List<Map<String, dynamic>> items, bool isManualInvoice) {
+  static pw.Widget _itemsTable(
+      List<Map<String, dynamic>> items, bool isManualInvoice) {
     final headers = <String>['#'];
     if (!isManualInvoice) headers.add('Product');
     headers.addAll(['Price', 'Qty', 'Total']);
@@ -113,7 +122,9 @@ class InvoicePdfService {
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       final row = <String>['${index + 1}'];
-      if (!isManualInvoice) row.add(_text(item['productName'], fallback: 'Item'));
+      if (!isManualInvoice) {
+        row.add(_text(item['productName'], fallback: 'Item'));
+      }
       row.addAll([
         _money(item['sellingPrice']),
         '${_number(item['quantity'])} ${_text(item['unit'], fallback: 'Piece')}',
@@ -146,10 +157,12 @@ class InvoicePdfService {
         fontSize: bold ? 13 : 11,
         fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
         color: bold ? PdfColors.green800 : PdfColors.black);
-    return pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-      pw.Text('$label:', style: style),
-      pw.Text(value, style: style),
-    ]);
+    return pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text('$label:', style: style),
+          pw.Text(value, style: style),
+        ]);
   }
 
   static pw.Widget _footer(Map<String, dynamic> store) {
@@ -184,7 +197,8 @@ class InvoicePdfService {
   }
 
   static String _money(dynamic value) {
-    final amount = value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
+    final amount =
+        value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
     return 'Rs. ${amount.toStringAsFixed(2)}';
   }
 
@@ -210,11 +224,59 @@ class InvoicePdfService {
       return savedPath != null;
     }
 
-    // The save dialog plugin is mobile-only. Retain the existing native PDF
-    // save/print flow on desktop and web instead of throwing MissingPlugin.
+    // Desktop saves directly to a local folder first so "Save PDF" behaves
+    // like a real file export instead of unexpectedly opening print UI.
+    if (!kIsWeb) {
+      final saved = await _saveToLocalFolder(bytes, filename);
+      if (saved != null) {
+        return true;
+      }
+    }
+
+    // Fall back to the platform print dialog when local file save is not
+    // available, such as the web or a desktop write failure.
     return Printing.layoutPdf(
       onLayout: (_) async => bytes,
       name: filename,
     );
+  }
+
+  static Future<File?> _saveToLocalFolder(
+    Uint8List bytes,
+    String filename,
+  ) async {
+    try {
+      final baseDirectory = await getDownloadsDirectory() ??
+          await getApplicationDocumentsDirectory();
+      final file = await _uniqueLocalFile(baseDirectory, filename);
+      await file.writeAsBytes(bytes, flush: true);
+      return file;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<File> _uniqueLocalFile(
+    Directory directory,
+    String filename,
+  ) async {
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+
+    final safeName = filename.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final dot = safeName.lastIndexOf('.');
+    final baseName = dot > 0 ? safeName.substring(0, dot) : safeName;
+    final extension = dot > 0 ? safeName.substring(dot) : '';
+
+    var candidate = File('${directory.path}${Platform.pathSeparator}$safeName');
+    var counter = 1;
+    while (await candidate.exists()) {
+      candidate = File(
+        '${directory.path}${Platform.pathSeparator}$baseName ($counter)$extension',
+      );
+      counter++;
+    }
+    return candidate;
   }
 }

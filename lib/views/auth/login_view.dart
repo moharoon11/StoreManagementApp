@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/app_provider.dart';
-import '../../theme/app_theme.dart';
 import '../../widgets/workspace_ui.dart';
 
 class LoginView extends StatefulWidget {
@@ -46,6 +45,7 @@ class _LoginViewState extends State<LoginView>
       );
       return;
     }
+
     final provider = context.read<AppProvider>();
     final success = _isRegisterMode
         ? await provider.register(username, password)
@@ -75,52 +75,25 @@ class _LoginViewState extends State<LoginView>
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final wide = MediaQuery.sizeOf(context).width >= 980;
-    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Theme.of(context).scaffoldBackgroundColor,
-              Color.lerp(Theme.of(context).scaffoldBackgroundColor, scheme.primary, .10) ??
-                  Theme.of(context).scaffoldBackgroundColor,
-            ],
-          ),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: -90,
-              right: -50,
-              child: _AuthOrb(
-                size: 220,
-                color: scheme.primary.withValues(alpha: .10),
-              ),
-            ),
-            Positioned(
-              bottom: -70,
-              left: -20,
-              child: _AuthOrb(
-                size: 180,
-                color: scheme.secondary.withValues(alpha: .10),
-              ),
-            ),
-            SafeArea(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1040),
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: wide
+      body: WorkspaceBackdrop(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(18),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1120),
+                child: Column(
+                  children: [
+                    const _BrandStrip(),
+                    const SizedBox(height: 18),
+                    wide
                         ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Expanded(flex: 6, child: _AuthStory()),
-                              const SizedBox(width: 18),
                               Expanded(
-                                flex: 4,
+                                flex: 5,
                                 child: _AnimatedAuthCard(
                                   animation: _entrance,
                                   child: _AuthForm(
@@ -130,47 +103,110 @@ class _LoginViewState extends State<LoginView>
                                     obscurePassword: _obscurePassword,
                                     loading: provider.isLoading,
                                     onTogglePassword: () => setState(
-                                      () => _obscurePassword = !_obscurePassword,
+                                      () =>
+                                          _obscurePassword = !_obscurePassword,
                                     ),
                                     onSubmit: _submit,
                                     onSwitchMode: _toggleMode,
                                   ),
                                 ),
+                              ),
+                              const SizedBox(width: 18),
+                              const Expanded(
+                                flex: 4,
+                                child: _WorkspaceSnapshot(),
                               ),
                             ],
                           )
                         : Column(
                             children: [
-                              const SizedBox(
-                                height: 250,
-                                child: _AuthStory(compact: true),
-                              ),
-                              const SizedBox(height: 16),
-                              Expanded(
-                                child: _AnimatedAuthCard(
-                                  animation: _entrance,
-                                  child: _AuthForm(
-                                    register: _isRegisterMode,
-                                    usernameController: _usernameController,
-                                    passwordController: _passwordController,
-                                    obscurePassword: _obscurePassword,
-                                    loading: provider.isLoading,
-                                    onTogglePassword: () => setState(
-                                      () => _obscurePassword = !_obscurePassword,
-                                    ),
-                                    onSubmit: _submit,
-                                    onSwitchMode: _toggleMode,
+                              _AnimatedAuthCard(
+                                animation: _entrance,
+                                child: _AuthForm(
+                                  register: _isRegisterMode,
+                                  usernameController: _usernameController,
+                                  passwordController: _passwordController,
+                                  obscurePassword: _obscurePassword,
+                                  loading: provider.isLoading,
+                                  onTogglePassword: () => setState(
+                                    () => _obscurePassword = !_obscurePassword,
                                   ),
+                                  onSubmit: _submit,
+                                  onSwitchMode: _toggleMode,
                                 ),
                               ),
+                              const SizedBox(height: 16),
+                              const _WorkspaceSnapshot(compact: true),
                             ],
                           ),
-                  ),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _BrandStrip extends StatelessWidget {
+  const _BrandStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return SurfacePanel(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final stacked = constraints.maxWidth < 760;
+          final badges = Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              StatusPill(label: 'Cross-platform UI', color: scheme.primary),
+              StatusPill(label: 'Desktop-ready flow', color: scheme.secondary),
+              StatusPill(label: 'Responsive billing', color: scheme.tertiary),
+            ],
+          );
+
+          final summary = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'NEXORA',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Retail operations, redesigned to feel crisp on both phone and desktop.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: .72),
+                    ),
+              ),
+            ],
+          );
+
+          if (stacked) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                summary,
+                const SizedBox(height: 14),
+                badges,
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: summary),
+              const SizedBox(width: 18),
+              Flexible(child: badges),
+            ],
+          );
+        },
       ),
     );
   }
@@ -190,7 +226,10 @@ class _AnimatedAuthCard extends StatelessWidget {
     return AnimatedBuilder(
       animation: animation,
       builder: (context, childWidget) => Transform.translate(
-        offset: Offset(0, 24 * (1 - Curves.easeOutCubic.transform(animation.value))),
+        offset: Offset(
+          0,
+          24 * (1 - Curves.easeOutCubic.transform(animation.value)),
+        ),
         child: Opacity(opacity: animation.value, child: childWidget),
       ),
       child: SurfacePanel(
@@ -198,91 +237,6 @@ class _AnimatedAuthCard extends StatelessWidget {
           padding: const EdgeInsets.all(4),
           child: child,
         ),
-      ),
-    );
-  }
-}
-
-class _AuthStory extends StatelessWidget {
-  const _AuthStory({this.compact = false});
-
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(compact ? 20 : 26),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF201E21),
-            Color(0xFF5E452D),
-            Color(0xFF7A5A3A),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .14),
-            blurRadius: 30,
-            offset: const Offset(0, 16),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: compact ? 40 : 48,
-                height: compact ? 40 : 48,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.auto_graph_rounded, color: AppColors.bronze),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'NEXORA',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      letterSpacing: 2.0,
-                    ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            compact
-                ? 'A sharper workspace for commerce.'
-                : 'A sharper workspace for billing, inventory, and store operations.',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: Colors.white,
-                  fontSize: compact ? 28 : 38,
-                ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'The new layout removes the welcome step and opens straight into a calmer operating view.',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.white.withValues(alpha: .78),
-                ),
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: const [
-              _StoryPill(label: 'Direct workspace entry'),
-              _StoryPill(label: 'Compact operational layout'),
-              _StoryPill(label: 'Responsive sales screens'),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -311,9 +265,16 @@ class _AuthForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        StatusPill(
+          label: register ? 'Create account' : 'Store access',
+          color: scheme.primary,
+        ),
+        const SizedBox(height: 14),
         Text(
           register ? 'Create your workspace' : 'Welcome back',
           style: Theme.of(context).textTheme.headlineMedium,
@@ -321,42 +282,40 @@ class _AuthForm extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           register
-              ? 'Set up your store command centre and start operating right away.'
-              : 'Sign in and return directly to the workspace.',
+              ? 'Set up your login once and open directly into the full billing workspace.'
+              : 'Sign in to continue with products, stock, reports, and checkout.',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .66),
+                color: scheme.onSurface.withValues(alpha: .7),
               ),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 20),
         TextField(
           controller: usernameController,
           textInputAction: TextInputAction.next,
           decoration: const InputDecoration(
             labelText: 'Username',
-            hintText: 'Your workspace username',
             prefixIcon: Icon(Icons.person_outline_rounded),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         TextField(
           controller: passwordController,
           obscureText: obscurePassword,
           onSubmitted: (_) => onSubmit(),
           decoration: InputDecoration(
             labelText: 'Password',
-            hintText: 'Enter your password',
             prefixIcon: const Icon(Icons.lock_outline_rounded),
             suffixIcon: IconButton(
+              onPressed: onTogglePassword,
               icon: Icon(
                 obscurePassword
                     ? Icons.visibility_outlined
                     : Icons.visibility_off_outlined,
               ),
-              onPressed: onTogglePassword,
             ),
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
@@ -367,40 +326,29 @@ class _AuthForm extends StatelessWidget {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.arrow_forward_rounded, size: 18),
+                : Icon(
+                    register
+                        ? Icons.person_add_alt_1_rounded
+                        : Icons.login_rounded,
+                    size: 18,
+                  ),
             label: Text(
               loading
                   ? 'Please wait...'
                   : register
                       ? 'Create account'
-                      : 'Enter workspace',
+                      : 'Sign in',
             ),
           ),
         ),
         const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.center,
+        Center(
           child: TextButton(
             onPressed: loading ? null : onSwitchMode,
-            child: RichText(
-              text: TextSpan(
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.muted,
-                    ),
-                children: [
-                  TextSpan(
-                    text: register
-                        ? 'Already have an account? '
-                        : 'New to Nexora? ',
-                  ),
-                  TextSpan(
-                    text: register ? 'Sign in' : 'Create one',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                  ),
-                ],
-              ),
+            child: Text(
+              register
+                  ? 'Already have an account? Sign in'
+                  : 'Need a new account? Create one',
             ),
           ),
         ),
@@ -409,45 +357,137 @@ class _AuthForm extends StatelessWidget {
   }
 }
 
-class _StoryPill extends StatelessWidget {
-  const _StoryPill({required this.label});
+class _WorkspaceSnapshot extends StatelessWidget {
+  const _WorkspaceSnapshot({this.compact = false});
 
-  final String label;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .10),
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Colors.white,
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      children: [
+        SectionPanel(
+          title: 'What changed',
+          subtitle:
+              'The app now opens into a sharper, more structured experience built to behave consistently on larger screens.',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              _SnapshotLine(
+                icon: Icons.desktop_windows_outlined,
+                label: 'Desktop-friendly panels and navigation',
+              ),
+              SizedBox(height: 12),
+              _SnapshotLine(
+                icon: Icons.shopping_bag_outlined,
+                label: 'Cleaner checkout and cart surfaces',
+              ),
+              SizedBox(height: 12),
+              _SnapshotLine(
+                icon: Icons.image_outlined,
+                label: 'File selection that behaves properly on Windows',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        AdaptiveWrapGrid(
+          minItemWidth: compact ? 150 : 180,
+          children: [
+            _SnapshotMetric(
+              label: 'Platform',
+              value: 'Android + Windows',
+              accent: scheme.primary,
             ),
-      ),
+            _SnapshotMetric(
+              label: 'Style',
+              value: 'Modern control center',
+              accent: scheme.secondary,
+            ),
+            _SnapshotMetric(
+              label: 'Goal',
+              value: 'Keep functionality intact',
+              accent: scheme.tertiary,
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
 
-class _AuthOrb extends StatelessWidget {
-  const _AuthOrb({
-    required this.size,
-    required this.color,
+class _SnapshotLine extends StatelessWidget {
+  const _SnapshotLine({
+    required this.icon,
+    required this.label,
   });
 
-  final double size;
-  final Color color;
+  final IconData icon;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    final scheme = Theme.of(context).colorScheme;
+
+    return Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: scheme.primary.withValues(alpha: .1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 18, color: scheme.primary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SnapshotMetric extends StatelessWidget {
+  const _SnapshotMetric({
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
+
+  final String label;
+  final String value;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return SurfacePanel(
+      padding: const EdgeInsets.all(14),
+      color: accent.withValues(alpha: .06),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: .58),
+                  letterSpacing: 1.4,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+        ],
       ),
     );
   }

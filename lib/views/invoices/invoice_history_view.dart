@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../config/api_config.dart';
 import '../../services/api_service.dart';
 import '../../services/invoice_pdf_service.dart';
+import '../../services/platform_capabilities.dart';
 import '../../utils/quantity_utils.dart';
 import '../../widgets/workspace_ui.dart';
 
@@ -65,7 +66,13 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
           await InvoicePdfService.save(bytes, 'Invoice_$invoiceNum.pdf');
       if (mounted && wasSaved) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PDF saved successfully.')),
+          SnackBar(
+            content: Text(
+              PlatformCapabilities.isDesktop
+                  ? 'PDF saved locally.'
+                  : 'PDF saved successfully.',
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -113,8 +120,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
             children: [
               StatTile(
                 label: 'Transactions',
-                value:
-                    '${_summary['totalTransactions'] ?? _invoices.length}',
+                value: '${_summary['totalTransactions'] ?? _invoices.length}',
                 icon: Icons.receipt_long_outlined,
                 color: Theme.of(context).colorScheme.primary,
               ),
@@ -138,7 +144,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
           Expanded(
             child: SectionPanel(
               title: 'Invoice ledger',
-              subtitle: 'Tap an invoice to edit details, review items, or save the PDF.',
+              subtitle:
+                  'Tap an invoice to edit details, review items, or save the PDF.',
               child: _isLoading
                   ? const SizedBox(
                       height: 220,
@@ -153,10 +160,11 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                         )
                       : ListView.separated(
                           itemCount: _invoices.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 12),
                           itemBuilder: (context, index) {
-                            final invoice =
-                                Map<String, dynamic>.from(_invoices[index] as Map);
+                            final invoice = Map<String, dynamic>.from(
+                                _invoices[index] as Map);
                             return _InvoiceCard(
                               invoice: invoice,
                               onTap: () => _openSaleEditModal(invoice),
@@ -187,11 +195,10 @@ class _InvoiceCard extends StatelessWidget {
     final nameDisplay = customerName.isEmpty || customerName == 'NO_NAME'
         ? 'Walk-in customer'
         : customerName;
-    final totalAmount =
-        (invoice['grandTotal'] as num?)?.toDouble() ?? 0.0;
+    final totalAmount = (invoice['grandTotal'] as num?)?.toDouble() ?? 0.0;
     final balanceDue = (invoice['balanceDue'] as num?)?.toDouble() ?? 0.0;
-    final dateStr = (invoice['invoiceDate'] ?? invoice['createdAt'] ?? '')
-        .toString();
+    final dateStr =
+        (invoice['invoiceDate'] ?? invoice['createdAt'] ?? '').toString();
     final dateFormatted =
         dateStr.contains('T') ? dateStr.split('T').first : dateStr;
 
@@ -209,10 +216,8 @@ class _InvoiceCard extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final narrow = constraints.maxWidth < 540;
-              final amountText =
-                  '₹${totalAmount.toStringAsFixed(2)}';
-              final balanceText =
-                  '₹${balanceDue.toStringAsFixed(2)}';
+              final amountText = '₹${totalAmount.toStringAsFixed(2)}';
+              final balanceText = '₹${balanceDue.toStringAsFixed(2)}';
 
               Widget amountColumn() => Column(
                     crossAxisAlignment: narrow
@@ -225,9 +230,8 @@ class _InvoiceCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       StatusPill(
-                        label: balanceDue > 0
-                            ? 'Due $balanceText'
-                            : 'Fully paid',
+                        label:
+                            balanceDue > 0 ? 'Due $balanceText' : 'Fully paid',
                         color: balanceDue > 0 ? scheme.error : scheme.secondary,
                       ),
                     ],
@@ -237,7 +241,8 @@ class _InvoiceCard extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(nameDisplay, style: Theme.of(context).textTheme.titleSmall),
+                    Text(nameDisplay,
+                        style: Theme.of(context).textTheme.titleSmall),
                     const SizedBox(height: 4),
                     Text(
                       'Sale ${invoice['id']} · $dateFormatted',
@@ -262,7 +267,10 @@ class _InvoiceCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           'Sale ${invoice['id']} · $dateFormatted',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
                                 color: scheme.onSurface.withValues(alpha: .6),
                               ),
                         ),
@@ -307,8 +315,8 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
   void initState() {
     super.initState();
     final customerName = (widget.invoice['customerName'] ?? '').toString();
-    _nameController =
-        TextEditingController(text: customerName == 'NO_NAME' ? '' : customerName);
+    _nameController = TextEditingController(
+        text: customerName == 'NO_NAME' ? '' : customerName);
     _mobileController = TextEditingController(
       text: (widget.invoice['customerMobileNumber'] ?? '').toString(),
     );
@@ -317,8 +325,8 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
         (widget.invoice['grandTotal'] as num?)?.toDouble() ?? 0.0;
     final amountReceived =
         (widget.invoice['amountReceived'] as num?)?.toDouble() ?? grandTotal;
-    _isReceived =
-        (widget.invoice['isReceived'] as bool?) ?? (amountReceived >= grandTotal);
+    _isReceived = (widget.invoice['isReceived'] as bool?) ??
+        (amountReceived >= grandTotal);
     _amountReceivedController =
         TextEditingController(text: amountReceived.toStringAsFixed(2));
   }
@@ -376,7 +384,8 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete sale'),
-        content: const Text('Are you sure you want to delete this sale invoice?'),
+        content:
+            const Text('Are you sure you want to delete this sale invoice?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -394,8 +403,8 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
 
     setState(() => _isSaving = true);
     try {
-      final res =
-          await ApiService.delete('${ApiConfig.invoices}/${widget.invoice['id']}');
+      final res = await ApiService.delete(
+          '${ApiConfig.invoices}/${widget.invoice['id']}');
       if (res['success'] == true) {
         widget.onUpdated();
         if (!mounted) return;
@@ -420,7 +429,8 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
         (widget.invoice['grandTotal'] as num?)?.toDouble() ?? 0.0;
     final amountReceived = double.tryParse(_amountReceivedController.text) ??
         (_isReceived ? grandTotal : 0.0);
-    final balanceDue = (grandTotal - amountReceived).clamp(0.0, double.infinity);
+    final balanceDue =
+        (grandTotal - amountReceived).clamp(0.0, double.infinity);
     final items = (widget.invoice['items'] as List?) ?? [];
     final scheme = Theme.of(context).colorScheme;
     final wide = MediaQuery.sizeOf(context).width >= 860;
@@ -445,7 +455,9 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
                           style: Theme.of(context).textTheme.titleLarge),
                       const SizedBox(height: 4),
                       Text(
-                        (widget.invoice['invoiceDate'] ?? widget.invoice['createdAt'] ?? '')
+                        (widget.invoice['invoiceDate'] ??
+                                widget.invoice['createdAt'] ??
+                                '')
                             .toString()
                             .split('T')
                             .first,
@@ -458,7 +470,8 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
                 ),
                 IconButton(
                   onPressed: widget.onPdfRequested,
-                  icon: Icon(Icons.picture_as_pdf_outlined, color: scheme.error),
+                  icon:
+                      Icon(Icons.picture_as_pdf_outlined, color: scheme.error),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
@@ -482,7 +495,8 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
                               child: _SaleMetaPanel(
                                 nameController: _nameController,
                                 mobileController: _mobileController,
-                                amountReceivedController: _amountReceivedController,
+                                amountReceivedController:
+                                    _amountReceivedController,
                                 isReceived: _isReceived,
                                 grandTotal: grandTotal,
                                 balanceDue: balanceDue,
@@ -514,7 +528,8 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
                             _SaleMetaPanel(
                               nameController: _nameController,
                               mobileController: _mobileController,
-                              amountReceivedController: _amountReceivedController,
+                              amountReceivedController:
+                                  _amountReceivedController,
                               isReceived: _isReceived,
                               grandTotal: grandTotal,
                               balanceDue: balanceDue,
@@ -692,7 +707,8 @@ class _ItemLedgerPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return SectionPanel(
       title: 'Item ledger',
-      subtitle: '${items.length} billed item type${items.length == 1 ? '' : 's'}',
+      subtitle:
+          '${items.length} billed item type${items.length == 1 ? '' : 's'}',
       child: Column(
         children: [
           if (items.isEmpty)
@@ -700,8 +716,7 @@ class _ItemLedgerPanel extends StatelessWidget {
           else
             ...items.map((entry) {
               final item = entry as Map;
-              final price =
-                  (item['sellingPrice'] as num?)?.toDouble() ?? 0.0;
+              final price = (item['sellingPrice'] as num?)?.toDouble() ?? 0.0;
               final qty = quantityValue(item['quantity']);
               final total =
                   (item['total'] as num?)?.toDouble() ?? (price * qty);
