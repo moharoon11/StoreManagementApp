@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
 import '../../utils/quantity_utils.dart';
+import '../../widgets/ui_breakpoints.dart';
+import '../../widgets/workspace_ui.dart';
 
 class ProductEditView extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -43,6 +45,15 @@ class _ProductEditViewState extends State<ProductEditView> {
     _selectedCategory = widget.product['categoryId'] as int?;
     _selectedUnit = productUnit(widget.product);
     _productImageUrl = widget.product['imageUrl']?.toString() ?? '';
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _costPriceController.dispose();
+    _sellingPriceController.dispose();
+    _stockController.dispose();
+    super.dispose();
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -100,8 +111,7 @@ class _ProductEditViewState extends State<ProductEditView> {
           '${ApiConfig.products}/${widget.product['id']}', body);
       if (res['success'] == true) {
         if (mounted) {
-          Navigator.pop(
-              context, true); // true to indicate success and need to refresh
+          Navigator.pop(context, true);
         }
       } else {
         if (mounted) {
@@ -121,28 +131,29 @@ class _ProductEditViewState extends State<ProductEditView> {
 
   Future<void> _deleteProduct() async {
     final confirm = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-              title: const Text('Delete Product'),
-              content: const Text(
-                  'Are you sure you want to delete this product? This action cannot be undone.'),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Cancel')),
-                TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Delete',
-                        style: TextStyle(color: Colors.red))),
-              ],
-            ));
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete product'),
+        content: const Text(
+            'Are you sure you want to delete this product? This action cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete',
+                  style: TextStyle(color: Color(0xFFB42318)))),
+        ],
+      ),
+    );
 
     if (confirm != true) return;
 
     setState(() => _isLoading = true);
     try {
-      final res = await ApiService.delete(
-          '${ApiConfig.products}/${widget.product['id']}');
+      final res =
+          await ApiService.delete('${ApiConfig.products}/${widget.product['id']}');
       if (res['success'] == true) {
         if (mounted) {
           Navigator.pop(context, true);
@@ -163,184 +174,193 @@ class _ProductEditViewState extends State<ProductEditView> {
     }
   }
 
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Wrap(children: [
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined),
+            title: const Text('Choose from gallery'),
+            onTap: () {
+              Navigator.pop(context);
+              _pickImage(ImageSource.gallery);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_camera_outlined),
+            title: const Text('Take a photo'),
+            onTap: () {
+              Navigator.pop(context);
+              _pickImage(ImageSource.camera);
+            },
+          ),
+        ]),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: scheme.surface,
       appBar: AppBar(
-        title: const Text('Edit Product',
-            style: TextStyle(fontWeight: FontWeight.w800)),
+        backgroundColor: scheme.surface,
+        scrolledUnderElevation: 0,
+        elevation: 0,
+        title: const Text('Edit product',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
+            tooltip: 'Delete product',
+            icon: Icon(Icons.delete_outline, color: scheme.error),
             onPressed: _deleteProduct,
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: GestureDetector(
-                    onTap: () {
-                      showModalBottomSheet(
-                        context: context,
-                        builder: (_) => Container(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ListTile(
-                                leading: const Icon(Icons.photo_library,
-                                    color: Color(0xFF365FF4)),
-                                title: const Text('Choose from Gallery'),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  _pickImage(ImageSource.gallery);
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.camera_alt,
-                                    color: Color(0xFF365FF4)),
-                                title: const Text('Take a Photo'),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  _pickImage(ImageSource.camera);
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      height: 180,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFD2D6E0)),
-                      ),
-                      child: _isUploading
-                          ? const Center(
-                              child: CircularProgressIndicator(
-                                  color: Color(0xFF365FF4)))
-                          : _pickedImageFile != null
-                              ? Image.file(_pickedImageFile!,
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  fit: BoxFit.contain)
-                              : _productImageUrl.isNotEmpty
-                                  ? Image.network(_productImageUrl,
-                                      width: double.infinity,
-                                      height: double.infinity,
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (_, __, ___) =>
-                                          const _ImagePlaceholder())
-                                  : const _ImagePlaceholder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildTextField('Product Name *', _nameController),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<int>(
-                  value: _selectedCategory,
-                  decoration: InputDecoration(
-                    labelText: 'Category',
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none),
-                  ),
-                  items: widget.categories.map<DropdownMenuItem<int>>((cat) {
-                    return DropdownMenuItem<int>(
-                      value: cat['id'],
-                      child: Text(cat['name'] ?? ''),
-                    );
-                  }).toList(),
-                  onChanged: (val) => setState(() => _selectedCategory = val),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                        child: _buildTextField(
-                            'Cost Price (₹)', _costPriceController,
-                            isNumber: true)),
-                    const SizedBox(width: 16),
-                    Expanded(
-                        child: _buildTextField(
-                            'Selling Price (₹) *', _sellingPriceController,
-                            isNumber: true)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                          'Stock Quantity *', _stockController,
-                          isNumber: true),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedUnit,
-                        decoration: InputDecoration(
-                          labelText: 'Unit *',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none),
-                        ),
-                        items: productUnits
-                            .map((unit) => DropdownMenuItem(
-                                value: unit, child: Text(unit)))
-                            .toList(),
-                        onChanged: (unit) =>
-                            setState(() => _selectedUnit = unit!),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed:
-                        (_isUploading || _isLoading) ? null : _updateProduct,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF365FF4),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Save Changes',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16)),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
+      body: Stack(children: [
+        SingleChildScrollView(
+          padding: Ui.pagePadding(context),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: _buildFormBody(scheme),
             ),
           ),
-          if (_isLoading)
-            Container(
-              color: Colors.black.withValues(alpha: 0.2),
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-        ],
-      ),
+        ),
+        if (_isLoading)
+          Container(
+            color: scheme.scrim.withValues(alpha: .28),
+            child: const Center(child: CircularProgressIndicator()),
+          ),
+      ]),
     );
+  }
+
+  Widget _buildFormBody(ColorScheme scheme) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      GestureDetector(
+        onTap: _showImageSourceSheet,
+        child: Container(
+          height: 190,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest.withValues(alpha: .45),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: _isUploading
+              ? const Center(child: CircularProgressIndicator())
+              : _pickedImageFile != null
+                  ? Image.file(_pickedImageFile!,
+                      fit: BoxFit.contain, width: double.infinity)
+                  : _productImageUrl.isNotEmpty
+                      ? Image.network(_productImageUrl,
+                          fit: BoxFit.contain,
+                          width: double.infinity,
+                          errorBuilder: (_, __, ___) =>
+                              const _ImagePlaceholder())
+                      : const _ImagePlaceholder(),
+        ),
+      ),
+      const SizedBox(height: 16),
+      SurfacePanel(
+        accent: true,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const LedgerKicker('Details'),
+          const SizedBox(height: 10),
+          _buildTextField('Product name *', _nameController),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<int>(
+            value: _selectedCategory,
+            decoration: const InputDecoration(
+              labelText: 'Category',
+              prefixIcon: Icon(Icons.folder_outlined),
+            ),
+            items: widget.categories
+                .map<DropdownMenuItem<int>>((cat) {
+                  return DropdownMenuItem<int>(
+                    value: cat['id'],
+                    child: Text(cat['name'] ?? ''),
+                  );
+                })
+                .toList(),
+            onChanged: (val) => setState(() => _selectedCategory = val),
+          ),
+          const SizedBox(height: 12),
+          _buildPriceFields(),
+          const SizedBox(height: 12),
+          _buildStockUnitFields(),
+        ]),
+      ),
+      const SizedBox(height: 18),
+      SizedBox(
+        height: 48,
+        child: FilledButton.icon(
+          onPressed: (_isUploading || _isLoading) ? null : _updateProduct,
+          icon: const Icon(Icons.save_outlined, size: 18),
+          label: const Text('Save changes'),
+        ),
+      ),
+      const SizedBox(height: 20),
+    ]);
+  }
+
+  Widget _buildPriceFields() {
+    return LayoutBuilder(builder: (context, constraints) {
+      final pair = constraints.maxWidth >= 420;
+      final cost = _buildTextField(
+          'Cost price (₹)', _costPriceController,
+          isNumber: true);
+      final sell = _buildTextField('Selling price (₹) *',
+          _sellingPriceController,
+          isNumber: true);
+      if (pair) {
+        return Row(children: [
+          Expanded(child: cost),
+          const SizedBox(width: 12),
+          Expanded(child: sell),
+        ]);
+      }
+      return Column(children: [
+        cost,
+        const SizedBox(height: 12),
+        sell,
+      ]);
+    });
+  }
+
+  Widget _buildStockUnitFields() {
+    return LayoutBuilder(builder: (context, constraints) {
+      final pair = constraints.maxWidth >= 420;
+      final stock = _buildTextField('Stock quantity *', _stockController,
+          isNumber: true);
+      final unit = DropdownButtonFormField<String>(
+        value: _selectedUnit,
+        decoration: const InputDecoration(
+          labelText: 'Unit *',
+          prefixIcon: Icon(Icons.straighten_outlined),
+        ),
+        items: productUnits
+            .map((unit) =>
+                DropdownMenuItem(value: unit, child: Text(unit)))
+            .toList(),
+        onChanged: (unit) => setState(() => _selectedUnit = unit!),
+      );
+      if (pair) {
+        return Row(children: [
+          Expanded(child: stock),
+          const SizedBox(width: 12),
+          Expanded(child: unit),
+        ]);
+      }
+      return Column(children: [
+        stock,
+        const SizedBox(height: 12),
+        unit,
+      ]);
+    });
   }
 
   Widget _buildTextField(String label, TextEditingController controller,
@@ -352,11 +372,7 @@ class _ProductEditViewState extends State<ProductEditView> {
           : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none),
+        isDense: true,
       ),
     );
   }
@@ -366,16 +382,20 @@ class _ImagePlaceholder extends StatelessWidget {
   const _ImagePlaceholder();
 
   @override
-  Widget build(BuildContext context) => const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.add_a_photo, color: Color(0xFF365FF4), size: 30),
-          SizedBox(height: 4),
-          Text('Upload Product Image',
-              style: TextStyle(
-                  color: Color(0xFF6C7486),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500)),
-        ],
-      );
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.add_a_photo_outlined,
+            color: scheme.onSurface.withValues(alpha: .35), size: 30),
+        const SizedBox(height: 4),
+        Text('Upload product image',
+            style: TextStyle(
+                color: scheme.onSurface.withValues(alpha: .5),
+                fontSize: 12,
+                fontWeight: FontWeight.w500)),
+      ],
+    );
+  }
 }

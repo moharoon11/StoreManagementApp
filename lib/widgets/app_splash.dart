@@ -1,7 +1,4 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 
 class AppSplash extends StatefulWidget {
   const AppSplash({super.key});
@@ -32,103 +29,89 @@ class _AppSplashState extends State<AppSplash>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF10281E),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
           final t = Curves.easeInOut.transform(_controller.value);
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF101A35),
-                      Color(0xFF263B89),
-                      Color(0xFF365FF4)
+          return SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 340),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Ledger seal: brass ring with forest monogram.
+                      Container(
+                        width: 88,
+                        height: 88,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: const Color(0xFFE0B45C), width: 2),
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: 68,
+                            height: 68,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF134E3A),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                                Icons.account_balance_outlined,
+                                size: 32,
+                                color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      const Text('NEXORA',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              letterSpacing: 5,
+                              fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 6),
+                      Container(
+                          height: 2,
+                          width: 56,
+                          color: const Color(0xFFE0B45C)),
+                      const SizedBox(height: 10),
+                      Text('TRADE LEDGER',
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: .6),
+                              fontSize: 11,
+                              letterSpacing: 3,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 40),
+                      SizedBox(
+                        width: 150,
+                        child: LinearProgressIndicator(
+                          value: .28 + (.64 * t),
+                          minHeight: 2,
+                          backgroundColor:
+                              Colors.white.withValues(alpha: .18),
+                          valueColor:
+                              const AlwaysStoppedAnimation<Color>(
+                                  Color(0xFFE0B45C)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text('Opening the day book…',
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: .5),
+                              fontSize: 11)),
                     ],
                   ),
                 ),
               ),
-              Positioned(
-                top: -120 + (18 * t),
-                right: -70,
-                child: _orb(260, const Color(0xFF82E9DE).withOpacity(.18)),
-              ),
-              Positioned(
-                bottom: -160,
-                left: -70 + (20 * t),
-                child: _orb(310, Colors.white.withOpacity(.09)),
-              ),
-              Center(
-                child: Transform.translate(
-                  offset: Offset(0, (1 - t) * 10),
-                  child: Opacity(
-                    opacity: .78 + (.22 * t),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Transform.rotate(
-                          angle: math.sin(_controller.value * math.pi) * .04,
-                          child: Container(
-                            width: 82,
-                            height: 82,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(27),
-                              boxShadow: [
-                                BoxShadow(
-                                    color: Colors.black.withOpacity(.18),
-                                    blurRadius: 30,
-                                    offset: const Offset(0, 14))
-                              ],
-                            ),
-                            child: const Icon(Icons.auto_graph_rounded,
-                                size: 43, color: AppColors.brand),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        const Text('NEXORA',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 30,
-                                letterSpacing: 4,
-                                fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 8),
-                        Text('Commerce, in perfect flow.',
-                            style: TextStyle(
-                                color: Colors.white.withOpacity(.72),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 42),
-                        SizedBox(
-                          width: 122,
-                          child: LinearProgressIndicator(
-                            value: .28 + (.64 * t),
-                            minHeight: 4,
-                            borderRadius: BorderRadius.circular(99),
-                            backgroundColor: Colors.white.withOpacity(.2),
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                                Color(0xFF82E9DE)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           );
         },
       ),
     );
   }
-
-  Widget _orb(double size, Color color) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      );
 }

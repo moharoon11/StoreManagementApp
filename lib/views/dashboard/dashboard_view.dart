@@ -56,9 +56,10 @@ class _DashboardViewState extends State<DashboardView> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     if (_isLoading) {
-      return const Center(
-          child: CircularProgressIndicator(color: Color(0xFF365FF4)));
+      return Center(
+          child: CircularProgressIndicator(color: scheme.primary));
     }
 
     if (_error != null) {
@@ -68,20 +69,23 @@ class _DashboardViewState extends State<DashboardView> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline,
-                  size: 48, color: Color(0xFFE75C5C)),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                    border: Border.all(color: scheme.outlineVariant),
+                    borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.error_outline,
+                    size: 40, color: scheme.error),
+              ),
               const SizedBox(height: 12),
               Text('Error: $_error',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFFE75C5C))),
+                  style: TextStyle(color: scheme.error)),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: _loadDashboard,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF365FF4),
-                    foregroundColor: Colors.white),
               ),
             ],
           ),
@@ -99,7 +103,6 @@ class _DashboardViewState extends State<DashboardView> {
     final recentInvoices = (_dashboardData?['recentInvoices'] as List?) ?? [];
     final salesTrend = (_dashboardData?['salesTrend'] as List?) ?? [];
 
-    final width = MediaQuery.sizeOf(context).width;
     final provider = context.watch<AppProvider>();
     final hour = DateTime.now().hour;
     final greeting = hour < 12
@@ -108,404 +111,419 @@ class _DashboardViewState extends State<DashboardView> {
             ? 'Good afternoon'
             : 'Good evening';
     return WorkspacePage(
-      child: Stack(children: [
-        Positioned(
-          top: -120,
-          right: -100,
-          child: IgnorePointer(
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: const BoxDecoration(
-                  color: Color(0x142563EB), shape: BoxShape.circle),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 120,
-          left: -130,
-          child: IgnorePointer(
-            child: Container(
-              width: 270,
-              height: 270,
-              decoration: const BoxDecoration(
-                  color: Color(0x1212A594), shape: BoxShape.circle),
-            ),
-          ),
-        ),
-        Positioned.fill(
-          child: RefreshIndicator(
-            onRefresh: _loadDashboard,
-            child: ListView(children: [
-              _dashboardGreeting(greeting, provider.username),
-              const SizedBox(height: 14),
-              _salesHero(todaySales, todayInvoices, totalProducts),
-              const SizedBox(height: 12),
-              Wrap(spacing: 10, runSpacing: 10, children: [
-                _actionCard(
-                    width: width,
-                    title: 'New bill',
-                    subtitle: 'Create a normal bill',
-                    icon: Icons.add_rounded,
-                    colors: const [Color(0xFF2563EB), Color(0xFF104FC7)],
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ManualBillingView(),
-                        ),
-                      );
-                    }),
-                _actionCard(
-                    width: width,
-                    title: 'Quick bill',
-                    subtitle: 'Fast billing in seconds',
-                    icon: Icons.bolt_rounded,
-                    colors: const [Color(0xFFFF9D00), Color(0xFFE66B00)],
-                    onTap: () => provider.setNavIndex(1)),
-              ]),
-              const SizedBox(height: 16),
-              if (salesTrend.isNotEmpty) ...[
-                _salesTrendChart(salesTrend),
-                const SizedBox(height: 16),
-              ],
-              _recentBills(recentInvoices, provider),
-              const SizedBox(height: 16),
-              if (width < 800) ...[
-                _buildActivityPanel(
-                    'Stock to review',
-                    'Keep your shelves ready',
-                    Icons.inventory_rounded,
-                    const Color(0xFFE4A331),
-                    _buildLowStockContent(lowStockProducts)),
-                const SizedBox(height: 12),
-                _buildActivityPanel(
-                    'Customer favourites',
-                    'What is selling best',
-                    Icons.workspace_premium_outlined,
-                    const Color(0xFF365FF4),
-                    _buildMostSoldContent(mostSoldProducts))
-              ] else
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(
-                      child: _buildActivityPanel(
-                          'Stock to review',
-                          'Keep your shelves ready',
-                          Icons.inventory_rounded,
-                          const Color(0xFFE4A331),
-                          _buildLowStockContent(lowStockProducts))),
-                  const SizedBox(width: 12),
-                  Expanded(
-                      child: _buildActivityPanel(
-                          'Customer favourites',
-                          'What is selling best',
-                          Icons.workspace_premium_outlined,
-                          const Color(0xFF365FF4),
-                          _buildMostSoldContent(mostSoldProducts)))
-                ]),
-            ]),
-          ),
-        ),
-      ]),
+      child: RefreshIndicator(
+        onRefresh: _loadDashboard,
+        child: ListView(children: [
+          _dashboardGreeting(greeting, provider.username),
+          const SizedBox(height: 12),
+          _salesHero(todaySales, todayInvoices, totalProducts),
+          const SizedBox(height: 12),
+          LayoutBuilder(builder: (context, constraints) {
+            final twoUp = constraints.maxWidth >= 560;
+            Widget billCard = _LedgerAction(
+                title: 'New bill',
+                subtitle: 'Create a normal bill',
+                icon: Icons.receipt_long_outlined,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ManualBillingView(),
+                    ),
+                  );
+                });
+            Widget quickCard = _LedgerAction(
+                title: 'Quick bill',
+                subtitle: 'Fast billing in seconds',
+                icon: Icons.bolt_outlined,
+                onTap: () => provider.setNavIndex(1));
+            if (twoUp) {
+              return Row(children: [
+                Expanded(child: billCard),
+                const SizedBox(width: 10),
+                Expanded(child: quickCard),
+              ]);
+            }
+            return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  billCard,
+                  const SizedBox(height: 10),
+                  quickCard,
+                ]);
+          }),
+          const SizedBox(height: 16),
+          if (salesTrend.isNotEmpty) ...[
+            _salesTrendChart(salesTrend),
+            const SizedBox(height: 16),
+          ],
+          _recentBills(recentInvoices, provider),
+          const SizedBox(height: 16),
+          LayoutBuilder(builder: (context, constraints) {
+            final twoUp = constraints.maxWidth >= 800;
+            final stock = _buildActivityPanel(
+                'Stock to review',
+                'Keep your shelves ready',
+                Icons.inventory_2_outlined,
+                Theme.of(context).colorScheme.secondary,
+                _buildLowStockContent(lowStockProducts));
+            final favs = _buildActivityPanel(
+                'Customer favourites',
+                'What is selling best',
+                Icons.workspace_premium_outlined,
+                Theme.of(context).colorScheme.primary,
+                _buildMostSoldContent(mostSoldProducts));
+            if (twoUp) {
+              return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: stock),
+                    const SizedBox(width: 12),
+                    Expanded(child: favs),
+                  ]);
+            }
+            return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  stock,
+                  const SizedBox(height: 12),
+                  favs,
+                ]);
+          }),
+        ]),
+      ),
     );
   }
 
   Widget _dashboardGreeting(String greeting, String username) =>
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        Container(
+            width: 3,
+            height: 34,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.secondary,
+              borderRadius: BorderRadius.circular(2),
+            )),
         Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('STORE MANAGEMENT',
-              style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontSize: Ui.headingSize(context),
-                  letterSpacing: -1,
-                  fontWeight: FontWeight.w800)),
-          const SizedBox(height: 3),
-          Text('$greeting${username.isEmpty ? '' : ', $username'}',
+          Text('DAY BOOK',
               style: TextStyle(
                   color: Theme.of(context)
                       .colorScheme
                       .onSurface
-                      .withValues(alpha: .62),
-                  fontSize: 13))
+                      .withValues(alpha: .55),
+                  fontSize: 11,
+                  letterSpacing: 2.2,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text('$greeting${username.isEmpty ? '' : ', $username'}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: Ui.headingSize(context),
+                  fontWeight: FontWeight.w700))
         ])),
-        IconButton(
+        OutlinedButton.icon(
             onPressed: _loadDashboard,
-            tooltip: 'Refresh dashboard',
-            visualDensity: VisualDensity.compact,
-            icon: Icon(Icons.refresh_rounded,
-                size: 21, color: Theme.of(context).colorScheme.primary))
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('Refresh')),
       ]);
 
-  Widget _salesHero(dynamic sales, dynamic invoices, dynamic products) =>
-      Container(
-          padding:
-              EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 15 : 18),
-          decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF3A86F7), Color(0xFF1556C0)]),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0x66FFFFFF)),
-              boxShadow: const [
-                BoxShadow(
-                    color: Color(0x3D1556C0),
-                    blurRadius: 20,
-                    spreadRadius: 1,
-                    offset: Offset(0, 9))
-              ]),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text("TODAY'S SALES",
+  Widget _salesHero(dynamic sales, dynamic invoices, dynamic products) {
+    final scheme = Theme.of(context).colorScheme;
+    return SurfacePanel(
+        padding:
+            EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 15 : 18),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(
+              child: Text("TODAY'S TAKINGS",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: .85),
-                      fontWeight: FontWeight.w800,
+                      color: scheme.onSurface.withValues(alpha: .55),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.8,
                       fontSize: 11)),
-              const Spacer(),
-              Icon(Icons.auto_graph_rounded,
-                  size: 19, color: Colors.white.withValues(alpha: .7))
-            ]),
-            const SizedBox(height: 8),
-            Text('₹$sales',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    letterSpacing: -1.2,
-                    fontWeight: FontWeight.w800)),
-            const SizedBox(height: 13),
-            Container(height: 1, color: Colors.white.withValues(alpha: .25)),
-            const SizedBox(height: 12),
-            Row(children: [
-              _heroStat(
-                  Icons.receipt_long_outlined, '$invoices', 'TOTAL BILLS'),
-              Container(
-                  height: 34,
-                  width: 1,
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  color: Colors.white.withValues(alpha: .25)),
-              _heroStat(Icons.inventory_2_outlined, '$products', 'PRODUCTS'),
-            ])
-          ]));
+            ),
+            LedgerTag(
+                label: '$invoices bills',
+                color: scheme.primary,
+                icon: Icons.receipt_long_outlined),
+          ]),
+          const SizedBox(height: 8),
+          Text('₹$sales',
+              style: TextStyle(
+                  color: scheme.onSurface,
+                  fontSize: 30,
+                  letterSpacing: 0,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()])),
+          const SizedBox(height: 12),
+          Divider(color: scheme.outlineVariant, height: 1),
+          const SizedBox(height: 12),
+          LayoutBuilder(builder: (context, constraints) {
+            final row = constraints.maxWidth >= 420;
+            final bills = _heroStat(Icons.receipt_long_outlined,
+                '$invoices', 'BILLS', scheme.primary);
+            final goods = _heroStat(Icons.inventory_2_outlined,
+                '$products', 'GOODS', scheme.secondary);
+            if (row) {
+              return Row(children: [
+                bills,
+                Container(
+                    height: 34,
+                    width: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 14),
+                    color: scheme.outlineVariant),
+                goods,
+              ]);
+            }
+            return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  bills,
+                  const SizedBox(height: 10),
+                  goods,
+                ]);
+          }),
+        ]));
+  }
 
-  Widget _heroStat(IconData icon, String value, String label) => Expanded(
+  Widget _heroStat(IconData icon, String value, String label, Color color) =>
+      Expanded(
           child: Row(children: [
-        Container(
-            padding: const EdgeInsets.all(9),
-            decoration: const BoxDecoration(
-                color: Color(0x22FFFFFF), shape: BoxShape.circle),
-            child: Icon(icon, color: Colors.white, size: 18)),
-        const SizedBox(width: 9),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label,
-              style: const TextStyle(
-                  color: Color(0xDFFFFFFF),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800)),
-          Text(value,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800))
-        ])
+        LedgerStamp(icon: icon, color: color),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: .55),
+                        fontSize: 10,
+                        letterSpacing: 1.4,
+                        fontWeight: FontWeight.w700)),
+                Text(value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: const [
+                          FontFeature.tabularFigures()
+                        ]))
+              ]),
+        )
       ]));
 
-  Widget _actionCard(
-          {required double width,
-          required String title,
+  /// Ruled two-line action row — replaces the old gradient action cards.
+  // ignore: non_constant_identifier_names
+  Widget _LedgerAction(
+          {required String title,
           required String subtitle,
           required IconData icon,
-          required List<Color> colors,
           required VoidCallback onTap}) =>
-      SizedBox(
-          width: width >= 680
-              ? (width >= 760 ? width - 68 : width - 44) / 2
-              : double.infinity,
+      SurfacePanel(
+          accent: false,
+          padding: const EdgeInsets.all(12),
           child: Material(
               color: Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
               child: InkWell(
                   onTap: onTap,
-                  borderRadius: BorderRadius.circular(16),
-                  child: Ink(
-                      height: 82,
-                      padding: const EdgeInsets.all(13),
-                      decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: colors),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                                color: colors.last.withValues(alpha: .27),
-                                blurRadius: 14,
-                                offset: const Offset(0, 6))
-                          ]),
-                      child: Row(children: [
-                        Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: const BoxDecoration(
-                                color: Colors.white, shape: BoxShape.circle),
-                            child: Icon(icon, color: colors.first, size: 21)),
-                        const SizedBox(width: 11),
-                        Expanded(
-                            child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                              Text(title.toUpperCase(),
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800)),
-                              const SizedBox(height: 2),
-                              Text(subtitle,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      color: Color(0xDFFFFFFF), fontSize: 11))
-                            ])),
-                        const Icon(Icons.chevron_right_rounded,
-                            color: Colors.white, size: 24)
-                      ])))));
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(children: [
+                    LedgerStamp(
+                        icon: icon,
+                        color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 11),
+                    Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                          Text(title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 2),
+                          Text(subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: .55),
+                                  fontSize: 11))
+                        ])),
+                    Icon(Icons.east_rounded,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: .4),
+                        size: 20)
+                  ]))));
 
-  Widget _recentBills(List invoices, AppProvider provider) => Container(
-      decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-                color: Color(0x140F2454), blurRadius: 14, offset: Offset(0, 6))
-          ]),
-      child: SurfacePanel(
-          padding: EdgeInsets.zero,
-          child: Column(children: [
-            Padding(
-                padding: const EdgeInsets.fromLTRB(16, 13, 10, 10),
-                child: Row(children: [
-                  const Expanded(
-                      child: Text('RECENT BILLS',
+  Widget _recentBills(List invoices, AppProvider provider) {
+    final scheme = Theme.of(context).colorScheme;
+    return SurfacePanel(
+        accent: false,
+        padding: EdgeInsets.zero,
+        child: Column(children: [
+          Padding(
+              padding: const EdgeInsets.fromLTRB(16, 13, 10, 10),
+              child: Row(children: [
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text('RECENT BILLS',
                           style: TextStyle(
-                              color: Color(0xFF172033),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800))),
-                  TextButton(
-                      onPressed: () => provider.setNavIndex(4),
-                      child: const Text('View all'))
-                ])),
-            const Divider(),
-            if (invoices.isEmpty)
-              const Padding(
-                  padding: EdgeInsets.all(22),
-                  child: Text('Your completed bills will appear here.',
-                      style: TextStyle(color: Color(0xFF6C7486))))
-            else
-              ...invoices.take(4).map((invoice) => ListTile(
-                  onTap: () => provider.setNavIndex(4),
-                  leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFEEF4FF),
-                      child: Icon(Icons.receipt_long_outlined,
-                          color: Color(0xFF2563EB))),
-                  title: Text(invoice['invoiceNumber'] ?? 'Invoice',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800)),
-                  subtitle: Text(
-                      '${invoice['createdAt'] ?? ''}'.replaceFirst('T', ' '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11)),
-                  trailing: Text('₹${invoice['grandTotal']}',
-                      style: const TextStyle(
-                          color: Color(0xFF16834B),
-                          fontWeight: FontWeight.w800)))),
-          ])));
+                              color: scheme.onSurface
+                                  .withValues(alpha: .55),
+                              fontSize: 11,
+                              letterSpacing: 1.8,
+                              fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 2),
+                      Text('Latest completed bills',
+                          style: TextStyle(
+                              color: scheme.onSurface,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700)),
+                    ])),
+                TextButton(
+                    onPressed: () => provider.setNavIndex(4),
+                    child: const Text('View all'))
+              ])),
+          Divider(color: scheme.outlineVariant, height: 1),
+          if (invoices.isEmpty)
+            Padding(
+                padding: const EdgeInsets.all(22),
+                child: Text('Your completed bills will appear here.',
+                    style: TextStyle(
+                        color: scheme.onSurface.withValues(alpha: .55))))
+          else
+            ...invoices.take(4).map((invoice) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListTile(
+                        onTap: () => provider.setNavIndex(4),
+                        leading: LedgerStamp(
+                            icon: Icons.receipt_long_outlined,
+                            color: scheme.primary),
+                        title: Text(
+                            invoice['invoiceNumber'] ?? 'Invoice',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700)),
+                        subtitle: Text(
+                            '${invoice['createdAt'] ?? ''}'
+                                .replaceFirst('T', ' '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11)),
+                        trailing: Text('₹${invoice['grandTotal']}',
+                            style: TextStyle(
+                                color: scheme.primary,
+                                fontWeight: FontWeight.w800))),
+                    Divider(
+                        color: scheme.outlineVariant, height: 1),
+                  ],
+                )),
+        ]));
+  }
+
 
   Widget _buildActivityPanel(String title, String subtitle, IconData icon,
-          Color color, Widget content) =>
-      Container(
-          decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                    color: Color(0x120F2454),
-                    blurRadius: 12,
-                    offset: Offset(0, 5))
-              ]),
-          child: SurfacePanel(
-              padding: EdgeInsets.zero,
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-                        child: Row(children: [
-                          Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                  color: color.withValues(alpha: .12),
-                                  borderRadius: BorderRadius.circular(9)),
-                              child: Icon(icon, color: color, size: 17)),
-                          const SizedBox(width: 10),
-                          Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(title,
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13.5,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface)),
-                                Text(subtitle,
-                                    style: TextStyle(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface
-                                            .withValues(alpha: .6),
-                                        fontSize: 11))
-                              ])
-                        ])),
-                    const Divider(),
-                    content
-                  ])));
+          Color color, Widget content) {
+    final scheme = Theme.of(context).colorScheme;
+    return SurfacePanel(
+        accent: false,
+        padding: EdgeInsets.zero,
+        child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                  child: Row(children: [
+                    LedgerStamp(icon: icon, color: color),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                    color: scheme.onSurface)),
+                            Text(subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    color: scheme.onSurface
+                                        .withValues(alpha: .55),
+                                    fontSize: 11))
+                          ]),
+                    )
+                  ])),
+              Divider(color: scheme.outlineVariant, height: 1),
+              content
+            ]));
+  }
+
 
   Widget _buildLowStockContent(List lowStockProducts) {
+    final scheme = Theme.of(context).colorScheme;
     if (lowStockProducts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(20.0),
+      return Padding(
+        padding: const EdgeInsets.all(20.0),
         child: Text('All products are sufficiently stocked.',
-            style: TextStyle(color: Color(0xFF6C7486), fontSize: 13)),
+            style: TextStyle(
+                color: scheme.onSurface.withValues(alpha: .55),
+                fontSize: 13)),
       );
     }
     return Column(
       children: lowStockProducts.map((p) {
         return ListTile(
           dense: true,
-          leading: CircleAvatar(
-            backgroundColor: const Color(0xFFFFF8E8),
-            child: const Icon(Icons.inventory_2,
-                color: Color(0xFFE4A331), size: 18),
-          ),
+          leading: LedgerStamp(
+              icon: Icons.inventory_2_outlined, color: scheme.secondary),
           title: Text(p['name'] ?? '',
-              style: const TextStyle(
-                  color: Color(0xFF172033),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  color: scheme.onSurface,
                   fontWeight: FontWeight.w600,
                   fontSize: 13)),
           subtitle: Text('Price: ₹${p['sellingPrice']}',
-              style: const TextStyle(color: Color(0xFF6C7486), fontSize: 12)),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF0F0),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '${formatQuantity(p['stockQuantity'])} ${p['unit'] ?? 'Piece'} left',
-              style: const TextStyle(
-                  color: Color(0xFFE75C5C),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11),
-            ),
+              style: TextStyle(
+                  color: scheme.onSurface.withValues(alpha: .55),
+                  fontSize: 12)),
+          trailing: LedgerTag(
+            label:
+                '${formatQuantity(p['stockQuantity'])} ${p['unit'] ?? 'Piece'} left',
+            color: scheme.error,
           ),
         );
       }).toList(),
@@ -513,35 +531,40 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   Widget _buildMostSoldContent(List mostSoldProducts) {
+    final scheme = Theme.of(context).colorScheme;
     if (mostSoldProducts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(20.0),
+      return Padding(
+        padding: const EdgeInsets.all(20.0),
         child: Text('No sales records yet.',
-            style: TextStyle(color: Color(0xFF6C7486), fontSize: 13)),
+            style: TextStyle(
+                color: scheme.onSurface.withValues(alpha: .55),
+                fontSize: 13)),
       );
     }
     return Column(
       children: mostSoldProducts.map((p) {
         return ListTile(
           dense: true,
-          leading: CircleAvatar(
-            backgroundColor: const Color(0xFFEEF0FF),
-            child: const Icon(Icons.shopping_bag_outlined,
-                color: Color(0xFF365FF4), size: 18),
-          ),
+          leading: LedgerStamp(
+              icon: Icons.shopping_basket_outlined,
+              color: scheme.primary),
           title: Text(p['productName'] ?? '',
-              style: const TextStyle(
-                  color: Color(0xFF172033),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  color: scheme.onSurface,
                   fontWeight: FontWeight.w600,
                   fontSize: 13)),
           subtitle: Text(
               '${formatQuantity(p['totalQuantitySold'])} ${p['unit'] ?? 'units'} sold',
-              style: const TextStyle(color: Color(0xFF6C7486), fontSize: 12)),
+              style: TextStyle(
+                  color: scheme.onSurface.withValues(alpha: .55),
+                  fontSize: 12)),
           trailing: Text(
             '₹${p['totalRevenue']}',
-            style: const TextStyle(
-                color: Color(0xFF12A594),
-                fontWeight: FontWeight.bold,
+            style: TextStyle(
+                color: scheme.primary,
+                fontWeight: FontWeight.w800,
                 fontSize: 13),
           ),
         );
@@ -564,48 +587,54 @@ class _DashboardViewState extends State<DashboardView> {
     if (maxY == 0) maxY = 100;
     maxY = maxY * 1.2;
 
-    return Container(
-      height: 240,
-      padding: const EdgeInsets.fromLTRB(16, 16, 22, 16),
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-                color: Color(0x120F2454), blurRadius: 12, offset: Offset(0, 5))
-          ]),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                    color: const Color(0xFF365FF4).withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(9)),
-                child: const Icon(Icons.show_chart_rounded,
-                    color: Color(0xFF365FF4), size: 17),
-              ),
-              const SizedBox(width: 10),
-              const Text('7-Day Sales Trend',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13.5,
-                    color: Color(0xFF172033),
-                  )),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Expanded(
-            child: LineChart(
+    final scheme = Theme.of(context).colorScheme;
+    final lineColor = scheme.primary;
+    final gridColor = scheme.outlineVariant;
+    return SurfacePanel(
+      accent: false,
+      padding: const EdgeInsets.fromLTRB(16, 14, 18, 14),
+      child: SizedBox(
+        height: 224,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                LedgerStamp(
+                    icon: Icons.show_chart_outlined, color: lineColor),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('7-DAY TREND',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.6,
+                              fontSize: 11,
+                              color: scheme.onSurface
+                                  .withValues(alpha: .55),
+                            )),
+                        Text('Takings by day',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: scheme.onSurface,
+                            )),
+                      ]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: LineChart(
               LineChartData(
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
                   horizontalInterval: maxY > 0 ? maxY / 4 : 1,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: const Color(0xFFE5E7EB),
+                    color: gridColor,
                     strokeWidth: 1,
                     dashArray: [5, 5],
                   ),
@@ -628,8 +657,10 @@ class _DashboardViewState extends State<DashboardView> {
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
                               salesTrend[index]['dateLabel'] ?? '',
-                              style: const TextStyle(
-                                  color: Color(0xFF6C7486), fontSize: 10),
+                              style: TextStyle(
+                                  color: scheme.onSurface
+                                      .withValues(alpha: .55),
+                                  fontSize: 10),
                             ),
                           );
                         }
@@ -647,8 +678,10 @@ class _DashboardViewState extends State<DashboardView> {
                           value >= 1000
                               ? '${(value / 1000).toStringAsFixed(1)}k'
                               : value.toInt().toString(),
-                          style: const TextStyle(
-                              color: Color(0xFF6C7486), fontSize: 10),
+                          style: TextStyle(
+                              color: scheme.onSurface
+                                  .withValues(alpha: .55),
+                              fontSize: 10),
                         );
                       },
                     ),
@@ -663,7 +696,7 @@ class _DashboardViewState extends State<DashboardView> {
                   LineChartBarData(
                     spots: spots,
                     isCurved: true,
-                    color: const Color(0xFF365FF4),
+                    color: lineColor,
                     barWidth: 3,
                     isStrokeCapRound: true,
                     dotData: FlDotData(
@@ -671,14 +704,14 @@ class _DashboardViewState extends State<DashboardView> {
                       getDotPainter: (spot, percent, barData, index) =>
                           FlDotCirclePainter(
                         radius: 4,
-                        color: Colors.white,
+                        color: scheme.surface,
                         strokeWidth: 2,
-                        strokeColor: const Color(0xFF365FF4),
+                        strokeColor: lineColor,
                       ),
                     ),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(0xFF365FF4).withValues(alpha: 0.1),
+                      color: lineColor.withValues(alpha: 0.1),
                     ),
                   ),
                 ],
@@ -686,6 +719,7 @@ class _DashboardViewState extends State<DashboardView> {
             ),
           ),
         ],
+        ),
       ),
     );
   }

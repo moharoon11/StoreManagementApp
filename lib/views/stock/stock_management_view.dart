@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
-import '../../widgets/ui_breakpoints.dart';
-import 'upload_bill_view.dart';
 import '../../utils/quantity_utils.dart';
+import '../../widgets/workspace_ui.dart';
+import 'upload_bill_view.dart';
 
 class StockManagementView extends StatefulWidget {
   const StockManagementView({Key? key}) : super(key: key);
@@ -25,8 +25,7 @@ class _StockManagementViewState extends State<StockManagementView> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    await _fetchProducts();
-    await _fetchMovements();
+    await Future.wait([_fetchProducts(), _fetchMovements()]);
   }
 
   Future<void> _fetchProducts() async {
@@ -42,21 +41,21 @@ class _StockManagementViewState extends State<StockManagementView> {
   Future<void> _fetchMovements() async {
     try {
       final res = await ApiService.get(ApiConfig.stockMovements);
-      if (res['success'] == true) {
+      if (res['success'] == true && mounted) {
         setState(() {
           _movements = res['data'] ?? [];
           _isLoading = false;
         });
       }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _showAdjustStockDialog() {
     if (_products.isEmpty) return;
 
-    int selectedProductId = _products.first['id'];
+    int selectedProductId = _products.first['id'] as int;
     final qtyController = TextEditingController();
     String reason = 'STOCK_ADDED';
 
@@ -64,27 +63,21 @@ class _StockManagementViewState extends State<StockManagementView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
-          final scheme = Theme.of(context).colorScheme;
           return AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Text('Adjust Product Stock',
-                style: TextStyle(
-                    color: scheme.onSurface, fontWeight: FontWeight.w800)),
+            title: const Text('Adjust product stock'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<int>(
                     value: selectedProductId,
-                    style: const TextStyle(color: Color(0xFF172033)),
                     decoration:
-                        const InputDecoration(labelText: 'Select Product'),
+                        const InputDecoration(labelText: 'Select product'),
                     items: _products.map<DropdownMenuItem<int>>((p) {
                       return DropdownMenuItem<int>(
                         value: p['id'],
                         child: Text(
-                            '${p['name']} (Stock: ${formatProductQuantity(p['stockQuantity'], p)})'),
+                            '${p['name']} (${formatProductQuantity(p['stockQuantity'], p)})'),
                       );
                     }).toList(),
                     onChanged: (val) =>
@@ -95,14 +88,13 @@ class _StockManagementViewState extends State<StockManagementView> {
                     controller: qtyController,
                     keyboardType: const TextInputType.numberWithOptions(
                         decimal: true, signed: true),
-                    style: const TextStyle(color: Color(0xFF172033)),
                     decoration: const InputDecoration(
-                        labelText: 'Quantity Change (+ add, - reduce)'),
+                      labelText: 'Quantity change (+ add, - reduce)',
+                    ),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: reason,
-                    style: const TextStyle(color: Color(0xFF172033)),
                     decoration: const InputDecoration(labelText: 'Reason'),
                     items: const [
                       DropdownMenuItem(
@@ -110,7 +102,8 @@ class _StockManagementViewState extends State<StockManagementView> {
                       DropdownMenuItem(
                           value: 'MANUAL_ADJUSTMENT',
                           child: Text('MANUAL_ADJUSTMENT')),
-                      DropdownMenuItem(value: 'RETURN', child: Text('RETURN')),
+                      DropdownMenuItem(
+                          value: 'RETURN', child: Text('RETURN')),
                     ],
                     onChanged: (val) => setModalState(() => reason = val!),
                   ),
@@ -119,15 +112,15 @@ class _StockManagementViewState extends State<StockManagementView> {
             ),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: Text('Cancel',
-                      style: TextStyle(
-                          color: scheme.onSurface.withValues(alpha: .6)))),
-              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton.icon(
+                icon: const Icon(Icons.check_rounded, size: 18),
+                label: const Text('Submit adjustment'),
                 onPressed: () async {
                   final qty = double.tryParse(qtyController.text) ?? 0;
                   if (qty == 0) return;
-
                   Navigator.pop(ctx);
                   await ApiService.post(ApiConfig.stockAdjust, {
                     'productId': selectedProductId,
@@ -136,7 +129,6 @@ class _StockManagementViewState extends State<StockManagementView> {
                   });
                   _loadData();
                 },
-                child: const Text('Submit Adjustment'),
               ),
             ],
           );
@@ -147,117 +139,119 @@ class _StockManagementViewState extends State<StockManagementView> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-          child: CircularProgressIndicator(color: Color(0xFF365FF4)));
-    }
-
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: Ui.pagePadding(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text('Stock Movements',
-                    style: TextStyle(
-                        fontSize: Ui.headingSize(context),
-                        fontWeight: FontWeight.w800,
-                        color: scheme.onSurface,
-                        letterSpacing: -0.5),
-                    overflow: TextOverflow.ellipsis),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const UploadBillView()),
-                  );
-                  if (result == true) {
-                    _loadData();
-                  }
-                },
-                icon: const Icon(Icons.receipt_long, size: 17),
-                label: const Text('Upload Bill'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: _showAdjustStockDialog,
-                icon: const Icon(Icons.edit_note, size: 17),
-                label: const Text('Adjust Stock'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+    return WorkspacePage(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        PageIntro(
+          eyebrow: 'Inventory ledger',
+          title: 'Stock movements',
+          description:
+              'Every addition, return and manual adjustment recorded against your catalogue.',
+          action: Wrap(spacing: 8, runSpacing: 8, children: [
+            OutlinedButton.icon(
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const UploadBillView()),
+                );
+                if (result == true) _loadData();
+              },
+              icon: const Icon(Icons.receipt_long_outlined, size: 17),
+              label: const Text('Upload bill'),
+            ),
+            FilledButton.icon(
+              onPressed: _showAdjustStockDialog,
+              icon: const Icon(Icons.edit_note_rounded, size: 17),
+              label: const Text('Adjust stock'),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 14),
+        if (_isLoading)
+          const Expanded(child: Center(child: CircularProgressIndicator()))
+        else if (_movements.isEmpty)
+          const Expanded(
+            child: EmptyCanvas(
+              icon: Icons.sync_alt,
+              title: 'No movements yet',
+              detail: 'Stock movements appear here once you upload a bill '
+                  'or adjust stock quantities.',
+            ),
+          )
+        else
           Expanded(
-            child: _movements.isEmpty
-                ? Center(
-                    child: Text('No stock movement records found.',
-                        style: TextStyle(
-                            color: scheme.onSurface.withValues(alpha: .6))))
-                : ListView.builder(
-                    itemCount: _movements.length,
-                    itemBuilder: (context, index) {
-                      final m = _movements[index];
-                      final isAddition =
-                          quantityValue(m['quantityChanged']) > 0;
-                      final unit = (m['unit'] ?? 'Piece').toString();
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: scheme.surface,
-                          borderRadius: BorderRadius.circular(11),
-                          border: Border.all(color: scheme.outlineVariant),
-                        ),
-                        child: ListTile(
-                          dense: true,
-                          leading: CircleAvatar(
-                            radius: 16,
-                            backgroundColor: isAddition
-                                ? scheme.secondary.withValues(alpha: .12)
-                                : scheme.error.withValues(alpha: .1),
-                            child: Icon(
-                              isAddition ? Icons.add : Icons.remove,
-                              color:
-                                  isAddition ? scheme.secondary : scheme.error,
-                              size: 18,
-                            ),
-                          ),
-                          title: Text(m['productName'] ?? '',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  color: scheme.onSurface,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13)),
-                          subtitle: Text(
-                              'Prev: ${formatQuantity(m['previousQuantity'])} $unit → New: ${formatQuantity(m['newQuantity'])} $unit  (${m['reason']})',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  color:
-                                      scheme.onSurface.withValues(alpha: .55),
-                                  fontSize: 11)),
-                          trailing: Text(
-                            '${isAddition ? '+' : ''}${formatQuantity(m['quantityChanged'])} $unit',
-                            style: TextStyle(
-                              color:
-                                  isAddition ? scheme.secondary : scheme.error,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 640;
+                return ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  itemCount: _movements.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) =>
+                      _movementRow(_movements[index], wide, scheme),
+                );
+              },
+            ),
           ),
-        ],
-      ),
+      ]),
+    );
+  }
+
+  Widget _movementRow(dynamic m, bool wide, ColorScheme scheme) {
+    final isAddition = quantityValue(m['quantityChanged']) > 0;
+    final unit = (m['unit'] ?? 'Piece').toString();
+    final color = isAddition ? scheme.primary : scheme.error;
+    final reason = (m['reason'] ?? '').toString();
+
+    return SurfacePanel(
+      accent: false,
+      padding: EdgeInsets.all(wide ? 14 : 12),
+      child: Row(children: [
+        LedgerStamp(
+          icon: isAddition ? Icons.add_rounded : Icons.remove_rounded,
+          color: color,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${m['productName'] ?? 'Product'}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13)),
+            const SizedBox(height: 3),
+            Text(
+                '${formatQuantity(m['previousQuantity'])} to ${formatQuantity(m['newQuantity'])} $unit',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: scheme.onSurface.withValues(alpha: .55),
+                    fontSize: 12)),
+            const SizedBox(height: 6),
+            Wrap(spacing: 6, runSpacing: 4, children: [
+              LedgerTag(
+                label: isAddition ? 'Added' : 'Removed',
+                color: color,
+                icon: isAddition ? Icons.add : Icons.remove,
+              ),
+              if (reason.isNotEmpty)
+                LedgerTag(
+                  label: reason.replaceAll('_', ' '),
+                  color: scheme.onSurface.withValues(alpha: .5),
+                ),
+            ]),
+          ]),
+        ),
+        if (wide) const SizedBox(width: 10),
+        Text(
+          '${isAddition ? '+' : '-'}${formatQuantity(m['quantityChanged'])} $unit',
+          style: TextStyle(
+              color: color, fontSize: 14, fontWeight: FontWeight.w800),
+        ),
+      ]),
     );
   }
 }

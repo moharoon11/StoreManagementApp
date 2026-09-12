@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
-import '../../widgets/ui_breakpoints.dart';
+import '../../widgets/workspace_ui.dart';
 
 class StoreProfileView extends StatefulWidget {
   const StoreProfileView({Key? key}) : super(key: key);
@@ -69,7 +69,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
         _logoUrl = data['logoUrl'] ?? '';
       }
     } catch (_) {}
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _pickLogo(ImageSource source) async {
@@ -82,9 +82,8 @@ class _StoreProfileViewState extends State<StoreProfileView> {
           _pickedLogoFile = File(image.path);
           _isUploadingLogo = true;
         });
-
         final url = await ApiService.uploadImage(image.path);
-        if (url != null) {
+        if (url != null && mounted) {
           setState(() {
             _logoUrl = url;
             _isUploadingLogo = false;
@@ -109,7 +108,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Store Name and Owner Name are required.'),
-          backgroundColor: Color(0xFFE75C5C),
+          backgroundColor: Color(0xFFB42318),
         ),
       );
       return;
@@ -134,7 +133,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Store Profile saved successfully!'),
-            backgroundColor: Color(0xFF12A594),
+            backgroundColor: Color(0xFF157347),
           ),
         );
         setState(() => _showEditor = false);
@@ -145,409 +144,423 @@ class _StoreProfileViewState extends State<StoreProfileView> {
           SnackBar(
             content:
                 Text('Error: ${e.toString().replaceAll("Exception: ", "")}'),
-            backgroundColor: const Color(0xFFE75C5C),
+            backgroundColor: const Color(0xFFB42318),
           ),
         );
       }
     }
-    setState(() => _isSaving = false);
+    if (mounted) setState(() => _isSaving = false);
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(
-          child: CircularProgressIndicator(color: Color(0xFF365FF4)));
+      return const Center(child: CircularProgressIndicator());
     }
+    return _showEditor ? _buildEditorPage() : _buildBusinessPage();
+  }
 
-    final isMobile = MediaQuery.of(context).size.width < 700;
-    if (!_showEditor) return _buildBusinessPage(isMobile);
-
-    final scheme = Theme.of(context).colorScheme;
-    return SingleChildScrollView(
-      padding: Ui.pagePadding(context),
-      child: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 750),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: scheme.outlineVariant),
+  void _showLogoSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Wrap(children: [
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined),
+            title: const Text('Choose from gallery'),
+            onTap: () {
+              Navigator.pop(context);
+              _pickLogo(ImageSource.gallery);
+            },
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Store & Business Profile',
-                style: TextStyle(
-                    fontSize: Ui.headingSize(context),
-                    fontWeight: FontWeight.w800,
-                    color: scheme.onSurface,
-                    letterSpacing: -0.5),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'This information appears on generated invoice PDFs',
-                style: TextStyle(
-                    color: scheme.onSurface.withValues(alpha: .6), fontSize: 12),
-              ),
-              const SizedBox(height: 16),
-              // Logo Picker Row
-              Center(
-                child: GestureDetector(
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      builder: (_) => Container(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.photo_library,
-                                  color: Color(0xFF365FF4)),
-                              title:
-                                  const Text('Choose Store Logo from Gallery'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _pickLogo(ImageSource.gallery);
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.camera_alt,
-                                  color: Color(0xFF365FF4)),
-                              title: const Text('Take a Photo of Logo'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _pickLogo(ImageSource.camera);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF6F7FB),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: const Color(0xFFD2D6E0), width: 2),
-                          image: _pickedLogoFile != null
-                              ? DecorationImage(
-                                  image: FileImage(_pickedLogoFile!),
-                                  fit: BoxFit.cover)
-                              : (_logoUrl.isNotEmpty
-                                  ? DecorationImage(
-                                      image: NetworkImage(_logoUrl),
-                                      fit: BoxFit.cover)
-                                  : null),
-                        ),
-                        child: _isUploadingLogo
-                            ? const CircularProgressIndicator(
-                                color: Color(0xFF365FF4))
-                            : (_pickedLogoFile == null && _logoUrl.isEmpty
-                                ? Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
-                                      Icon(Icons.store,
-                                          color: Color(0xFF365FF4), size: 36),
-                                      SizedBox(height: 4),
-                                      Text('Store Logo',
-                                          style: TextStyle(
-                                              color: Color(0xFF6C7486),
-                                              fontSize: 11)),
-                                    ],
-                                  )
-                                : null),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: CircleAvatar(
-                          radius: 16,
-                          backgroundColor: const Color(0xFF365FF4),
-                          child: const Icon(Icons.camera_alt,
-                              color: Colors.white, size: 16),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              _buildResponsiveRow(
-                isMobile,
-                _buildTextField(
-                    'Store Name *', _storeNameController, Icons.store),
-                _buildTextField(
-                    'Owner Name *', _ownerNameController, Icons.person),
-              ),
-              const SizedBox(height: 10),
-              _buildResponsiveRow(
-                isMobile,
-                _buildTextField(
-                    'GSTIN Number', _gstController, Icons.assignment_outlined),
-                _buildTextField('Phone Number', _phoneController, Icons.phone),
-              ),
-              const SizedBox(height: 10),
-              _buildTextField('Email Address', _emailController, Icons.email),
-              const SizedBox(height: 10),
-              _buildTextField('Address', _addressController, Icons.location_on,
-                  maxLines: 2),
-              const SizedBox(height: 10),
-              if (isMobile) ...[
-                _buildTextField('City', _cityController, Icons.location_city),
-                const SizedBox(height: 10),
-                _buildTextField('District', _districtController, Icons.map),
-                const SizedBox(height: 10),
-                _buildTextField('Pincode', _pincodeController, Icons.pin_drop),
-              ] else ...[
-                Row(
-                  children: [
-                    Expanded(
-                        child: _buildTextField(
-                            'City', _cityController, Icons.location_city)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                        child: _buildTextField(
-                            'District', _districtController, Icons.map)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                        child: _buildTextField(
-                            'Pincode', _pincodeController, Icons.pin_drop)),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                height: 42,
-                child: ElevatedButton(
-                  onPressed:
-                      (_isSaving || _isUploadingLogo) ? null : _saveProfile,
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : const Text('Save Store Profile',
-                          style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w800)),
-                ),
-              ),
-            ],
+          ListTile(
+            leading: const Icon(Icons.photo_camera_outlined),
+            title: const Text('Take a photo'),
+            onTap: () {
+              Navigator.pop(context);
+              _pickLogo(ImageSource.camera);
+            },
           ),
-        ),
+        ]),
       ),
     );
   }
 
-  Widget _buildBusinessPage(bool isMobile) {
-    final location = [
-      _addressController.text,
-      _cityController.text,
-      _districtController.text,
-      _pincodeController.text
-    ].where((part) => part.trim().isNotEmpty).join(', ');
-    return SingleChildScrollView(
-      padding: Ui.pagePadding(context),
+  Widget _logoPicker() {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: _showLogoSourceSheet,
+      child: Stack(
+        children: [
+          Container(
+            width: 96,
+            height: 96,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: .5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+            child: _pickedLogoFile != null
+                ? Image.file(_pickedLogoFile!, fit: BoxFit.cover)
+                : _logoUrl.isNotEmpty
+                    ? Image.network(_logoUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                            Icons.storefront_outlined,
+                            size: 34,
+                            color: scheme.onSurface.withValues(alpha: .35)))
+                    : Icon(Icons.storefront_outlined,
+                        size: 34, color: scheme.primary),
+          ),
+          if (_isUploadingLogo)
+            Positioned.fill(
+              child: Container(
+                color: scheme.scrim.withValues(alpha: .35),
+                child: const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+            ),
+          Positioned(
+            bottom: -6,
+            right: -6,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: scheme.primary,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(Icons.camera_alt_outlined,
+                  size: 14, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditorPage() {
+    return WorkspacePage(
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 980),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    Text('Business profile',
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontWeight: FontWeight.w800,
-                            fontSize: Ui.headingSize(context),
-                            letterSpacing: -1)),
-                    const SizedBox(height: 3),
-                    Text('The details your customers see on every invoice.',
-                        style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: .62),
-                            fontSize: 12))
-                  ])),
-              FilledButton.icon(
-                  onPressed: () => setState(() => _showEditor = true),
-                  icon: const Icon(Icons.edit_outlined, size: 17),
-                  label: const Text('Edit details'))
-            ]),
-            const SizedBox(height: 12),
-            Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(isMobile ? 14 : 18),
-                decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF1D2B5C), Color(0xFF365FF4)]),
-                    borderRadius: BorderRadius.circular(18)),
-                child: Wrap(
-                    spacing: 22,
-                    runSpacing: 16,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Container(
-                          width: 66,
-                          height: 66,
-                          decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              image: _pickedLogoFile != null
-                                  ? DecorationImage(
-                                      image: FileImage(_pickedLogoFile!),
-                                      fit: BoxFit.cover)
-                                  : (_logoUrl.isNotEmpty
-                                      ? DecorationImage(
-                                          image: NetworkImage(_logoUrl),
-                                          fit: BoxFit.cover)
-                                      : null)),
-                          child: _pickedLogoFile == null && _logoUrl.isEmpty
-                              ? const Icon(Icons.storefront_rounded,
-                                  color: Color(0xFF365FF4), size: 34)
-                              : null),
-                      Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                                _storeNameController.text.isEmpty
-                                    ? 'Your Business'
-                                    : _storeNameController.text,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 20,
-                                    letterSpacing: -.8)),
-                            const SizedBox(height: 5),
-                            Text(
-                                _ownerNameController.text.isEmpty
-                                    ? 'Independent business'
-                                    : 'Founded and managed by ${_ownerNameController.text}',
-                                style: TextStyle(
-                                    color: Colors.white.withOpacity(.78),
-                                    fontSize: 12)),
-                            const SizedBox(height: 12),
-                            Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 9, vertical: 5),
-                                decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(.14),
-                                    borderRadius: BorderRadius.circular(99)),
-                                child: const Text('ABOUT OUR BUSINESS',
-                                    style: TextStyle(
-                                        color: Color(0xFF82E9DE),
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 1)))
-                          ])
-                    ])),
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            PageIntro(
+              eyebrow: 'Business details',
+              title: 'Edit store profile',
+              description: 'This information appears on generated invoice PDFs.',
+              action: TextButton.icon(
+                onPressed: () => setState(() => _showEditor = false),
+                icon: const Icon(Icons.arrow_back_rounded, size: 17),
+                label: const Text('Back to profile'),
+              ),
+            ),
             const SizedBox(height: 14),
-            Wrap(spacing: 10, runSpacing: 10, children: [
-              _detailCard(Icons.location_on_outlined, 'Address',
-                  location.isEmpty ? 'Add your business address' : location),
-              _detailCard(
-                  Icons.phone_outlined,
-                  'Contact',
-                  _phoneController.text.isEmpty
-                      ? 'Add a contact number'
-                      : _phoneController.text),
-              _detailCard(
-                  Icons.mail_outline_rounded,
-                  'Email',
-                  _emailController.text.isEmpty
-                      ? 'Add an email address'
-                      : _emailController.text),
-              _detailCard(
-                  Icons.verified_outlined,
-                  'Tax registration',
-                  _gstController.text.isEmpty
-                      ? 'GSTIN not added'
-                      : _gstController.text)
-            ]),
+            Expanded(
+              child: SingleChildScrollView(
+                child: SurfacePanel(
+                  accent: true,
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(child: _logoPicker()),
+                        const SizedBox(height: 18),
+                        const LedgerKicker('Identity'),
+                        const SizedBox(height: 10),
+                        _pairRow(
+                          _field('Store name *', _storeNameController,
+                              Icons.storefront_outlined),
+                          _field('Owner name *', _ownerNameController,
+                              Icons.person_outline),
+                        ),
+                        const SizedBox(height: 10),
+                        _pairRow(
+                          _field('GSTIN number', _gstController,
+                              Icons.badge_outlined),
+                          _field('Phone number', _phoneController,
+                              Icons.phone_outlined),
+                        ),
+                        const SizedBox(height: 10),
+                        _field('Email address', _emailController,
+                            Icons.mail_outline),
+                        const SizedBox(height: 10),
+                        _field('Address', _addressController,
+                            Icons.location_on_outlined,
+                            maxLines: 2),
+                        const SizedBox(height: 10),
+                        _tripleRow(
+                          _field('City', _cityController,
+                              Icons.location_city_outlined),
+                          _field('District', _districtController,
+                              Icons.map_outlined),
+                          _field('Pincode', _pincodeController,
+                              Icons.pin_drop_outlined),
+                        ),
+                        const SizedBox(height: 18),
+                        Row(children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () =>
+                                  setState(() => _showEditor = false),
+                              child: const Text('Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: SizedBox(
+                              height: 46,
+                              child: FilledButton.icon(
+                                onPressed: _isSaving ? null : _saveProfile,
+                                icon: _isSaving
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.save_outlined,
+                                        size: 18),
+                                label: const Text('Save profile'),
+                              ),
+                            ),
+                          ),
+                        ]),
+                      ]),
+                ),
+              ),
+            ),
           ]),
         ),
       ),
     );
   }
 
-  Widget _detailCard(IconData icon, String label, String value) {
-    final scheme = Theme.of(context).colorScheme;
-    return SizedBox(
-        width: 205,
-        child: Container(
-            padding: const EdgeInsets.all(13),
-            decoration: BoxDecoration(
-                color: scheme.surface,
-                border: Border.all(color: scheme.outlineVariant),
-                borderRadius: BorderRadius.circular(13)),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(icon, color: scheme.primary, size: 19),
-              const SizedBox(height: 10),
-              Text(label,
-                  style: TextStyle(
-                      color: scheme.onSurface.withValues(alpha: .55),
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700)),
-              const SizedBox(height: 4),
-              Text(value,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      color: scheme.onSurface,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700))
-            ])));
+  Widget _pairRow(Widget a, Widget b) {
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth >= 480) {
+        return Row(children: [
+          Expanded(child: a),
+          const SizedBox(width: 12),
+          Expanded(child: b),
+        ]);
+      }
+      return Column(children: [
+        a,
+        const SizedBox(height: 10),
+        b,
+      ]);
+    });
   }
 
-  Widget _buildResponsiveRow(bool isMobile, Widget child1, Widget child2) {
-    if (isMobile) {
-      return Column(
-        children: [
-          child1,
-          const SizedBox(height: 14),
-          child2,
-        ],
-      );
-    }
-    return Row(
-      children: [
-        Expanded(child: child1),
-        const SizedBox(width: 14),
-        Expanded(child: child2),
-      ],
-    );
+  Widget _tripleRow(Widget a, Widget b, Widget c) {
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth >= 560) {
+        return Row(children: [
+          Expanded(child: a),
+          const SizedBox(width: 8),
+          Expanded(child: b),
+          const SizedBox(width: 8),
+          Expanded(child: c),
+        ]);
+      }
+      if (constraints.maxWidth >= 360) {
+        return Row(children: [
+          Expanded(child: a),
+          const SizedBox(width: 8),
+          Expanded(child: b),
+          const SizedBox(width: 8),
+        ]);
+      }
+      return Column(children: [
+        a,
+        const SizedBox(height: 10),
+        b,
+        const SizedBox(height: 10),
+        c,
+      ]);
+    });
   }
 
-  Widget _buildTextField(
-      String label, TextEditingController controller, IconData icon,
+  Widget _field(String label, TextEditingController controller, IconData icon,
       {int maxLines = 1}) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
-      style: const TextStyle(color: Color(0xFF172033)),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: const Color(0xFF365FF4)),
+        prefixIcon: Icon(icon, size: 19),
+        isDense: true,
       ),
+    );
+  }
+
+  Widget _buildBusinessPage() {
+    final scheme = Theme.of(context).colorScheme;
+    final storeName = _storeNameController.text.isEmpty
+        ? 'Your business'
+        : _storeNameController.text;
+
+    final location = [
+      if (_addressController.text.isNotEmpty) _addressController.text,
+      if (_cityController.text.isNotEmpty) _cityController.text,
+      if (_districtController.text.isNotEmpty) _districtController.text,
+      if (_pincodeController.text.isNotEmpty) _pincodeController.text,
+    ].join(', ');
+
+    Widget logo = Icon(Icons.storefront_outlined, size: 26, color: scheme.primary);
+    if (_pickedLogoFile != null) {
+      logo = Image.file(_pickedLogoFile!, fit: BoxFit.cover);
+    } else if (_logoUrl.isNotEmpty) {
+      logo = Image.network(_logoUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) =>
+              Icon(Icons.storefront_outlined,
+                  size: 26, color: scheme.onSurface.withValues(alpha: .4)));
+    }
+
+    return WorkspacePage(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        PageIntro(
+          eyebrow: 'Business details',
+          title: 'Store profile',
+          description:
+              'Your identity, contact and tax details used across invoices.',
+          action: OutlinedButton.icon(
+            onPressed: () => setState(() => _showEditor = true),
+            icon: const Icon(Icons.edit_outlined, size: 17),
+            label: const Text('Edit details'),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SurfacePanel(
+                        accent: true,
+                        child: Row(children: [
+                          Container(
+                            width: 58,
+                            height: 58,
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              color: scheme.surfaceContainerHighest
+                                  .withValues(alpha: .5),
+                              borderRadius: BorderRadius.circular(10),
+                              border:
+                                  Border.all(color: scheme.outlineVariant),
+                            ),
+                            child: logo,
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(storeName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        color: scheme.onSurface,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800)),
+                                const SizedBox(height: 3),
+                                Text(_ownerNameController.text.isEmpty
+                                    ? 'Add an owner name'
+                                    : 'Owned by ${_ownerNameController.text}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        color:
+                                            scheme.onSurface.withValues(alpha: .55),
+                                        fontSize: 12.5)),
+                              ],
+                            ),
+                          ),
+                          if (_gstController.text.isNotEmpty)
+                            LedgerTag(
+                                label: _gstController.text,
+                                color: scheme.secondary),
+                        ]),
+                      ),
+                      const SizedBox(height: 12),
+                      SurfacePanel(
+                        accent: false,
+                        child: Column(children: [
+                          _infoRow(
+                              Icons.location_on_outlined,
+                              'Address',
+                              location.isEmpty
+                                  ? 'Add your business address'
+                                  : location),
+                          Divider(height: 1, color: scheme.outlineVariant),
+                          _infoRow(
+                              Icons.phone_outlined,
+                              'Contact',
+                              _phoneController.text.isEmpty
+                                  ? 'Add a contact number'
+                                  : _phoneController.text),
+                          Divider(height: 1, color: scheme.outlineVariant),
+                          _infoRow(
+                              Icons.mail_outline,
+                              'Email',
+                              _emailController.text.isEmpty
+                                  ? 'Add an email address'
+                                  : _emailController.text),
+                          Divider(height: 1, color: scheme.outlineVariant),
+                          _infoRow(
+                              Icons.verified_outlined,
+                              'Tax registration',
+                              _gstController.text.isEmpty
+                                  ? 'GSTIN not added'
+                                  : _gstController.text),
+                        ]),
+                      ),
+                    ]),
+              ),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        LedgerStamp(icon: icon, color: scheme.primary),
+        const SizedBox(width: 12),
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label,
+                style: TextStyle(
+                    color: scheme.onSurface.withValues(alpha: .5),
+                    fontSize: 10.5,
+                    letterSpacing: 1,
+                    fontWeight: FontWeight.w700)),
+            const SizedBox(height: 3),
+            Text(value,
+                style: TextStyle(
+                    color: scheme.onSurface,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35)),
+          ]),
+        ),
+      ]),
     );
   }
 }

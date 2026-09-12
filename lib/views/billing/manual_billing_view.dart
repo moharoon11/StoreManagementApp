@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:printing/printing.dart';
-import '../../config/api_config.dart';
-import '../../services/api_service.dart';
-import '../../services/invoice_pdf_service.dart';
+import '../../widgets/workspace_ui.dart';
 import 'checkout_screen.dart';
 
 class ManualBillingItemModel {
   final TextEditingController rateController = TextEditingController();
   final TextEditingController qtyController = TextEditingController(text: '1');
-  
+
   void dispose() {
     rateController.dispose();
     qtyController.dispose();
@@ -62,8 +59,7 @@ class _ManualBillingViewState extends State<ManualBillingView> {
 
   void _beginCheckout() {
     if (!_formKey.currentState!.validate()) return;
-    
-    // Check if there are valid items
+
     bool hasValidItem = false;
     for (var item in _items) {
       final rate = double.tryParse(item.rateController.text) ?? 0;
@@ -76,7 +72,9 @@ class _ManualBillingViewState extends State<ManualBillingView> {
 
     if (!hasValidItem) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter at least one valid item with rate and quantity.')),
+        const SnackBar(
+            content: Text(
+                'Please enter at least one valid item with rate and quantity.')),
       );
       return;
     }
@@ -104,551 +102,198 @@ class _ManualBillingViewState extends State<ManualBillingView> {
     );
   }
 
-  Future<void> _processCheckout(String name, String mobile) async {
-    if (_isProcessing) return;
-    setState(() => _isProcessing = true);
-
-    final messenger = ScaffoldMessenger.of(context);
-    final errorColor = Theme.of(context).colorScheme.error;
-
-    try {
-      final items = <Map<String, dynamic>>[];
-      for (var item in _items) {
-        final rate = double.tryParse(item.rateController.text) ?? 0;
-        final qty = int.tryParse(item.qtyController.text) ?? 0;
-        if (rate > 0 && qty > 0) {
-          items.add({
-            'rate': rate,
-            'quantity': qty,
-          });
-        }
-      }
-
-      final res = await ApiService.post(ApiConfig.manualCheckout, {
-        'customerName': name,
-        'customerMobileNumber': mobile,
-        'items': items,
-      });
-
-      if (res['success'] == true) {
-        final invoice = res['data'];
-        if (!mounted) return;
-        Navigator.pop(context); // close the billing view
-        _showInvoiceSuccess(context, invoice);
-      } else {
-        messenger.showSnackBar(SnackBar(
-            content: Text((res['message'] ?? 'Checkout failed.').toString())));
-      }
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(
-        content: Text('Checkout Error: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: errorColor,
-      ));
-    } finally {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
-    }
-  }
-
-  void _showInvoiceSuccess(BuildContext context, dynamic invoice) {
-    final scheme = Theme.of(context).colorScheme;
-    final invoiceId = invoice['id'] as int;
-    final pdfFilename = 'Invoice_${invoice['invoiceNumber']}.pdf';
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(children: [
-          Icon(Icons.check_circle, color: scheme.secondary, size: 22),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text('Checkout Completed',
-                style: TextStyle(
-                    color: scheme.onSurface,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16)),
-          ),
-        ]),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Invoice #: ${invoice['invoiceNumber']}',
-                style: TextStyle(
-                    color: scheme.onSurface, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Grand Total:',
-                    style: TextStyle(
-                        color: scheme.onSurface.withValues(alpha: .6),
-                        fontWeight: FontWeight.w600)),
-                Text('₹${invoice['grandTotal']}',
-                    style: TextStyle(
-                        color: scheme.secondary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.picture_as_pdf,
-                      color: scheme.error, size: 26),
-                  tooltip: 'Download PDF',
-                  onPressed: () async {
-                    try {
-                      final bytes = await InvoicePdfService.fetch(invoiceId);
-                      final wasSaved =
-                          await InvoicePdfService.save(bytes, pdfFilename);
-                      if (ctx.mounted && wasSaved) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                            const SnackBar(content: Text('PDF saved successfully.')));
-                      }
-                    } catch (e) {
-                      if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                            SnackBar(content: Text('Error downloading PDF: $e')));
-                      }
-                    }
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.share,
-                      color: Color(0xFF25D366), size: 26),
-                  tooltip: 'Share on WhatsApp',
-                  onPressed: () async {
-                    try {
-                      final bytes = await InvoicePdfService.fetch(invoiceId);
-                      await Printing.sharePdf(
-                        bytes: bytes,
-                        filename: pdfFilename,
-                        subject: 'Invoice ${invoice['invoiceNumber']}',
-                        body:
-                            'Invoice #${invoice['invoiceNumber']} - Total: ₹${invoice['grandTotal']}',
-                      );
-                    } catch (e) {
-                      if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                            SnackBar(content: Text('Error sharing PDF: $e')));
-                      }
-                    }
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.print, color: scheme.primary, size: 26),
-                  tooltip: 'Print Invoice',
-                  onPressed: () async {
-                    try {
-                      final bytes = await InvoicePdfService.fetch(invoiceId);
-                      await Printing.layoutPdf(
-                        onLayout: (format) async => bytes,
-                        name: pdfFilename,
-                      );
-                    } catch (e) {
-                      if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                            SnackBar(content: Text('Error printing: $e')));
-                      }
-                    }
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Done',
-                style: TextStyle(
-                    color: scheme.primary, fontWeight: FontWeight.w800)),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-
     return Scaffold(
-      backgroundColor: scheme.surface,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Normal Bill', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
         backgroundColor: scheme.surface,
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: true,
-        iconTheme: IconThemeData(color: scheme.onSurface),
+        title: const Text('Manual bill',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
       ),
-      body: Column(
-        children: [
-          // Table Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
-            ),
-            child: Row(
-              children: [
-                SizedBox(width: 28, child: Text('#', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurface.withValues(alpha: .6)))),
-                Expanded(flex: 3, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurface.withValues(alpha: .6)))),
-                const SizedBox(width: 8),
-                Expanded(flex: 2, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurface.withValues(alpha: .6)))),
-                const SizedBox(width: 8),
-                Expanded(flex: 3, child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurface.withValues(alpha: .6)))),
-                const SizedBox(width: 32), // space for delete icon
-              ],
-            ),
-          ),
-          Expanded(
-            child: Form(
-              key: _formKey,
-              child: ListView.separated(
-                padding: const EdgeInsets.only(bottom: 20),
-                itemCount: _items.length + 1,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  if (index == _items.length) {
-                    return InkWell(
-                      onTap: _addItem,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.add, size: 18, color: scheme.primary),
-                            const SizedBox(width: 4),
-                            Text('Add Item', style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w700, fontSize: 13)),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  final item = _items[index];
-                  final itemRate = double.tryParse(item.rateController.text) ?? 0;
-                  final itemQty = int.tryParse(item.qtyController.text) ?? 0;
-                  final itemTotal = itemRate * itemQty;
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 28,
-                          child: Text('${index + 1}.', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: scheme.onSurface.withValues(alpha: .7))),
-                        ),
-                        Expanded(
-                          flex: 3,
-                          child: TextFormField(
-                            controller: item.rateController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                            decoration: InputDecoration(
-                              isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                              filled: true,
-                              fillColor: scheme.surfaceContainerHighest.withValues(alpha: .4),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(6),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          flex: 2,
-                          child: TextFormField(
-                            controller: item.qtyController,
-                            keyboardType: TextInputType.number,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                            decoration: InputDecoration(
-                              isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                              filled: true,
-                              fillColor: scheme.surfaceContainerHighest.withValues(alpha: .4),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(6),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            '₹${itemTotal.toStringAsFixed(2)}',
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF16834B)),
-                          ),
-                        ),
-                        SizedBox(
-                          width: 32,
-                          child: _items.length > 1
-                              ? IconButton(
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  icon: Icon(Icons.close_rounded, size: 18, color: scheme.error.withValues(alpha: .7)),
-                                  onPressed: () => _removeItem(index),
-                                )
-                              : const SizedBox(),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              border: Border(top: BorderSide(color: scheme.outlineVariant)),
-            ),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text('Grand Total', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: scheme.onSurface.withValues(alpha: .7))),
-                      Text('₹${_grandTotal.toStringAsFixed(2)}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: scheme.onSurface)),
+                      SurfacePanel(
+                        accent: false,
+                        padding: const EdgeInsets.all(14),
+                        child: Row(children: [
+                          LedgerStamp(
+                              icon: Icons.edit_note_rounded,
+                              color: scheme.primary),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Bill lines',
+                                    style: TextStyle(
+                                        color: scheme.onSurface,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800)),
+                                const SizedBox(height: 2),
+                                Text(
+                                    'Enter a rate and quantity for each item on the bill.',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        color: scheme.onSurface
+                                            .withValues(alpha: .55),
+                                        fontSize: 11.5)),
+                              ],
+                            ),
+                          ),
+                          LedgerTag(
+                              label: '${_items.length}',
+                              color: scheme.primary),
+                        ]),
+                      ),
+                      const SizedBox(height: 12),
+                      for (var i = 0; i < _items.length; i++) ...[
+                        _buildLineCard(i),
+                        const SizedBox(height: 10),
+                      ],
+                      OutlinedButton.icon(
+                        onPressed: _addItem,
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Add another line'),
+                      ),
                     ],
                   ),
-                  const Spacer(),
-                  SizedBox(
-                    height: 44,
-                    width: 140,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF365FF4),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      onPressed: _isProcessing ? null : _beginCheckout,
-                      child: _isProcessing
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Checkout', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-          )
-        ],
+            SurfacePanel(
+              accent: false,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Grand total',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: scheme.onSurface.withValues(alpha: .6))),
+                    Text('₹${_grandTotal.toStringAsFixed(2)}',
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: scheme.onSurface)),
+                  ],
+                ),
+                const Spacer(),
+                SizedBox(
+                  height: 44,
+                  child: FilledButton.icon(
+                    onPressed: _isProcessing ? null : _beginCheckout,
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                    label: const Text('Checkout'),
+                  ),
+                ),
+              ]),
+            ),
+          ],
+        ),
       ),
     );
   }
-}
 
-class _ManualCustomerDetailsDialog extends StatefulWidget {
-  final List<ManualBillingItemModel> items;
-  final double total;
-  final void Function(String name, String mobile) onCheckout;
-
-  const _ManualCustomerDetailsDialog({
-    required this.items,
-    required this.total,
-    required this.onCheckout,
-  });
-
-  @override
-  State<_ManualCustomerDetailsDialog> createState() => _ManualCustomerDetailsDialogState();
-}
-
-class _ManualCustomerDetailsDialogState extends State<_ManualCustomerDetailsDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _mobileController = TextEditingController();
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _mobileController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildLineCard(int index) {
     final scheme = Theme.of(context).colorScheme;
+    final item = _items[index];
+    final rate = double.tryParse(item.rateController.text) ?? 0;
+    final qty = int.tryParse(item.qtyController.text) ?? 0;
+    final itemTotal = rate * qty;
 
-    final validItems = widget.items.where((item) {
-      final rate = double.tryParse(item.rateController.text) ?? 0;
-      final qty = int.tryParse(item.qtyController.text) ?? 0;
-      return rate > 0 && qty > 0;
-    }).toList();
-
-    return AlertDialog(
-      title: Row(children: [
-        Icon(Icons.receipt_long_outlined, color: scheme.primary, size: 20),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text('Review & Checkout',
-              style: TextStyle(
-                  color: scheme.onSurface,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800)),
-        ),
-      ]),
-      content: SizedBox(
-        width: 400,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Order Summary',
-                    style: TextStyle(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13)),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: .3),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: scheme.outlineVariant),
-                  ),
-                  child: Column(
-                    children: [
-                      ...validItems.asMap().entries.map((entry) {
-                        final idx = entry.key;
-                        final item = entry.value;
-                        final rate = double.tryParse(item.rateController.text) ?? 0;
-                        final qty = int.tryParse(item.qtyController.text) ?? 0;
-                        final itemTotal = rate * qty;
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '${idx + 1}. ₹${rate.toStringAsFixed(2)} × $qty',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: scheme.onSurface.withValues(alpha: .8),
-                                ),
-                              ),
-                              Text(
-                                '₹${itemTotal.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                      const Divider(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Grand Total',
-                              style: TextStyle(
-                                  color: scheme.onSurface,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13)),
-                          Text('₹${widget.total.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                  color: Color(0xFF16834B),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800)),
-                        ],
-                      ),
-                    ],
-                  ),
+    return SurfacePanel(
+      accent: false,
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            Text('LINE ${index + 1}',
+                style: TextStyle(
+                    color: scheme.onSurface.withValues(alpha: .5),
+                    fontSize: 10.5,
+                    letterSpacing: 1.4,
+                    fontWeight: FontWeight.w800)),
+            const Spacer(),
+            if (_items.length > 1)
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints(minWidth: 30, minHeight: 30),
+                icon: Icon(Icons.close_rounded,
+                    size: 17, color: scheme.error.withValues(alpha: .7)),
+                onPressed: () => _removeItem(index),
+              ),
+          ]),
+          const SizedBox(height: 8),
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Expanded(
+              flex: 3,
+              child: TextFormField(
+                controller: item.rateController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                textAlign: TextAlign.center,
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                decoration: const InputDecoration(
+                  labelText: 'Rate (₹)',
+                  isDense: true,
                 ),
-                const SizedBox(height: 16),
-                Text('Customer Information',
-                    style: TextStyle(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13)),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _nameController,
-                  autofocus: true,
-                  maxLength: 150,
-                  textCapitalization: TextCapitalization.words,
-                  textInputAction: TextInputAction.next,
-                  autofillHints: const [AutofillHints.name],
-                  decoration: const InputDecoration(
-                    labelText: 'Customer name (Optional)',
-                    hintText: 'Enter customer name',
-                    prefixIcon: Icon(Icons.person_outline),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _mobileController,
-                  maxLength: 20,
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.done,
-                  autofillHints: const [AutofillHints.telephoneNumber],
-                  decoration: const InputDecoration(
-                    labelText: 'Customer mobile number',
-                    hintText: 'e.g. +91 98765 43210',
-                    prefixIcon: Icon(Icons.phone_outlined),
-                    isDense: true,
-                  ),
-                  validator: (value) {
-                    final mobile = (value ?? '').trim();
-                    if (mobile.isEmpty) {
-                      return 'Customer mobile number is required.';
-                    }
-                    if (!RegExp(r'^[0-9+\-\s()]{7,20}$').hasMatch(mobile)) {
-                      return 'Enter a valid mobile number.';
-                    }
-                    return null;
-                  },
-                ),
-              ],
+                onChanged: (_) => setState(() {}),
+              ),
             ),
-          ),
-        ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: TextFormField(
+                controller: item.qtyController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                decoration: const InputDecoration(
+                  labelText: 'Qty',
+                  isDense: true,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 86,
+              child: Text(
+                '₹${itemTotal.toStringAsFixed(2)}',
+                textAlign: TextAlign.right,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: scheme.primary),
+              ),
+            ),
+          ]),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton.icon(
-          onPressed: () {
-            if (!(_formKey.currentState?.validate() ?? false)) return;
-            final name = _nameController.text.trim();
-            final mobile = _mobileController.text.trim();
-            Navigator.of(context).pop();
-            widget.onCheckout(name, mobile);
-          },
-          icon: const Icon(Icons.lock_outline_rounded, size: 18),
-          label: const Text('Complete checkout'),
-        ),
-      ],
     );
   }
 }

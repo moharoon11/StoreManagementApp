@@ -25,54 +25,54 @@ class CartSummaryBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     if (provider.cartItems.isEmpty) return const SizedBox.shrink();
-    final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: scheme.surface,
-      borderRadius: BorderRadius.circular(14),
+      color: const Color(0xFF10281E),
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap ?? () => openCart(context),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: scheme.surface,
-            border: Border.all(color: scheme.primary.withValues(alpha: .35)),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: scheme.primary.withValues(alpha: .10),
-                blurRadius: 14,
-                offset: const Offset(0, 5),
-              ),
-            ],
+            color: const Color(0xFF10281E),
+            borderRadius: BorderRadius.circular(10),
+            border: const Border(
+                left: BorderSide(color: Color(0xFFE0B45C), width: 4)),
           ),
           child: Row(children: [
             Badge(
               label: Text(formatQuantity(provider.cartCount)),
-              backgroundColor: scheme.primary,
-              textColor: scheme.onPrimary,
-              child: Icon(Icons.shopping_bag_outlined,
-                  color: scheme.secondary, size: 20),
+              backgroundColor: const Color(0xFFE0B45C),
+              textColor: const Color(0xFF10281E),
+              child: const Icon(Icons.shopping_basket_outlined,
+                  color: Colors.white, size: 20),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                  '${formatQuantity(provider.cartCount)} item${provider.cartCount == 1 ? '' : 's'} · tap to review',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      color: scheme.onSurface,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13)),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${formatQuantity(provider.cartCount)} item${provider.cartCount == 1 ? '' : 's'} on the bill',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12)),
+                    const Text('Tap to review',
+                        style: TextStyle(
+                            color: Colors.white70, fontSize: 10)),
+                  ]),
             ),
             Text('₹${provider.cartTotal.toStringAsFixed(0)}',
-                style: TextStyle(
-                    color: scheme.secondary,
-                    fontSize: 16,
+                style: const TextStyle(
+                    color: Color(0xFFE0B45C),
+                    fontSize: 17,
                     fontWeight: FontWeight.w800)),
-            const SizedBox(width: 4),
-            Icon(Icons.chevron_right_rounded,
-                size: 18, color: scheme.onSurface.withValues(alpha: .5)),
+            const SizedBox(width: 2),
+            const Icon(Icons.east_rounded, size: 17, color: Colors.white70),
           ]),
         ),
       ),

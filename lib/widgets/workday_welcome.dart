@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import 'ui_breakpoints.dart';
 
+/// Day-opening page. Same flow as before (pick a task -> workspace) but in
+/// the ledger visual language: paper background, hairline rules, ruled rows.
 class WorkdayWelcome extends StatelessWidget {
   const WorkdayWelcome({super.key, required this.onContinue});
   final VoidCallback onContinue;
@@ -10,209 +13,242 @@ class WorkdayWelcome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().username;
+    final scheme = Theme.of(context).colorScheme;
     final compact = MediaQuery.sizeOf(context).width < 720;
+    final now = DateTime.now();
+    final date = '${now.day} ${_month(now.month)} ${now.year}';
     return Scaffold(
-      body: Stack(fit: StackFit.expand, children: [
-        const DecoratedBox(
-            decoration: BoxDecoration(
-                gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-              Color(0xFFF8F9FF),
-              Color(0xFFEEF0FF),
-              Color(0xFFF6F7FB)
-            ]))),
-        Positioned(
-            top: -110,
-            right: -70,
-            child: _shape(270, const Color(0xFF365FF4).withOpacity(.10))),
-        Positioned(
-            bottom: -150,
-            left: -100,
-            child: _shape(350, const Color(0xFF12A594).withOpacity(.11))),
-        SafeArea(
-            child: SingleChildScrollView(
-                child: Center(
-                    child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1000),
-                        child: Padding(
-                            padding: EdgeInsets.all(compact ? 24 : 48),
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(children: [
-                                    Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                            color: AppColors.brand,
-                                            borderRadius:
-                                                BorderRadius.circular(14)),
-                                        child: const Icon(
-                                            Icons.auto_graph_rounded,
-                                            color: Colors.white)),
-                                    const SizedBox(width: 11),
-                                    const Text('NEXORA',
-                                        style: TextStyle(
-                                            letterSpacing: 2,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.ink)),
-                                    const Spacer(),
-                                    TextButton.icon(
-                                        onPressed: onContinue,
-                                        icon: const Icon(
-                                            Icons.arrow_forward_rounded,
-                                            size: 17),
-                                        label: const Text('Skip to workspace'))
-                                  ]),
-                                  SizedBox(height: compact ? 28 : 72),
-                                  Text(
-                                      'Welcome${user.isEmpty ? '' : ', $user'}.',
-                                      style: TextStyle(
-                                          color: AppColors.ink,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: compact ? 29 : 42,
-                                          letterSpacing: -1.8)),
-                                  const SizedBox(height: 10),
-                                  const Text('What would make today a win?',
-                                      style: TextStyle(
-                                          color: AppColors.muted,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500)),
-                                  const SizedBox(height: 24),
-                                  Wrap(spacing: 12, runSpacing: 12, children: [
-                                    _JourneyCard(
-                                        width: compact ? double.infinity : 280,
-                                        index: '01',
-                                        icon: Icons.point_of_sale_rounded,
-                                        color: const Color(0xFF12A594),
-                                        title: 'Start a sale',
-                                        text:
-                                            'Build a bill and complete checkout in seconds.',
-                                        onTap: () {
-                                          context
-                                              .read<AppProvider>()
-                                              .setNavIndex(1);
-                                          onContinue();
-                                        }),
-                                    _JourneyCard(
-                                        width: compact ? double.infinity : 280,
-                                        index: '02',
-                                        icon: Icons.inventory_2_rounded,
-                                        color: const Color(0xFF365FF4),
-                                        title: 'Manage products',
-                                        text:
-                                            'Add items, pricing, stock, and favourites.',
-                                        onTap: () {
-                                          context
-                                              .read<AppProvider>()
-                                              .setNavIndex(2);
-                                          onContinue();
-                                        }),
-                                    _JourneyCard(
-                                        width: compact ? double.infinity : 280,
-                                        index: '03',
-                                        icon: Icons.auto_graph_rounded,
-                                        color: const Color(0xFF8D63D8),
-                                        title: 'Review the day',
-                                        text:
-                                            'See revenue, stock alerts, and what is moving.',
-                                        onTap: () {
-                                          context
-                                              .read<AppProvider>()
-                                              .setNavIndex(0);
-                                          onContinue();
-                                        }),
-                                  ]),
-                                  const SizedBox(height: 28),
-                                  const Text(
-                                      'Choose a task to enter your workspace. You can move between every area at any time.',
-                                      style: TextStyle(
-                                          color: AppColors.muted,
-                                          fontSize: 12)),
-                                ])))))),
-      ]),
+      backgroundColor: scheme.brightness == Brightness.dark
+          ? Theme.of(context).scaffoldBackgroundColor
+          : AppColors.canvas,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Ui.constrain(
+            Padding(
+              padding: EdgeInsets.all(compact ? 20 : 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    runSpacing: 10,
+                    children: [
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                              color: scheme.primary,
+                              borderRadius: BorderRadius.circular(8)),
+                          child: Icon(Icons.account_balance_outlined,
+                              color: scheme.onPrimary, size: 20),
+                        ),
+                        const SizedBox(width: 11),
+                        Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('NEXORA',
+                                  style: TextStyle(
+                                      letterSpacing: 2.4,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15,
+                                      color: scheme.onSurface)),
+                              Text(date.toUpperCase(),
+                                  style: TextStyle(
+                                      letterSpacing: 1.6,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 10,
+                                      color: scheme.onSurface
+                                          .withValues(alpha: .5))),
+                            ]),
+                      ]),
+                      OutlinedButton.icon(
+                        onPressed: onContinue,
+                        icon: const Icon(Icons.east_rounded, size: 16),
+                        label: const Text('Open ledger'),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: compact ? 22 : 44),
+                  Container(
+                    height: 3,
+                    width: 44,
+                    decoration: BoxDecoration(
+                      color: scheme.secondary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Good day${user.isEmpty ? '' : ', $user'}.',
+                    style: TextStyle(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                        fontSize: compact ? 26 : 36,
+                        letterSpacing: 0),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Three entries to begin with. Pick one to open the day book.',
+                    style: TextStyle(
+                        color: scheme.onSurface.withValues(alpha: .6),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400),
+                  ),
+                  const SizedBox(height: 20),
+                  LayoutBuilder(builder: (context, constraints) {
+                    final cols = Ui.columnsForWidth(
+                        constraints.maxWidth, 260,
+                        minColumns: 1, maxColumns: 3);
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: cols,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        mainAxisExtent: 168,
+                      ),
+                      itemCount: 3,
+                      itemBuilder: (context, i) =>
+                          _JourneyRow(entry: _entries(context)[i]),
+                    );
+                  }),
+                  const SizedBox(height: 16),
+                  Divider(color: scheme.outlineVariant),
+                  const SizedBox(height: 10),
+                  Text(
+                      'You can move between every section at any time from the ledger rail or the index.',
+                      style: TextStyle(
+                          color: scheme.onSurface.withValues(alpha: .55),
+                          fontSize: 12)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _shape(double size, Color color) => Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle));
+  List<_Entry> _entries(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return [
+      _Entry('01', Icons.point_of_sale_outlined, scheme.primary,
+          'Record a sale', 'Bill goods and close the checkout.', () {
+        context.read<AppProvider>().setNavIndex(1);
+        onContinue();
+      }),
+      _Entry('02', Icons.inventory_2_outlined, scheme.secondary,
+          'Check the shelves', 'Prices, stock levels and favourites.', () {
+        context.read<AppProvider>().setNavIndex(2);
+        onContinue();
+      }),
+      _Entry('03', Icons.auto_graph_outlined, scheme.primary, 'Read the day',
+          'Takings, alerts and fast movers.', () {
+        context.read<AppProvider>().setNavIndex(0);
+        onContinue();
+      }),
+    ];
+  }
+
+  String _month(int m) => const [
+        '',
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December'
+      ][m.clamp(1, 12)];
 }
 
-class _JourneyCard extends StatelessWidget {
-  const _JourneyCard(
-      {required this.width,
-      required this.index,
-      required this.icon,
-      required this.color,
-      required this.title,
-      required this.text,
-      required this.onTap});
-  final double width;
-  final String index, title, text;
+class _Entry {
+  const _Entry(
+      this.no, this.icon, this.color, this.title, this.text, this.onTap);
+  final String no, title, text;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
+}
+
+/// Horizontal ruled row instead of the old tall card.
+class _JourneyRow extends StatelessWidget {
+  const _JourneyRow({required this.entry});
+  final _Entry entry;
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
-          child: Container(
-            height: 192,
-            padding: const EdgeInsets.all(17),
-            decoration: BoxDecoration(
-                border: Border.all(color: AppColors.line),
-                borderRadius: BorderRadius.circular(18)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                              color: color.withOpacity(.12),
-                              borderRadius: BorderRadius.circular(12)),
-                          child: Icon(icon, color: color)),
-                      Text(index,
-                          style: const TextStyle(
-                              color: AppColors.muted,
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surface,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: entry.onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+              border: Border.all(color: scheme.outlineVariant),
+              borderRadius: BorderRadius.circular(10)),
+          child: Row(children: [
+            Container(
+                width: 4,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                    color: entry.color,
+                    borderRadius: BorderRadius.circular(2))),
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(children: [
+                      Expanded(
+                        child: Text(entry.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                color: scheme.onSurface,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                      Text(entry.no,
+                          style: TextStyle(
+                              color:
+                                  scheme.onSurface.withValues(alpha: .4),
                               fontSize: 11,
-                              fontWeight: FontWeight.w800))
+                              fontWeight: FontWeight.w700)),
                     ]),
-                const Spacer(),
-                Text(title,
-                    style: const TextStyle(
-                        color: AppColors.ink,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800)),
-                const SizedBox(height: 7),
-                Text(text,
-                    style: const TextStyle(
-                        color: AppColors.muted, fontSize: 12, height: 1.4)),
-                const SizedBox(height: 14),
-                Row(children: [
-                  Text('Open task',
-                      style: TextStyle(
-                          color: color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800)),
-                  const SizedBox(width: 5),
-                  Icon(Icons.arrow_forward_rounded, color: color, size: 16)
-                ]),
-              ],
+                    const SizedBox(height: 5),
+                    Text(entry.text,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            color: scheme.onSurface.withValues(alpha: .6),
+                            fontSize: 12,
+                            height: 1.4)),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Text('Open entry',
+                          style: TextStyle(
+                              color: scheme.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700)),
+                      const SizedBox(width: 5),
+                      Icon(Icons.east_rounded,
+                          color: scheme.primary, size: 15)
+                    ]),
+                  ]),
             ),
-          ),
+          ]),
         ),
       ),
     );

@@ -7,6 +7,7 @@ import '../../providers/app_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/invoice_pdf_service.dart';
 import '../../utils/quantity_utils.dart';
+import '../../widgets/workspace_ui.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final bool isManual;
@@ -128,7 +129,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         SnackBar(
           content: Text(
               'Checkout Error: ${e.toString().replaceAll('Exception: ', '')}'),
-          backgroundColor: const Color(0xFFEF4444),
+          backgroundColor: const Color(0xFFB42318),
         ),
       );
     } finally {
@@ -154,16 +155,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final scheme = Theme.of(context).colorScheme;
     final invoiceId = invoice['id'] as int;
     final pdfFilename = 'Invoice_${invoice['invoiceNumber']}.pdf';
+    final balanceDue =
+        ((invoice['balanceDue'] as num?)?.toDouble() ?? 0).clamp(0, double.infinity);
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: Row(children: [
-          const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 24),
+          Icon(Icons.check_circle, color: scheme.primary, size: 24),
           const SizedBox(width: 8),
           Expanded(
-            child: Text('Checkout Completed',
+            child: Text('Checkout completed',
                 style: TextStyle(
                     color: scheme.onSurface,
                     fontWeight: FontWeight.w800,
@@ -174,55 +177,58 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Invoice #: ${invoice['invoiceNumber']}',
-                style: TextStyle(
-                    color: scheme.onSurface, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 4),
-            Text(
-                'Invoice date: ${DateFormat('dd MMM yyyy').format(invoiceDate)}',
-                style: const TextStyle(
-                    color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+            LedgerTag(
+              label: 'Invoice #${invoice['invoiceNumber']}',
+              color: scheme.primary,
+              icon: Icons.receipt_long_outlined,
+            ),
             const SizedBox(height: 8),
+            Text('Invoice date: ${DateFormat('dd MMM yyyy').format(invoiceDate)}',
+                style: TextStyle(
+                    color: scheme.onSurface.withValues(alpha: .55),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Grand Total:',
+                Text('Grand total',
                     style: TextStyle(
-                        color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                        color: scheme.onSurface.withValues(alpha: .6),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13)),
                 Text('₹${invoice['grandTotal']}',
-                    style: const TextStyle(
-                        color: Color(0xFF2563EB),
+                    style: TextStyle(
+                        color: scheme.primary,
                         fontSize: 17,
-                        fontWeight: FontWeight.w800)),
+                        fontWeight: FontWeight.w900)),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Balance Due:',
+                Text('Balance due',
                     style: TextStyle(
-                        color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                        color: scheme.onSurface.withValues(alpha: .6),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13)),
                 Text('₹${invoice['balanceDue'] ?? '0.00'}',
                     style: TextStyle(
-                      color:
-                          ((invoice['balanceDue'] as num?)?.toDouble() ?? 0) > 0
-                              ? const Color(0xFFEF4444)
-                              : const Color(0xFF10B981),
-                      fontSize: 15,
+                      color: balanceDue > 0 ? scheme.error : scheme.primary,
+                      fontSize: 14,
                       fontWeight: FontWeight.w800,
                     )),
               ],
             ),
             const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 4),
+            Divider(height: 1, color: scheme.outlineVariant),
+            const SizedBox(height: 6),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.picture_as_pdf,
-                      color: Color(0xFFEF4444), size: 26),
+                  icon: Icon(Icons.download_outlined, color: scheme.error, size: 24),
                   tooltip: 'Download PDF',
                   onPressed: () async {
                     try {
@@ -242,8 +248,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.share,
-                      color: Color(0xFF25D366), size: 26),
+                  icon: const Icon(Icons.share, color: Color(0xFF157347), size: 24),
                   tooltip: 'Share PDF',
                   onPressed: () async {
                     try {
@@ -264,9 +269,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.print,
-                      color: Color(0xFF2563EB), size: 26),
-                  tooltip: 'Print Invoice',
+                  icon: Icon(Icons.print, color: scheme.primary, size: 24),
+                  tooltip: 'Print invoice',
                   onPressed: () async {
                     try {
                       final bytes = await InvoicePdfService.fetch(invoiceId);
@@ -287,9 +291,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Done',
-                style: TextStyle(
-                    color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+            child: const Text('Done'),
           ),
         ],
       ),
@@ -326,359 +328,299 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final balanceDue = (grandTotal - amtRec).clamp(0.0, double.infinity);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF0F172A)),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Checkout & Payment',
-          style: TextStyle(
-              color: Color(0xFF0F172A),
-              fontWeight: FontWeight.bold,
-              fontSize: 18),
-        ),
+        title: const Text('Checkout & payment',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
       ),
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Customer Information Card
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Customer Details',
-                                style: TextStyle(
-                                    color: Color(0xFF0F172A),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15)),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _nameController,
-                              textCapitalization: TextCapitalization.words,
-                              decoration: const InputDecoration(
-                                labelText: 'Customer Name (Optional)',
-                                hintText: 'e.g. Ishak',
-                                prefixIcon: Icon(Icons.person_outline),
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 12),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _mobileController,
-                              keyboardType: TextInputType.phone,
-                              decoration: const InputDecoration(
-                                labelText: 'Customer Mobile Number *',
-                                hintText: 'e.g. 9360984711',
-                                prefixIcon: Icon(Icons.phone_outlined),
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 12),
-                              ),
-                              validator: (value) {
-                                final mobile = (value ?? '').trim();
-                                if (mobile.isEmpty)
-                                  return 'Customer mobile number is required.';
-                                if (!RegExp(r'^[0-9+\-\s()]{7,20}$')
-                                    .hasMatch(mobile)) {
-                                  return 'Enter a valid mobile number.';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            Semantics(
-                              button: true,
-                              label:
-                                  'Invoice date: ${DateFormat('dd MMMM yyyy').format(_invoiceDate)}',
-                              child: InkWell(
-                                onTap: _selectInvoiceDate,
-                                borderRadius: BorderRadius.circular(8),
-                                child: InputDecorator(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Invoice Date',
-                                    prefixIcon:
-                                        Icon(Icons.calendar_today_outlined),
-                                    suffixIcon:
-                                        Icon(Icons.edit_calendar_outlined),
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 12),
-                                  ),
-                                  child: Text(
-                                    DateFormat('dd MMM yyyy')
-                                        .format(_invoiceDate),
-                                    style: const TextStyle(
-                                      color: Color(0xFF0F172A),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                padding: const EdgeInsets.all(12),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 640),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _customerCard(),
+                          const SizedBox(height: 12),
+                          _itemsCard(itemsList),
+                          const SizedBox(height: 12),
+                          _paymentCard(grandTotal, balanceDue),
+                          const SizedBox(height: 24),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      // Billed Items Card
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 10),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF60A5FA),
-                                borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(11)),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.check_circle,
-                                      color: Colors.white, size: 18),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Billed Items (${itemsList.length})',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            ...itemsList.asMap().entries.map((entry) {
-                              final idx = entry.key + 1;
-                              final item = entry.value;
-                              final name = widget.isManual
-                                  ? 'Manual Item #$idx'
-                                  : (item['name'] ?? '');
-                              final price = widget.isManual
-                                  ? ((item['rate'] as num).toDouble())
-                                  : ((item['price'] as num).toDouble());
-                              final qty = quantityValue(
-                                  item['quantity'] ?? item['qty']);
-                              final unit = widget.isManual
-                                  ? ''
-                                  : ' ${item['unit'] ?? 'Piece'}';
-                              final total = price * qty;
-
-                              return Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: const BoxDecoration(
-                                  border: Border(
-                                      bottom:
-                                          BorderSide(color: Color(0xFFF1F5F9))),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text('#$idx',
-                                          style: const TextStyle(
-                                              color: Color(0xFF64748B),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 12)),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(name,
-                                              style: const TextStyle(
-                                                  color: Color(0xFF0F172A),
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14)),
-                                          Text(
-                                              '${formatQuantity(qty)}$unit × ₹${price.toStringAsFixed(2)}',
-                                              style: const TextStyle(
-                                                  color: Color(0xFF64748B),
-                                                  fontSize: 12)),
-                                        ],
-                                      ),
-                                    ),
-                                    Text('₹${total.toStringAsFixed(2)}',
-                                        style: const TextStyle(
-                                            color: Color(0xFF0F172A),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14)),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Payment Summary Card
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Total Amount',
-                                    style: TextStyle(
-                                        color: Color(0xFF0F172A),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15)),
-                                Text('₹${grandTotal.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                        color: Color(0xFF0F172A),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18)),
-                              ],
-                            ),
-                            const Divider(height: 24),
-                            Row(
-                              children: [
-                                Checkbox(
-                                  value: _isReceived,
-                                  activeColor: const Color(0xFF2563EB),
-                                  onChanged: (val) {
-                                    setState(() {
-                                      _isReceived = val ?? true;
-                                      if (_isReceived) {
-                                        _amountReceivedController.text =
-                                            grandTotal.toStringAsFixed(2);
-                                      } else {
-                                        _amountReceivedController.text = '0.00';
-                                      }
-                                    });
-                                  },
-                                ),
-                                const Text('Received',
-                                    style: TextStyle(
-                                        color: Color(0xFF0F172A),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15)),
-                                const Spacer(),
-                                SizedBox(
-                                  width: 130,
-                                  child: TextField(
-                                    controller: _amountReceivedController,
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                            decimal: true),
-                                    style: const TextStyle(
-                                        color: Color(0xFF0F172A),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15),
-                                    onChanged: (_) => setState(() {}),
-                                    decoration: const InputDecoration(
-                                      prefixText: '₹ ',
-                                      border: OutlineInputBorder(),
-                                      contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 10),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(height: 24),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Balance Due',
-                                    style: TextStyle(
-                                        color: Color(0xFF64748B),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14)),
-                                Text(
-                                  '₹${balanceDue.toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                    color: balanceDue > 0
-                                        ? const Color(0xFFEF4444)
-                                        : const Color(0xFF10B981),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-            // Bottom Sticky Checkout Button
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: _isProcessing ? null : _completeCheckout,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                  icon: _isProcessing
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : const Icon(Icons.check_circle_outline, size: 20),
-                  label: Text(
-                    _isProcessing
-                        ? 'Processing Checkout...'
-                        : 'Complete Checkout',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
-              ),
-            ),
+            _bottomBar(),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _customerCard() {
+    final scheme = Theme.of(context).colorScheme;
+    return SurfacePanel(
+      accent: true,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const LedgerKicker('Customer'),
+        const SizedBox(height: 10),
+        TextFormField(
+          controller: _nameController,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            labelText: 'Customer name (optional)',
+            prefixIcon: Icon(Icons.person_outline),
+            isDense: true,
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextFormField(
+          controller: _mobileController,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(
+            labelText: 'Customer mobile number *',
+            prefixIcon: Icon(Icons.phone_outlined),
+            isDense: true,
+          ),
+          validator: (value) {
+            final mobile = (value ?? '').trim();
+            if (mobile.isEmpty) {
+              return 'Customer mobile number is required.';
+            }
+            if (!RegExp(r'^[0-9+\-\s()]{7,20}$').hasMatch(mobile)) {
+              return 'Enter a valid mobile number.';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 10),
+        Semantics(
+          button: true,
+          label:
+              'Invoice date: ${DateFormat('dd MMMM yyyy').format(_invoiceDate)}',
+          child: InkWell(
+            onTap: _selectInvoiceDate,
+            borderRadius: BorderRadius.circular(8),
+            child: InputDecorator(
+              decoration: const InputDecoration(
+                labelText: 'Invoice date',
+                prefixIcon: Icon(Icons.calendar_today_outlined),
+                isDense: true,
+              ),
+              child: Text(
+                DateFormat('dd MMM yyyy').format(_invoiceDate),
+                style: TextStyle(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _itemsCard(List<Map<String, dynamic>> itemsList) {
+    final scheme = Theme.of(context).colorScheme;
+    return SurfacePanel(
+      accent: true,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          const Expanded(child: LedgerKicker('Billed items')),
+          LedgerTag(label: '${itemsList.length}', color: scheme.primary),
+        ]),
+        const SizedBox(height: 6),
+        if (itemsList.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text('No items on this bill.',
+                style: TextStyle(
+                    color: scheme.onSurface.withValues(alpha: .5),
+                    fontSize: 12)),
+          )
+        else
+          for (var i = 0; i < itemsList.length; i++) ...[
+            if (i > 0) Divider(height: 1, color: scheme.outlineVariant),
+            _itemRow(i, itemsList[i]),
+          ],
+      ]),
+    );
+  }
+
+  Widget _itemRow(int index, Map<String, dynamic> item) {
+    final scheme = Theme.of(context).colorScheme;
+    final idx = index + 1;
+    final name = widget.isManual ? 'Manual Item #$idx' : (item['name'] ?? '');
+    final price = widget.isManual
+        ? ((item['rate'] as num).toDouble())
+        : ((item['price'] as num).toDouble());
+    final qty = quantityValue(item['quantity'] ?? item['qty']);
+    final unit = widget.isManual ? '' : ' ${item['unit'] ?? 'Piece'}';
+    final total = price * qty;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(children: [
+        Container(
+          width: 26,
+          height: 26,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: scheme.primary.withValues(alpha: .08),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text('$idx',
+              style: TextStyle(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11)),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5)),
+            const SizedBox(height: 2),
+            Text('${formatQuantity(qty)}$unit × ₹${price.toStringAsFixed(2)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: scheme.onSurface.withValues(alpha: .55),
+                    fontSize: 11.5)),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        Text('₹${total.toStringAsFixed(2)}',
+            style: TextStyle(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w800,
+                fontSize: 13.5)),
+      ]),
+    );
+  }
+
+  Widget _paymentCard(double grandTotal, double balanceDue) {
+    final scheme = Theme.of(context).colorScheme;
+    return SurfacePanel(
+      accent: false,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          const Expanded(child: LedgerKicker('Payment')),
+          Text('₹${grandTotal.toStringAsFixed(2)}',
+              style: TextStyle(
+                  color: scheme.onSurface,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900)),
+        ]),
+        const SizedBox(height: 8),
+        Divider(height: 1, color: scheme.outlineVariant),
+        const SizedBox(height: 8),
+        Row(children: [
+          Checkbox(
+            value: _isReceived,
+            activeColor: scheme.primary,
+            onChanged: (val) {
+              setState(() {
+                _isReceived = val ?? true;
+                if (_isReceived) {
+                  _amountReceivedController.text =
+                      grandTotal.toStringAsFixed(2);
+                } else {
+                  _amountReceivedController.text = '0.00';
+                }
+              });
+            },
+          ),
+          const Text('Received',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+          const Spacer(),
+          Expanded(
+            child: TextField(
+              controller: _amountReceivedController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+              decoration: const InputDecoration(
+                prefixText: '₹ ',
+                isDense: true,
+              ),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 6),
+        Divider(height: 1, color: scheme.outlineVariant),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Balance due',
+                style: TextStyle(
+                    color: scheme.onSurface.withValues(alpha: .6),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13)),
+            Text('₹${balanceDue.toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: balanceDue > 0 ? scheme.error : scheme.primary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                )),
+          ],
+        ),
+      ]),
+    );
+  }
+
+  Widget _bottomBar() {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border(top: BorderSide(color: scheme.outlineVariant)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 50,
+          child: FilledButton.icon(
+            onPressed: _isProcessing ? null : _completeCheckout,
+            icon: _isProcessing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
+                : const Icon(Icons.check_circle_outline, size: 20),
+            label: Text(
+              _isProcessing ? 'Processing checkout...' : 'Complete checkout',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+            ),
+          ),
         ),
       ),
     );
