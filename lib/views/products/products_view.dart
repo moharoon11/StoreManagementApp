@@ -52,9 +52,25 @@ class _ProductsViewState extends State<ProductsView> {
 
   Future<void> _fetchProducts() async {
     try {
+      // The server's unfiltered catalogue response is inconsistent in the
+      // deployed API, while category-scoped results are reliable (as seen on
+      // the Categories page). Build the All-products view from those reliable
+      // category pages instead.
+      if (_selectedCategoryId == null && _categories.isNotEmpty) {
+        final items = await _fetchProductsForCategories();
+        if (mounted) {
+          setState(() {
+            _products = items;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
       final queryParams = <String, String>{
         'pageNumber': '1',
-        'pageSize': '50',
+        // The live endpoint caps catalogue pages at 30; using 50 made this
+        // screen silently receive no usable page while Categories (30) worked.
+        'pageSize': '30',
       };
       if (_searchTerm.isNotEmpty) {
         queryParams['searchTerm'] = _searchTerm;
@@ -66,9 +82,9 @@ class _ProductsViewState extends State<ProductsView> {
         ApiConfig.products,
         queryParameters: queryParams,
       );
-      if (res['success'] == true && mounted) {
+      if (mounted) {
         setState(() {
-          _products = res['data']['items'] ?? [];
+          _products = _extractProductItems(res);
           _isLoading = false;
         });
       }
@@ -77,6 +93,45 @@ class _ProductsViewState extends State<ProductsView> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<List<dynamic>> _fetchProductsForCategories() async {
+    final pages = await Future.wait(_categories.map((item) async {
+      final category = Map<String, dynamic>.from(item as Map);
+      try {
+        final res = await ApiService.get(ApiConfig.products, queryParameters: {
+          'categoryId': category['id'].toString(),
+          'pageNumber': '1',
+          'pageSize': '30',
+          if (_searchTerm.isNotEmpty) 'searchTerm': _searchTerm,
+        });
+        return _extractProductItems(res);
+      } catch (_) {
+        return const <dynamic>[];
+      }
+    }));
+    final seenIds = <dynamic>{};
+    return [
+      for (final product in pages.expand((page) => page))
+        if (seenIds.add(Map<String, dynamic>.from(product as Map)['id']))
+          product,
+    ];
+  }
+
+  /// The deployed catalogue endpoint can return a paged `data.items` value,
+  /// a list in `data`, or a top-level list.  Categories already accepts the
+  /// paged form; accepting all valid forms keeps Products populated too.
+  List<dynamic> _extractProductItems(dynamic response) {
+    if (response is List) return List<dynamic>.from(response);
+    if (response is! Map) return const [];
+    final data = response['data'];
+    if (data is List) return List<dynamic>.from(data);
+    if (data is Map) {
+      final items = data['items'] ?? data['products'] ?? data['rows'];
+      if (items is List) return List<dynamic>.from(items);
+    }
+    final items = response['items'] ?? response['products'];
+    return items is List ? List<dynamic>.from(items) : const [];
   }
 
   void _showAddProductModal() {
@@ -94,363 +149,363 @@ class _ProductsViewState extends State<ProductsView> {
     bool isUploading = false;
     XFile? pickedImageFile;
 
-    Navigator.of(context)
-        .push(
-      MaterialPageRoute(
-        builder: (ctx) => StatefulBuilder(
-          builder: (context, setModalState) {
-            Future<void> pickProductImage() async {
-              try {
-                final image = await AdaptiveImageService.pickForUser(
-                  context,
-                  sheetTitle: 'Add product image',
-                  galleryLabel: 'Choose product image',
-                );
-                if (image == null) return;
-
-                setModalState(() {
-                  pickedImageFile = image;
-                  isUploading = true;
-                });
-
-                final url = await ApiService.uploadImage(image);
-                if (url != null) {
-                  setModalState(() {
-                    productImageUrl = url;
-                    isUploading = false;
-                  });
-                } else {
-                  setModalState(() => isUploading = false);
-                }
-              } catch (e) {
-                setModalState(() => isUploading = false);
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Upload failed: ${e.toString().replaceAll("Exception: ", "")}',
-                    ),
-                  ),
-                );
-              }
-            }
-
-            Widget buildPair(Widget first, Widget second) {
-              return LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth < 520) {
-                    return Column(
-                      children: [
-                        first,
-                        const SizedBox(height: 12),
-                        second,
-                      ],
-                    );
-                  }
-                  return Row(
-                    children: [
-                      Expanded(child: first),
-                      const SizedBox(width: 12),
-                      Expanded(child: second),
-                    ],
-                  );
-                },
+    final addProductRoute = MaterialPageRoute<void>(
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          Future<void> pickProductImage() async {
+            try {
+              final image = await AdaptiveImageService.pickForUser(
+                context,
+                sheetTitle: 'Add product image',
+                galleryLabel: 'Choose product image',
               );
-            }
+              if (image == null) return;
 
-            final scheme = Theme.of(context).colorScheme;
-            final wide = MediaQuery.sizeOf(context).width >= 860;
+              setModalState(() {
+                pickedImageFile = image;
+                isUploading = true;
+              });
 
-            Widget imagePicker() => GestureDetector(
-                  onTap: pickProductImage,
-                  child: Container(
-                    width: double.infinity,
-                    height: 206,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest.withValues(
-                        alpha: .26,
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: scheme.outlineVariant),
-                    ),
-                    child: isUploading
-                        ? const Center(child: CircularProgressIndicator())
-                        : AdaptiveImagePreview(
-                            pickedImage: pickedImageFile,
-                            imageUrl: productImageUrl,
-                            fit: BoxFit.cover,
-                            placeholder: const _ImagePlaceholder(),
-                          ),
-                  ),
-                );
-
-            Widget formFields() => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      onChanged: (_) => setModalState(() {}),
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Product name *',
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: scheme.surfaceContainerHighest.withValues(
-                          alpha: .18,
-                        ),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Row(
-                        children: [
-                          Checkbox(
-                            value: createNewCategory,
-                            onChanged: (value) {
-                              setModalState(
-                                () => createNewCategory = value ?? false,
-                              );
-                            },
-                          ),
-                          const Expanded(
-                            child: Text('Create a new category inline'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (createNewCategory)
-                      TextField(
-                        controller: newCatController,
-                        decoration: const InputDecoration(
-                          labelText: 'New category name *',
-                        ),
-                      )
-                    else
-                      DropdownButtonFormField<int>(
-                        value: selectedCategory,
-                        decoration: const InputDecoration(
-                          labelText: 'Select category',
-                        ),
-                        items: _categories.map<DropdownMenuItem<int>>((cat) {
-                          return DropdownMenuItem<int>(
-                            value: cat['id'],
-                            child: Text((cat['name'] ?? '').toString()),
-                          );
-                        }).toList(),
-                        onChanged: (value) =>
-                            setModalState(() => selectedCategory = value),
-                      ),
-                    const SizedBox(height: 12),
-                    buildPair(
-                      TextField(
-                        controller: costPriceController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Cost price (₹)',
-                        ),
-                      ),
-                      TextField(
-                        controller: sellingPriceController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Selling price (₹) *',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    buildPair(
-                      TextField(
-                        controller: stockController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Initial stock quantity *',
-                        ),
-                      ),
-                      DropdownButtonFormField<String>(
-                        value: selectedUnit,
-                        decoration: const InputDecoration(labelText: 'Unit *'),
-                        items: productUnits
-                            .map(
-                              (unit) => DropdownMenuItem(
-                                value: unit,
-                                child: Text(unit),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (unit) {
-                          if (unit == null) return;
-                          setModalState(() => selectedUnit = unit);
-                        },
-                      ),
-                    ),
-                  ],
-                );
-
-            return Scaffold(
-              appBar: AppBar(
-                title: const Text('Add product'),
-              ),
-              body: WorkspacePage(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 920),
-                    child: SurfacePanel(
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.only(
-                          bottom: MediaQuery.viewInsetsOf(context).bottom,
-                        ),
-                        child: wide
-                            ? Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(child: imagePicker()),
-                                  const SizedBox(width: 16),
-                                  Expanded(child: formFields()),
-                                ],
-                              )
-                            : Column(
-                                children: [
-                                  imagePicker(),
-                                  const SizedBox(height: 16),
-                                  formFields(),
-                                ],
-                              ),
-                      ),
-                    ),
+              final url = await ApiService.uploadImage(image);
+              if (url != null) {
+                setModalState(() {
+                  productImageUrl = url;
+                  isUploading = false;
+                });
+              } else {
+                setModalState(() => isUploading = false);
+              }
+            } catch (e) {
+              setModalState(() => isUploading = false);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Upload failed: ${e.toString().replaceAll("Exception: ", "")}',
                   ),
                 ),
-              ),
-              bottomNavigationBar: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: SurfacePanel(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+              );
+            }
+          }
+
+          Widget buildPair(Widget first, Widget second) {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < 520) {
+                  return Column(
+                    children: [
+                      first,
+                      const SizedBox(height: 12),
+                      second,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: first),
+                    const SizedBox(width: 12),
+                    Expanded(child: second),
+                  ],
+                );
+              },
+            );
+          }
+
+          final scheme = Theme.of(context).colorScheme;
+          final wide = MediaQuery.sizeOf(context).width >= 860;
+
+          Widget imagePicker() => GestureDetector(
+                onTap: pickProductImage,
+                child: Container(
+                  width: double.infinity,
+                  height: 206,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest.withValues(
+                      alpha: .26,
                     ),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final narrow = constraints.maxWidth < 520;
-                        final summary = Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'New catalogue item',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(color: scheme.primary),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              nameController.text.trim().isEmpty
-                                  ? 'Waiting for product details'
-                                  : nameController.text.trim(),
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ],
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: scheme.outlineVariant),
+                  ),
+                  child: isUploading
+                      ? const Center(child: CircularProgressIndicator())
+                      : AdaptiveImagePreview(
+                          pickedImage: pickedImageFile,
+                          imageUrl: productImageUrl,
+                          fit: BoxFit.cover,
+                          placeholder: const _ImagePlaceholder(),
+                        ),
+                ),
+              );
+
+          Widget formFields() => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    onChanged: (_) => setModalState(() {}),
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Product name *',
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest.withValues(
+                        alpha: .18,
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: createNewCategory,
+                          onChanged: (value) {
+                            setModalState(
+                              () => createNewCategory = value ?? false,
+                            );
+                          },
+                        ),
+                        const Expanded(
+                          child: Text('Create a new category inline'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (createNewCategory)
+                    TextField(
+                      controller: newCatController,
+                      decoration: const InputDecoration(
+                        labelText: 'New category name *',
+                      ),
+                    )
+                  else
+                    DropdownButtonFormField<int>(
+                      value: selectedCategory,
+                      decoration: const InputDecoration(
+                        labelText: 'Select category',
+                      ),
+                      items: _categories.map<DropdownMenuItem<int>>((cat) {
+                        return DropdownMenuItem<int>(
+                          value: cat['id'],
+                          child: Text((cat['name'] ?? '').toString()),
                         );
-
-                        final action = SizedBox(
-                          width: narrow ? double.infinity : 220,
-                          child: FilledButton(
-                            onPressed: isUploading
-                                ? null
-                                : () async {
-                                    if (nameController.text.trim().isEmpty ||
-                                        sellingPriceController.text
-                                            .trim()
-                                            .isEmpty) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Product name and selling price are required.',
-                                          ),
-                                        ),
-                                      );
-                                      return;
-                                    }
-
-                                    final body = <String, dynamic>{
-                                      'name': nameController.text.trim(),
-                                      'costPrice': double.tryParse(
-                                            costPriceController.text,
-                                          ) ??
-                                          0.0,
-                                      'sellingPrice': double.tryParse(
-                                            sellingPriceController.text,
-                                          ) ??
-                                          0.0,
-                                      'stockQuantity': double.tryParse(
-                                              stockController.text) ??
-                                          0,
-                                      'unit': selectedUnit,
-                                      'imageUrl': productImageUrl,
-                                    };
-
-                                    if (createNewCategory) {
-                                      body['newCategoryName'] =
-                                          newCatController.text.trim();
-                                    } else if (selectedCategory != null) {
-                                      body['categoryId'] = selectedCategory!;
-                                    }
-
-                                    Navigator.pop(ctx);
-                                    await ApiService.post(
-                                      ApiConfig.products,
-                                      body,
-                                    );
-                                    await _fetchCategories();
-                                    await _fetchProducts();
-                                  },
-                            child: Text(
-                              isUploading
-                                  ? 'Uploading image...'
-                                  : 'Create product',
+                      }).toList(),
+                      onChanged: (value) =>
+                          setModalState(() => selectedCategory = value),
+                    ),
+                  const SizedBox(height: 12),
+                  buildPair(
+                    TextField(
+                      controller: costPriceController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Cost price (₹)',
+                      ),
+                    ),
+                    TextField(
+                      controller: sellingPriceController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Selling price (₹) *',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  buildPair(
+                    TextField(
+                      controller: stockController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Initial stock quantity *',
+                      ),
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: selectedUnit,
+                      decoration: const InputDecoration(labelText: 'Unit *'),
+                      items: productUnits
+                          .map(
+                            (unit) => DropdownMenuItem(
+                              value: unit,
+                              child: Text(unit),
                             ),
-                          ),
-                        );
-
-                        if (narrow) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              summary,
-                              const SizedBox(height: 12),
-                              action,
-                            ],
-                          );
-                        }
-
-                        return Row(
-                          children: [
-                            Expanded(child: summary),
-                            const SizedBox(width: 16),
-                            action,
-                          ],
-                        );
+                          )
+                          .toList(),
+                      onChanged: (unit) {
+                        if (unit == null) return;
+                        setModalState(() => selectedUnit = unit);
                       },
                     ),
                   ),
+                ],
+              );
+
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Add product'),
+            ),
+            body: WorkspacePage(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 920),
+                  child: SurfacePanel(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.viewInsetsOf(context).bottom,
+                      ),
+                      child: wide
+                          ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: imagePicker()),
+                                const SizedBox(width: 16),
+                                Expanded(child: formFields()),
+                              ],
+                            )
+                          : Column(
+                              children: [
+                                imagePicker(),
+                                const SizedBox(height: 16),
+                                formFields(),
+                              ],
+                            ),
+                    ),
+                  ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+            bottomNavigationBar: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: SurfacePanel(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final narrow = constraints.maxWidth < 520;
+                      final summary = Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'New catalogue item',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(color: scheme.primary),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            nameController.text.trim().isEmpty
+                                ? 'Waiting for product details'
+                                : nameController.text.trim(),
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ],
+                      );
+
+                      final action = SizedBox(
+                        width: narrow ? double.infinity : 220,
+                        child: FilledButton(
+                          onPressed: isUploading
+                              ? null
+                              : () async {
+                                  if (nameController.text.trim().isEmpty ||
+                                      sellingPriceController.text
+                                          .trim()
+                                          .isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Product name and selling price are required.',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  final body = <String, dynamic>{
+                                    'name': nameController.text.trim(),
+                                    'costPrice': double.tryParse(
+                                          costPriceController.text,
+                                        ) ??
+                                        0.0,
+                                    'sellingPrice': double.tryParse(
+                                          sellingPriceController.text,
+                                        ) ??
+                                        0.0,
+                                    'stockQuantity':
+                                        double.tryParse(stockController.text) ??
+                                            0,
+                                    'unit': selectedUnit,
+                                    'imageUrl': productImageUrl,
+                                  };
+
+                                  if (createNewCategory) {
+                                    body['newCategoryName'] =
+                                        newCatController.text.trim();
+                                  } else if (selectedCategory != null) {
+                                    body['categoryId'] = selectedCategory!;
+                                  }
+
+                                  Navigator.pop(ctx);
+                                  await ApiService.post(
+                                    ApiConfig.products,
+                                    body,
+                                  );
+                                  await _fetchCategories();
+                                  await _fetchProducts();
+                                },
+                          child: Text(
+                            isUploading
+                                ? 'Uploading image...'
+                                : 'Create product',
+                          ),
+                        ),
+                      );
+
+                      if (narrow) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            summary,
+                            const SizedBox(height: 12),
+                            action,
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          Expanded(child: summary),
+                          const SizedBox(width: 16),
+                          action,
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
-    )
-        .whenComplete(() {
+    );
+    Navigator.of(context).push(addProductRoute);
+    // Do not dispose controllers while the route's exit animation still owns
+    // TextFields that depend on them. That was the source of the framework
+    // `_dependents.isEmpty` assertion even though the API saved the product.
+    addProductRoute.completed.whenComplete(() {
       nameController.dispose();
       costPriceController.dispose();
       sellingPriceController.dispose();

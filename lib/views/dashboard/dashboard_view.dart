@@ -135,6 +135,11 @@ class _DashboardViewState extends State<DashboardView> {
                 products: totalProducts,
               ),
               const SizedBox(height: 12),
+              _QuickFocusStrip(
+                lowStock: lowStockProducts.length,
+                favourites: mostSoldProducts.length,
+              ),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -327,6 +332,85 @@ class _MobileSalesPulse extends StatelessWidget {
       ),
     );
   }
+}
+
+class _QuickFocusStrip extends StatelessWidget {
+  const _QuickFocusStrip({required this.lowStock, required this.favourites});
+
+  final int lowStock;
+  final int favourites;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Expanded(
+          child: _FocusTile(
+            icon: Icons.inventory_2_outlined,
+            label: 'Stock watch',
+            value: '$lowStock to review',
+            color: lowStock > 0 ? scheme.error : scheme.tertiary,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _FocusTile(
+            icon: Icons.auto_awesome_outlined,
+            label: 'Top movers',
+            value: '$favourites active',
+            color: scheme.secondary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FocusTile extends StatelessWidget {
+  const _FocusTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .10),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color.withValues(alpha: .18)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium),
+                  const SizedBox(height: 2),
+                  Text(value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _HeroCard extends StatelessWidget {

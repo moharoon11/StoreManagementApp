@@ -24,7 +24,7 @@ class CategoriesView extends StatefulWidget {
   State<CategoriesView> createState() => _CategoriesViewState();
 }
 
-enum _CategoryLayout { sidebar, dropdown }
+enum _CategoryLayout { sidebar, dropdown, gallery }
 
 class _CategoriesViewState extends State<CategoriesView> {
   static const _pageSize = 30;
@@ -56,9 +56,10 @@ class _CategoriesViewState extends State<CategoriesView> {
     final saved = await StorageService.getCategoryLayout();
     if (!mounted || saved == null) return;
     setState(() {
-      _layout = saved == _CategoryLayout.dropdown.name
-          ? _CategoryLayout.dropdown
-          : _CategoryLayout.sidebar;
+      _layout = _CategoryLayout.values.firstWhere(
+        (layout) => layout.name == saved,
+        orElse: () => _CategoryLayout.sidebar,
+      );
     });
   }
 
@@ -388,6 +389,14 @@ class _CategoriesViewState extends State<CategoriesView> {
                         selected: _layout == _CategoryLayout.dropdown,
                       ),
                     ),
+                    PopupMenuItem(
+                      value: _CategoryLayout.gallery,
+                      child: _LayoutOption(
+                        icon: Icons.grid_view_rounded,
+                        label: 'Gallery',
+                        selected: _layout == _CategoryLayout.gallery,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -404,6 +413,26 @@ class _CategoriesViewState extends State<CategoriesView> {
                         : 236.0;
                 if (_layout == _CategoryLayout.dropdown) {
                   return _FullWidthCategoryProducts(
+                    categories: _categories,
+                    selectedId: _selectedCategoryId,
+                    onSelect: _selectCategory,
+                    onAdd: _showCategoryDialog,
+                    products: _products,
+                    isLoading: _isLoadingProducts,
+                    isLoadingMore: _isLoadingMore,
+                    controller: _productsController,
+                    searchController: _searchController,
+                    onSearchChanged: _setSearch,
+                    onEdit: selected == null
+                        ? null
+                        : () => _showCategoryDialog(category: selected),
+                    onDelete: selected == null
+                        ? null
+                        : () => _deleteCategory(selected),
+                  );
+                }
+                if (_layout == _CategoryLayout.gallery) {
+                  return _GalleryCategoryProducts(
                     categories: _categories,
                     selectedId: _selectedCategoryId,
                     onSelect: _selectCategory,
@@ -664,6 +693,275 @@ class _FullWidthCategoryProducts extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A visual third option for shops that browse from product photos first.
+/// It remains a one-column list on narrow phones and only becomes a grid once
+/// a card can comfortably show image, name, price and the add button.
+class _GalleryCategoryProducts extends StatelessWidget {
+  const _GalleryCategoryProducts({
+    required this.categories,
+    required this.selectedId,
+    required this.onSelect,
+    required this.onAdd,
+    required this.products,
+    required this.isLoading,
+    required this.isLoadingMore,
+    required this.controller,
+    required this.searchController,
+    required this.onSearchChanged,
+    this.onEdit,
+    this.onDelete,
+  });
+
+  final List<dynamic> categories;
+  final int? selectedId;
+  final ValueChanged<int> onSelect;
+  final VoidCallback onAdd;
+  final List<dynamic> products;
+  final bool isLoading;
+  final bool isLoadingMore;
+  final ScrollController controller;
+  final TextEditingController searchController;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    Map<String, dynamic>? selectedCategory;
+    for (final item in categories) {
+      final category = Map<String, dynamic>.from(item as Map);
+      if (category['id'] == selectedId) {
+        selectedCategory = category;
+        break;
+      }
+    }
+    return Column(
+      children: [
+        SurfacePanel(
+          padding: const EdgeInsets.all(10),
+          child: SizedBox(
+            height: 40,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length + 1,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                if (index == categories.length) {
+                  return IconButton.filledTonal(
+                    onPressed: onAdd,
+                    tooltip: 'Add category',
+                    icon: const Icon(Icons.add_rounded),
+                  );
+                }
+                final category =
+                    Map<String, dynamic>.from(categories[index] as Map);
+                return FilterChip(
+                  label: Text((category['name'] ?? 'Untitled').toString()),
+                  selected: category['id'] == selectedId,
+                  showCheckmark: false,
+                  onSelected: (_) => onSelect(category['id'] as int),
+                );
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: _GalleryProductPanel(
+            category: selectedCategory,
+            products: products,
+            isLoading: isLoading,
+            isLoadingMore: isLoadingMore,
+            controller: controller,
+            searchController: searchController,
+            onSearchChanged: onSearchChanged,
+            onEdit: onEdit,
+            onDelete: onDelete,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GalleryProductPanel extends StatelessWidget {
+  const _GalleryProductPanel({
+    required this.category,
+    required this.products,
+    required this.isLoading,
+    required this.isLoadingMore,
+    required this.controller,
+    required this.searchController,
+    required this.onSearchChanged,
+    this.onEdit,
+    this.onDelete,
+  });
+
+  final Map<String, dynamic>? category;
+  final List<dynamic> products;
+  final bool isLoading;
+  final bool isLoadingMore;
+  final ScrollController controller;
+  final TextEditingController searchController;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    if (category == null) return const SizedBox.shrink();
+    return SurfacePanel(
+      padding: const EdgeInsets.all(12),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth < 440 ? 1 : 2;
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      (category!['name'] ?? 'Category').toString(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'edit') onEdit?.call();
+                      if (value == 'delete') onDelete?.call();
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                          value: 'edit', child: Text('Edit category')),
+                      PopupMenuItem(
+                          value: 'delete', child: Text('Delete category')),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: searchController,
+                onChanged: onSearchChanged,
+                decoration: const InputDecoration(
+                  hintText: 'Search products',
+                  prefixIcon: Icon(Icons.search_rounded),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : products.isEmpty
+                        ? const EmptyCanvas(
+                            icon: Icons.inventory_2_outlined,
+                            title: 'No products here',
+                            detail: 'Try another search or add a product.',
+                          )
+                        : GridView.builder(
+                            controller: controller,
+                            itemCount:
+                                products.length + (isLoadingMore ? 1 : 0),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: columns,
+                              mainAxisSpacing: 10,
+                              crossAxisSpacing: 10,
+                              mainAxisExtent: columns == 1 ? 96 : 210,
+                            ),
+                            itemBuilder: (context, index) {
+                              if (index == products.length) {
+                                return const Center(
+                                    child: CircularProgressIndicator());
+                              }
+                              return _GalleryProductCard(
+                                product: Map<String, dynamic>.from(
+                                    products[index] as Map),
+                                compact: columns == 1,
+                              );
+                            },
+                          ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _GalleryProductCard extends StatelessWidget {
+  const _GalleryProductCard({required this.product, required this.compact});
+
+  final Map<String, dynamic> product;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final scheme = Theme.of(context).colorScheme;
+    final imageUrl = (product['imageUrl'] ?? '').toString();
+    final stock = quantityValue(product['stockQuantity']);
+    final add = IconButton.filled(
+      onPressed: stock > 0 ? () => provider.addToCart(product) : null,
+      tooltip: 'Add to sale',
+      icon: const Icon(Icons.add_rounded),
+    );
+    final image = Container(
+      width: compact ? 74 : double.infinity,
+      height: compact ? 74 : 116,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: .35),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: imageUrl.isEmpty
+          ? Icon(Icons.inventory_2_outlined,
+              color: scheme.onSurface.withValues(alpha: .38))
+          : Image.network(imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Icon(Icons.inventory_2_outlined,
+                  color: scheme.onSurface.withValues(alpha: .38))),
+    );
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text((product['name'] ?? 'Untitled product').toString(),
+            maxLines: compact ? 2 : 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 4),
+        Text('₹${product['sellingPrice'] ?? '—'}',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w800,
+                )),
+      ],
+    );
+    return SurfacePanel(
+      padding: const EdgeInsets.all(8),
+      child: compact
+          ? Row(children: [
+              image,
+              const SizedBox(width: 10),
+              Expanded(child: details),
+              add
+            ])
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                image,
+                const SizedBox(height: 8),
+                Expanded(child: details),
+                Align(alignment: Alignment.centerRight, child: add),
+              ],
+            ),
     );
   }
 }

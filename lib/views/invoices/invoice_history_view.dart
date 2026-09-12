@@ -217,6 +217,13 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
             ),
           ),
           SizedBox(height: compact ? 12 : 16),
+          _LedgerHighlight(
+            transactions: _summary['totalTransactions'] ?? _invoices.length,
+            sales: (_summary['totalSale'] ?? 0.0) as num,
+            due: (_summary['balanceDue'] ?? 0.0) as num,
+            compact: compact,
+          ),
+          const SizedBox(height: 12),
           if (compact) ...[
             Wrap(
               spacing: 8,
@@ -306,6 +313,107 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   }
 }
 
+class _LedgerHighlight extends StatelessWidget {
+  const _LedgerHighlight({
+    required this.transactions,
+    required this.sales,
+    required this.due,
+    required this.compact,
+  });
+
+  final dynamic transactions;
+  final num sales;
+  final num due;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            scheme.secondary.withValues(alpha: compact ? .16 : .07),
+            scheme.primary.withValues(alpha: compact ? .08 : .025),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: scheme.secondary.withValues(alpha: compact ? .18 : .10),
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 390;
+          final salesText = '₹${sales.toStringAsFixed(0)}';
+          final transactionsText = '$transactions sales';
+          final dueText =
+              due > 0 ? '₹${due.toStringAsFixed(0)} due' : 'All paid';
+          final stats = [
+            _LedgerHighlightValue(label: 'Sales total', value: salesText),
+            _LedgerHighlightValue(label: 'Activity', value: transactionsText),
+            _LedgerHighlightValue(
+              label: 'Collection',
+              value: dueText,
+              color: due > 0 ? scheme.error : scheme.secondary,
+            ),
+          ];
+          return narrow
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Sales at a glance',
+                        style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 10),
+                    Wrap(spacing: 18, runSpacing: 10, children: stats),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: Text('Sales at a glance',
+                          style: Theme.of(context).textTheme.titleSmall),
+                    ),
+                    ...stats.map((stat) => Padding(
+                          padding: const EdgeInsets.only(left: 18),
+                          child: stat,
+                        )),
+                  ],
+                );
+        },
+      ),
+    );
+  }
+}
+
+class _LedgerHighlightValue extends StatelessWidget {
+  const _LedgerHighlightValue({
+    required this.label,
+    required this.value,
+    this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.labelSmall),
+          const SizedBox(height: 2),
+          Text(value,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                  )),
+        ],
+      );
+}
+
 class _InvoiceCard extends StatelessWidget {
   const _InvoiceCard({
     required this.invoice,
@@ -324,6 +432,7 @@ class _InvoiceCard extends StatelessWidget {
         : customerName;
     final totalAmount = (invoice['grandTotal'] as num?)?.toDouble() ?? 0.0;
     final balanceDue = (invoice['balanceDue'] as num?)?.toDouble() ?? 0.0;
+    final compact = MediaQuery.sizeOf(context).width < 760;
     final dateStr =
         (invoice['invoiceDate'] ?? invoice['createdAt'] ?? '').toString();
     final dateFormatted =
@@ -337,8 +446,17 @@ class _InvoiceCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: scheme.surfaceContainerHighest.withValues(alpha: .18),
+            color: compact
+                ? (balanceDue > 0 ? scheme.error : scheme.primary)
+                    .withValues(alpha: balanceDue > 0 ? .09 : .065)
+                : scheme.surfaceContainerHighest.withValues(alpha: .18),
             borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: compact
+                  ? (balanceDue > 0 ? scheme.error : scheme.primary)
+                      .withValues(alpha: .14)
+                  : Colors.transparent,
+            ),
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {

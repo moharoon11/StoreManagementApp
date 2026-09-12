@@ -30,7 +30,9 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
   Timer? _searchDebounce;
   final ScrollController _productsController = ScrollController();
 
-  static const _pageSize = 36;
+  // Match the API's supported page limit. Categories was already using 30,
+  // which is why it continued to show products while Sell did not.
+  static const _pageSize = 30;
 
   @override
   void initState() {
@@ -49,10 +51,11 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
   }
 
   Future<void> _loadCatalogue() async {
-    await Future.wait([
-      _fetchCategories(),
-      _fetchAvailableProducts(reset: true),
-    ]);
+    // Load categories first: the reliable all-products fallback below needs
+    // their ids. Running these in parallel caused Sell to issue an empty
+    // unfiltered request before categories arrived.
+    await _fetchCategories();
+    await _fetchAvailableProducts(reset: true);
   }
 
   Future<void> _fetchCategories() async {
@@ -85,6 +88,12 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
       }
     });
     try {
+      final loadByCategory =
+          _selectedCategoryId == null && _categories.isNotEmpty;
+      if (loadByCategory && !reset) {
+        setState(() => _isLoadingMore = false);
+        return;
+      }
       final params = <String, String>{
         'pageNumber': '$nextPage',
         'pageSize': '$_pageSize',
@@ -95,15 +104,17 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
       if (_selectedCategoryId != null) {
         params['categoryId'] = _selectedCategoryId.toString();
       }
-      final res =
-          await ApiService.get(ApiConfig.products, queryParameters: params);
-      if (res['success'] == true && mounted) {
-        final page = res['data'] as Map<String, dynamic>;
-        final items = (page['items'] as List?) ?? [];
+      final res = loadByCategory
+          ? null
+          : await ApiService.get(ApiConfig.products, queryParameters: params);
+      final items = loadByCategory
+          ? await _fetchProductsForCategories()
+          : _extractProductItems(res);
+      if (mounted) {
         setState(() {
           _products = reset ? items : [..._products, ...items];
           _currentPage = nextPage;
-          _hasMore = items.length >= _pageSize;
+          _hasMore = !loadByCategory && items.length >= _pageSize;
           _isLoading = false;
           _isLoadingMore = false;
         });
@@ -116,6 +127,44 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
         });
       }
     }
+  }
+
+  Future<List<dynamic>> _fetchProductsForCategories() async {
+    final pages = await Future.wait(_categories.map((item) async {
+      final category = Map<String, dynamic>.from(item as Map);
+      try {
+        final res = await ApiService.get(ApiConfig.products, queryParameters: {
+          'categoryId': category['id'].toString(),
+          'pageNumber': '1',
+          'pageSize': '$_pageSize',
+          if (_searchTerm.trim().isNotEmpty) 'searchTerm': _searchTerm.trim(),
+        });
+        return _extractProductItems(res);
+      } catch (_) {
+        return const <dynamic>[];
+      }
+    }));
+    final seenIds = <dynamic>{};
+    return [
+      for (final product in pages.expand((page) => page))
+        if (seenIds.add(Map<String, dynamic>.from(product as Map)['id']))
+          product,
+    ];
+  }
+
+  /// Keep the sales catalogue compatible with every valid response shape the
+  /// deployed endpoint uses, matching the Categories page's tolerant reader.
+  List<dynamic> _extractProductItems(dynamic response) {
+    if (response is List) return List<dynamic>.from(response);
+    if (response is! Map) return const [];
+    final data = response['data'];
+    if (data is List) return List<dynamic>.from(data);
+    if (data is Map) {
+      final items = data['items'] ?? data['products'] ?? data['rows'];
+      if (items is List) return List<dynamic>.from(items);
+    }
+    final items = response['items'] ?? response['products'];
+    return items is List ? List<dynamic>.from(items) : const [];
   }
 
   void _setSearch(String value) {

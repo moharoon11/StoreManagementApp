@@ -141,11 +141,9 @@ class ResponsiveLayout extends StatelessWidget {
         builder: (context, provider, _) {
           final scheme = Theme.of(context).colorScheme;
           final width = MediaQuery.sizeOf(context).width;
-          final crossAxisCount = width >= 720
-              ? 3
-              : width >= 450
-                  ? 2
-                  : 1;
+          // Keep the familiar two-column menu on phones.  The rows are made
+          // taller below instead of changing the visual layout to one column.
+          final crossAxisCount = width >= 720 ? 3 : 2;
           final mobile = Ui.isCompact(context);
 
           return SafeArea(
@@ -172,16 +170,16 @@ class ResponsiveLayout extends StatelessWidget {
                     physics: const NeverScrollableScrollPhysics(),
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
-                    // Fixed aspect ratios made two-line menu titles overflow
-                    // on smaller phones.  A content-safe extent guarantees
-                    // room for icon + title + optional subtitle.
-                    childAspectRatio: width >= 720 ? 2.05 : 1.6,
+                    childAspectRatio: width >= 720
+                        ? 2.05
+                        : width < 450
+                            ? 1.34
+                            : 1.85,
                     children: [
                       for (var index = 0; index < _navItems.length; index++)
                         _MenuTile(
                           item: _navItems[index],
                           selected: provider.selectedNavIndex == index,
-                          compact: width < 450,
                           onTap: () {
                             provider.setNavIndex(index);
                             Navigator.pop(sheetContext);
@@ -828,13 +826,11 @@ class _MenuTile extends StatelessWidget {
     required this.item,
     required this.selected,
     required this.onTap,
-    this.compact = false,
   });
 
   final _Destination item;
   final bool selected;
   final VoidCallback onTap;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -849,7 +845,7 @@ class _MenuTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(22),
         child: Padding(
-          padding: EdgeInsets.all(compact ? 14 : 16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               Container(
@@ -877,23 +873,21 @@ class _MenuTile extends StatelessWidget {
                   children: [
                     Text(
                       item.title,
-                      maxLines: compact ? 2 : 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             color: selected ? scheme.primary : scheme.onSurface,
                           ),
                     ),
-                    if (!compact) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        item.subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurface.withValues(alpha: .58),
-                            ),
-                      ),
-                    ],
+                    const SizedBox(height: 2),
+                    Text(
+                      item.subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurface.withValues(alpha: .58),
+                          ),
+                    ),
                   ],
                 ),
               ),
