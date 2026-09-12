@@ -2,8 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 import '../../config/api_config.dart';
+import '../../providers/app_provider.dart';
 import '../../services/adaptive_image_service.dart';
 import '../../services/api_service.dart';
 import '../../utils/quantity_utils.dart';
@@ -60,10 +62,6 @@ class _ProductsViewState extends State<ProductsView> {
       if (_selectedCategoryId != null) {
         queryParams['categoryId'] = _selectedCategoryId.toString();
       }
-      if (_showFavouritesOnly) {
-        queryParams['isFavourite'] = 'true';
-      }
-
       final res = await ApiService.get(
         ApiConfig.products,
         queryParameters: queryParams,
@@ -79,18 +77,6 @@ class _ProductsViewState extends State<ProductsView> {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  Future<void> _toggleFavourite(
-      int productId, bool isCurrentlyFavourite) async {
-    try {
-      if (isCurrentlyFavourite) {
-        await ApiService.delete('${ApiConfig.favourites}/$productId');
-      } else {
-        await ApiService.post('${ApiConfig.favourites}/$productId', {});
-      }
-      _fetchProducts();
-    } catch (_) {}
   }
 
   void _showAddProductModal() {
@@ -473,13 +459,19 @@ class _ProductsViewState extends State<ProductsView> {
     });
   }
 
-  int get _favouriteCount => _products.where((product) {
-        return product['isFavourite'] == true || product['isFavourite'] == 1;
-      }).length;
+  List<dynamic> _visibleProducts(AppProvider provider) {
+    if (!_showFavouritesOnly) return _products;
+    return _products.where((product) {
+      final map = Map<String, dynamic>.from(product as Map);
+      return provider.isFavourite(map['id'] as int);
+    }).toList(growable: false);
+  }
 
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 760;
+    final provider = context.watch<AppProvider>();
+    final visibleProducts = _visibleProducts(provider);
     return WorkspacePage(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,7 +513,7 @@ class _ProductsViewState extends State<ProductsView> {
                   color: Theme.of(context).colorScheme.secondary,
                 ),
                 StatusPill(
-                  label: '$_favouriteCount favourites',
+                  label: '${provider.favouriteProductIds.length} favourites',
                   color: Theme.of(context).colorScheme.tertiary,
                 ),
               ],
@@ -545,7 +537,7 @@ class _ProductsViewState extends State<ProductsView> {
                 ),
                 StatTile(
                   label: 'Favourites',
-                  value: '$_favouriteCount',
+                  value: '${provider.favouriteProductIds.length}',
                   icon: Icons.star_rounded,
                   color: Theme.of(context).colorScheme.tertiary,
                 ),
@@ -594,14 +586,14 @@ class _ProductsViewState extends State<ProductsView> {
                           Expanded(
                             child: _ProductGridPanel(
                               isLoading: _isLoading,
-                              products: _products,
+                              products: visibleProducts,
                               searchTerm: _searchTerm,
                               onSearchChanged: (value) {
                                 _searchTerm = value;
                                 _fetchProducts();
                               },
                               onEditProduct: _openProductEditor,
-                              onToggleFavourite: _toggleFavourite,
+                              onToggleFavourite: provider.toggleFavourite,
                             ),
                           ),
                         ],
@@ -641,14 +633,14 @@ class _ProductsViewState extends State<ProductsView> {
                           Expanded(
                             child: _ProductGridPanel(
                               isLoading: _isLoading,
-                              products: _products,
+                              products: visibleProducts,
                               searchTerm: _searchTerm,
                               onSearchChanged: (value) {
                                 _searchTerm = value;
                                 _fetchProducts();
                               },
                               onEditProduct: _openProductEditor,
-                              onToggleFavourite: _toggleFavourite,
+                              onToggleFavourite: provider.toggleFavourite,
                             ),
                           ),
                         ],
@@ -810,7 +802,7 @@ class _ProductGridPanel extends StatelessWidget {
   final String searchTerm;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<Map<String, dynamic>> onEditProduct;
-  final Future<void> Function(int, bool) onToggleFavourite;
+  final ValueChanged<int> onToggleFavourite;
 
   @override
   Widget build(BuildContext context) {
@@ -910,13 +902,13 @@ class _ProductCard extends StatelessWidget {
   final bool compact;
   final bool dense;
   final ValueChanged<Map<String, dynamic>> onEditProduct;
-  final Future<void> Function(int, bool) onToggleFavourite;
+  final ValueChanged<int> onToggleFavourite;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final favourite =
-        product['isFavourite'] == true || product['isFavourite'] == 1;
+        context.watch<AppProvider>().isFavourite(product['id'] as int);
     final imageUrl = (product['imageUrl'] ?? '').toString();
     final stock = quantityValue(product['stockQuantity']);
 
@@ -947,8 +939,8 @@ class _ProductCard extends StatelessWidget {
                             ),
                           ),
                           IconButton(
-                            onPressed: () => onToggleFavourite(
-                                product['id'] as int, favourite),
+                            onPressed: () =>
+                                onToggleFavourite(product['id'] as int),
                             icon: Icon(
                               favourite
                                   ? Icons.star_rounded
@@ -1002,8 +994,7 @@ class _ProductCard extends StatelessWidget {
                     top: dense ? 6 : 8,
                     right: dense ? 6 : 8,
                     child: IconButton(
-                      onPressed: () =>
-                          onToggleFavourite(product['id'] as int, favourite),
+                      onPressed: () => onToggleFavourite(product['id'] as int),
                       style: IconButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.surface,
                         minimumSize: Size.square(dense ? 34 : 40),

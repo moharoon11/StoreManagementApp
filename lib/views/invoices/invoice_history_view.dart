@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../config/api_config.dart';
+import '../../providers/app_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/invoice_pdf_service.dart';
 import '../../services/platform_capabilities.dart';
@@ -22,10 +24,53 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     'totalSale': 0.0,
     'balanceDue': 0.0,
   };
+  AppProvider? _appProvider;
+  int _seenInvoiceRevision = 0;
 
   @override
   void initState() {
     super.initState();
+    _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = context.read<AppProvider>();
+    if (identical(provider, _appProvider)) return;
+    _appProvider?.removeListener(_onAppStateChanged);
+    _appProvider = provider;
+    _seenInvoiceRevision = provider.invoiceRevision;
+    provider.addListener(_onAppStateChanged);
+  }
+
+  @override
+  void dispose() {
+    _appProvider?.removeListener(_onAppStateChanged);
+    super.dispose();
+  }
+
+  void _onAppStateChanged() {
+    final provider = _appProvider;
+    if (!mounted ||
+        provider == null ||
+        provider.invoiceRevision == _seenInvoiceRevision) {
+      return;
+    }
+    _seenInvoiceRevision = provider.invoiceRevision;
+    final latest = provider.latestInvoice;
+    if (latest != null) {
+      final id = latest['id'];
+      setState(() {
+        _invoices = [
+          Map<String, dynamic>.from(latest),
+          ..._invoices.where((invoice) =>
+              Map<String, dynamic>.from(invoice as Map)['id'] != id),
+        ];
+      });
+    }
+    // Revalidate totals and server-side invoice formatting without making the
+    // freshly completed sale wait for a manual refresh.
     _loadData();
   }
 
@@ -47,7 +92,14 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
       if (!mounted) return;
 
       if (res is List) {
-        _invoices = List<dynamic>.from(res);
+        final rows = List<dynamic>.from(res);
+        final latest = _appProvider?.latestInvoice;
+        final latestId = latest?['id'];
+        _invoices = latest != null &&
+                !rows.any((invoice) =>
+                    Map<String, dynamic>.from(invoice as Map)['id'] == latestId)
+            ? [Map<String, dynamic>.from(latest), ...rows]
+            : rows;
         return;
       }
 
@@ -56,7 +108,17 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
       }
 
       if (res is Map) {
-        _invoices = _extractInvoiceRows(res);
+        final rows = _extractInvoiceRows(res);
+        final latest = _appProvider?.latestInvoice;
+        final latestId = latest?['id'];
+        // A newly completed checkout can reach this screen before an
+        // eventually-consistent history endpoint includes it. Keep the local
+        // checkout result visible until the server returns the same invoice.
+        _invoices = latest != null &&
+                !rows.any((invoice) =>
+                    Map<String, dynamic>.from(invoice as Map)['id'] == latestId)
+            ? [Map<String, dynamic>.from(latest), ...rows]
+            : rows;
       }
     } catch (_) {}
   }
@@ -306,11 +368,21 @@ class _InvoiceCard extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(nameDisplay,
-                        style: Theme.of(context).textTheme.titleSmall),
+                    Row(
+                      children: [
+                        _InvoiceMark(
+                            color:
+                                balanceDue > 0 ? scheme.error : scheme.primary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(nameDisplay,
+                              style: Theme.of(context).textTheme.titleSmall),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 4),
                     Text(
-                      'Sale ${invoice['id']} · $dateFormatted',
+                      '${invoice['invoiceNumber'] ?? 'Sale ${invoice['id']}'} · $dateFormatted',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: scheme.onSurface.withValues(alpha: .6),
                           ),
@@ -323,6 +395,9 @@ class _InvoiceCard extends StatelessWidget {
 
               return Row(
                 children: [
+                  _InvoiceMark(
+                      color: balanceDue > 0 ? scheme.error : scheme.primary),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,7 +406,7 @@ class _InvoiceCard extends StatelessWidget {
                             style: Theme.of(context).textTheme.titleSmall),
                         const SizedBox(height: 4),
                         Text(
-                          'Sale ${invoice['id']} · $dateFormatted',
+                          '${invoice['invoiceNumber'] ?? 'Sale ${invoice['id']}'} · $dateFormatted',
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
@@ -352,6 +427,23 @@ class _InvoiceCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _InvoiceMark extends StatelessWidget {
+  const _InvoiceMark({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Icon(Icons.receipt_long_outlined, color: color, size: 21),
+      );
 }
 
 class _SaleDetailModal extends StatefulWidget {

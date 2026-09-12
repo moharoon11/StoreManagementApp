@@ -184,6 +184,10 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
               },
             ),
           ),
+          if (compact && provider.cartItems.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const CartSummaryBar(),
+          ],
         ],
       ),
     );

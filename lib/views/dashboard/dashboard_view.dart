@@ -129,6 +129,12 @@ class _DashboardViewState extends State<DashboardView> {
             ),
             SizedBox(height: compact ? 14 : 20),
             if (compact) ...[
+              _MobileSalesPulse(
+                sales: todaySales,
+                invoices: todayInvoices,
+                products: totalProducts,
+              ),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -243,6 +249,81 @@ class _DashboardViewState extends State<DashboardView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _MobileSalesPulse extends StatelessWidget {
+  const _MobileSalesPulse({
+    required this.sales,
+    required this.invoices,
+    required this.products,
+  });
+
+  final dynamic sales;
+  final dynamic invoices;
+  final dynamic products;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            scheme.primary.withValues(alpha: .18),
+            scheme.secondary.withValues(alpha: .10),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: scheme.primary.withValues(alpha: .18)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Today’s sales',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: scheme.onSurface.withValues(alpha: .68),
+                        )),
+                const SizedBox(height: 4),
+                Text('₹$sales',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w800,
+                        )),
+                const SizedBox(height: 6),
+                Text(
+                    '$invoices bill${invoices == 1 ? '' : 's'} completed today',
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: scheme.surface.withValues(alpha: .72),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Center(
+              child: Text(
+                '$products',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: scheme.secondary,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

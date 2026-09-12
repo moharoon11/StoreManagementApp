@@ -75,7 +75,7 @@ class CartSummaryBar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Current sale',
+                    'Review & pay',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 4),
@@ -97,7 +97,7 @@ class CartSummaryBar extends StatelessWidget {
                   ),
             ),
             const SizedBox(width: 8),
-            Icon(Icons.chevron_right_rounded,
+            Icon(Icons.arrow_forward_rounded,
                 size: 18, color: scheme.onSurface.withValues(alpha: .5)),
           ]),
         ),

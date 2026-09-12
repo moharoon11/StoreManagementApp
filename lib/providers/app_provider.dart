@@ -29,6 +29,15 @@ class AppProvider extends ChangeNotifier {
   AppThemeOption _themeOption = AppThemeOption.light;
   AppThemeOption get themeOption => _themeOption;
 
+  final Set<int> _favouriteProductIds = <int>{};
+  Set<int> get favouriteProductIds => Set.unmodifiable(_favouriteProductIds);
+  bool isFavourite(int productId) => _favouriteProductIds.contains(productId);
+
+  int _invoiceRevision = 0;
+  int get invoiceRevision => _invoiceRevision;
+  Map<String, dynamic>? _latestInvoice;
+  Map<String, dynamic>? get latestInvoice => _latestInvoice;
+
   // Cart State for Billing / POS
   final Map<int, Map<String, dynamic>> _cartItems =
       {}; // productId -> {product, quantity}
@@ -76,6 +85,9 @@ class AppProvider extends ChangeNotifier {
       if (token != null && token.isNotEmpty) {
         _isAuthenticated = true;
         _username = (await StorageService.getUsername()) ?? '';
+        _favouriteProductIds
+          ..clear()
+          ..addAll(await StorageService.getFavouriteProductIds());
       } else {
         _isAuthenticated = false;
       }
@@ -121,6 +133,9 @@ class AppProvider extends ChangeNotifier {
         );
         _isAuthenticated = true;
         _username = data['username'];
+        _favouriteProductIds
+          ..clear()
+          ..addAll(await StorageService.getFavouriteProductIds());
         _isLoading = false;
         notifyListeners();
         return true;
@@ -230,6 +245,24 @@ class AppProvider extends ChangeNotifier {
 
   void clearCart() {
     _cartItems.clear();
+    notifyListeners();
+  }
+
+  /// Updates immediately in Flutter and persists locally.  No favourite API
+  /// request is made, which keeps the control instant even when offline.
+  void toggleFavourite(int productId) {
+    if (!_favouriteProductIds.add(productId)) {
+      _favouriteProductIds.remove(productId);
+    }
+    notifyListeners();
+    StorageService.saveFavouriteProductIds(_favouriteProductIds);
+  }
+
+  /// Lets the already-mounted invoice screen show a new checkout immediately,
+  /// then it can revalidate against the server in the background.
+  void registerCheckoutInvoice(Map<String, dynamic> invoice) {
+    _latestInvoice = Map<String, dynamic>.from(invoice);
+    _invoiceRevision++;
     notifyListeners();
   }
 

@@ -105,6 +105,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (response['success'] == true) {
         final invoice = response['data'];
+        if (invoice is Map) {
+          provider.registerCheckoutInvoice(Map<String, dynamic>.from(invoice));
+        }
         if (!widget.isManual) {
           provider.clearCart();
         }
