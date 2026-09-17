@@ -312,28 +312,6 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Text('Filters applied:',
-                style: Theme.of(context).textTheme.titleSmall),
-            const Spacer(),
-            OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.filter_alt_outlined, size: 18),
-              label: const Text('Filters'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: const [
-            _AppliedFilter(label: 'Txns type · Sale'),
-            _AppliedFilter(label: 'Party · All party'),
-          ],
-        ),
         const SizedBox(height: 16),
         Expanded(
           child: Container(
@@ -482,25 +460,6 @@ class _CompactDateRangeDialogState extends State<_CompactDateRangeDialog> {
       );
 }
 
-class _AppliedFilter extends StatelessWidget {
-  const _AppliedFilter({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context)
-              .colorScheme
-              .surfaceContainerHighest
-              .withValues(alpha: .72),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-      );
-}
-
 class _ReportTotal extends StatelessWidget {
   const _ReportTotal({
     required this.label,
@@ -571,54 +530,101 @@ class _ReportSaleCard extends StatelessWidget {
         .toString()
         .replaceFirst('T', ' ');
     final date = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
+    final invoiceNumber =
+        (invoice['invoiceNumber'] ?? 'Sale ${invoice['id'] ?? index + 1}')
+            .toString();
+    final hasBalance = due > 0;
 
     return Material(
       color: scheme.surface,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: scheme.outlineVariant),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: .72),
+            ),
           ),
-          child: Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(customer,
-                        style: Theme.of(context).textTheme.titleMedium),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('SALE ${index + 1}',
-                          style: Theme.of(context).textTheme.labelSmall),
-                      const SizedBox(height: 3),
-                      Text(date, style: Theme.of(context).textTheme.bodySmall),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 390;
+              final metadata = Text(
+                '$invoiceNumber · $date',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+              );
+              final figures = Wrap(
+                spacing: compact ? 18 : 26,
+                runSpacing: 6,
                 children: [
                   _SaleFigure(
-                      label: 'Amount', value: '₹${total.toStringAsFixed(2)}'),
-                  const SizedBox(width: 44),
+                    label: 'Amount',
+                    value: '₹${total.toStringAsFixed(2)}',
+                  ),
                   _SaleFigure(
                     label: 'Balance',
-                    value: '₹${due.toStringAsFixed(2)}',
-                    valueColor: due > 0 ? scheme.tertiary : scheme.secondary,
+                    value: hasBalance ? '₹${due.toStringAsFixed(2)}' : 'Paid',
+                    valueColor: hasBalance ? scheme.tertiary : scheme.secondary,
                   ),
                 ],
-              ),
-            ],
+              );
+
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      customer,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    const SizedBox(height: 3),
+                    metadata,
+                    const SizedBox(height: 10),
+                    figures,
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          customer,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                        const SizedBox(height: 3),
+                        metadata,
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                  figures,
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -641,11 +647,20 @@ class _SaleFigure extends StatelessWidget {
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 3),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w500,
+                ),
+          ),
+          const SizedBox(height: 2),
           Text(value,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 13.5,
                     color: valueColor,
+                    fontWeight: FontWeight.w600,
                   )),
         ],
       );
