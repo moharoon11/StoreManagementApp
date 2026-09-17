@@ -248,6 +248,13 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final canvas = Theme.of(context).scaffoldBackgroundColor;
+    final reportAccent = Color.alphaBlend(
+      scheme.primary.withValues(
+        alpha: scheme.brightness == Brightness.dark ? .12 : .045,
+      ),
+      canvas,
+    );
     String date(DateTime value) =>
         '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
 
@@ -315,7 +322,15 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
         const SizedBox(height: 16),
         Expanded(
           child: Container(
-            color: Color.lerp(scheme.surface, scheme.secondary, .10),
+            // A low-contrast gradient keeps the report tied to the active
+            // theme while giving the content area a little depth.
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [reportAccent, canvas],
+              ),
+            ),
             child: Column(
               children: [
                 Padding(
@@ -357,8 +372,9 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                   )
                 else ...[
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         for (var index = 0;
                             index < _invoices.length && index < 2;
@@ -373,7 +389,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                             ),
                           ),
                           if (index == 0 && _invoices.length > 1)
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 6),
                         ],
                       ],
                     ),
@@ -388,12 +404,9 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     );
     if (!widget.fullScreen) return WorkspacePage(child: report);
     return ColoredBox(
-      color: scheme.surface,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-          child: report,
-        ),
+        child: report,
       ),
     );
   }
