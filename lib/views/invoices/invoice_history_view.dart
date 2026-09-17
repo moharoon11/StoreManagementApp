@@ -10,7 +10,9 @@ import '../../utils/quantity_utils.dart';
 import '../../widgets/workspace_ui.dart';
 
 class InvoiceHistoryView extends StatefulWidget {
-  const InvoiceHistoryView({super.key});
+  const InvoiceHistoryView({super.key, this.fullScreen = false});
+
+  final bool fullScreen;
 
   @override
   State<InvoiceHistoryView> createState() => _InvoiceHistoryViewState();
@@ -26,10 +28,15 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   };
   AppProvider? _appProvider;
   int _seenInvoiceRevision = 0;
+  late DateTime _fromDate;
+  late DateTime _toDate;
 
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _fromDate = DateTime(now.year, now.month);
+    _toDate = now;
     _loadData();
   }
 
@@ -87,7 +94,18 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     try {
       final res = await ApiService.get(
         ApiConfig.invoices,
-        queryParameters: {'pageSize': '100'},
+        queryParameters: {
+          'PageSize': '100',
+          'FromDate': _fromDate.toIso8601String(),
+          'ToDate': DateTime(
+            _toDate.year,
+            _toDate.month,
+            _toDate.day,
+            23,
+            59,
+            59,
+          ).toIso8601String(),
+        },
       );
       if (!mounted) return;
 
@@ -125,7 +143,20 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
 
   Future<void> _fetchSummary() async {
     try {
-      final res = await ApiService.get('${ApiConfig.invoices}/summary');
+      final res = await ApiService.get(
+        '${ApiConfig.invoices}/summary',
+        queryParameters: {
+          'FromDate': _fromDate.toIso8601String(),
+          'ToDate': DateTime(
+            _toDate.year,
+            _toDate.month,
+            _toDate.day,
+            23,
+            59,
+            59,
+          ).toIso8601String(),
+        },
+      );
       if (res['success'] == true && mounted) {
         _summary = res['data'] ?? _summary;
       }
@@ -198,121 +229,430 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     );
   }
 
+  Future<void> _pickDateRange() async {
+    final range = await showDialog<DateTimeRange>(
+      context: context,
+      builder: (context) => _CompactDateRangeDialog(
+        initialStart: _fromDate,
+        initialEnd: _toDate,
+      ),
+    );
+    if (range == null || !mounted) return;
+    setState(() {
+      _fromDate = range.start;
+      _toDate = range.end;
+    });
+    _loadData();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 760;
-    return WorkspacePage(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          PageIntro(
-            eyebrow: 'Invoices',
-            title: 'Sales history',
-            description:
-                'Track transactions, revisit customer details, and download invoice PDFs from a more compact ledger view.',
-            action: OutlinedButton.icon(
-              onPressed: _loadData,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Refresh'),
+    final scheme = Theme.of(context).colorScheme;
+    String date(DateTime value) =>
+        '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+
+    final report = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            if (widget.fullScreen) ...[
+              IconButton(
+                onPressed: () => context.read<AppProvider>().setNavIndex(0),
+                icon: const Icon(Icons.arrow_back_rounded),
+                tooltip: 'Back',
+              ),
+              const SizedBox(width: 4),
+            ],
+            Expanded(
+              child: Text(
+                'Sale report',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontSize: 26,
+                    ),
+              ),
             ),
-          ),
-          SizedBox(height: compact ? 12 : 16),
-          _LedgerHighlight(
-            transactions: _summary['totalTransactions'] ?? _invoices.length,
-            sales: (_summary['totalSale'] ?? 0.0) as num,
-            due: (_summary['balanceDue'] ?? 0.0) as num,
-            compact: compact,
-          ),
-          const SizedBox(height: 12),
-          if (compact) ...[
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                StatusPill(
-                  label:
-                      '${_summary['totalTransactions'] ?? _invoices.length} transactions',
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                StatusPill(
-                  label:
-                      '₹${((_summary['totalSale'] ?? 0.0) as num).toStringAsFixed(2)} sale',
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-                StatusPill(
-                  label:
-                      '₹${((_summary['balanceDue'] ?? 0.0) as num).toStringAsFixed(2)} due',
-                  color: Theme.of(context).colorScheme.tertiary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-          ] else ...[
-            AdaptiveWrapGrid(
-              minItemWidth: 190,
-              children: [
-                StatTile(
-                  label: 'Transactions',
-                  value: '${_summary['totalTransactions'] ?? _invoices.length}',
-                  icon: Icons.receipt_long_outlined,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                StatTile(
-                  label: 'Total sale',
-                  value:
-                      '₹${((_summary['totalSale'] ?? 0.0) as num).toStringAsFixed(2)}',
-                  icon: Icons.payments_outlined,
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-                StatTile(
-                  label: 'Balance due',
-                  value:
-                      '₹${((_summary['balanceDue'] ?? 0.0) as num).toStringAsFixed(2)}',
-                  icon: Icons.account_balance_wallet_outlined,
-                  color: Theme.of(context).colorScheme.tertiary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
           ],
-          Expanded(
-            child: SectionPanel(
-              title: 'Invoice ledger',
-              subtitle:
-                  'Tap an invoice to edit details, review items, or save the PDF.',
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 220,
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  : _invoices.isEmpty
-                      ? const EmptyCanvas(
-                          icon: Icons.receipt_long_outlined,
-                          title: 'No sales records found',
-                          detail:
-                              'Completed checkouts will appear here automatically.',
-                        )
-                      : ListView.separated(
-                          itemCount: _invoices.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final invoice = Map<String, dynamic>.from(
-                                _invoices[index] as Map);
-                            return _InvoiceCard(
-                              invoice: invoice,
-                              onTap: () => _openSaleEditModal(invoice),
-                            );
-                          },
+        ),
+        const SizedBox(height: 16),
+        InkWell(
+          onTap: _pickDateRange,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              border: Border.symmetric(
+                horizontal: BorderSide(color: scheme.outlineVariant),
+              ),
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 112,
+                  child: Text('This month',
+                      style: Theme.of(context).textTheme.bodyMedium),
+                ),
+                Icon(Icons.keyboard_arrow_down_rounded,
+                    color: scheme.secondary),
+                const SizedBox(width: 8),
+                Container(width: 1, height: 28, color: scheme.outlineVariant),
+                const SizedBox(width: 10),
+                Icon(Icons.calendar_month_outlined, color: scheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '${date(_fromDate)} – ${date(_toDate)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontSize: 11.5,
                         ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Text('Filters applied:',
+                style: Theme.of(context).textTheme.titleSmall),
+            const Spacer(),
+            OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.filter_alt_outlined, size: 18),
+              label: const Text('Filters'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: const [
+            _AppliedFilter(label: 'Txns type · Sale'),
+            _AppliedFilter(label: 'Party · All party'),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: Container(
+            color: Color.lerp(scheme.surface, scheme.secondary, .10),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 18, 12, 12),
+                  child: Row(
+                    children: [
+                      _ReportTotal(
+                        label: 'No. of txns',
+                        value:
+                            '${_summary['totalTransactions'] ?? _invoices.length}',
+                      ),
+                      const SizedBox(width: 8),
+                      _ReportTotal(
+                        label: 'Total sale',
+                        value:
+                            '₹${((_summary['totalSale'] ?? 0) as num).toStringAsFixed(2)}',
+                      ),
+                      const SizedBox(width: 8),
+                      _ReportTotal(
+                        label: 'Balance due',
+                        value:
+                            '₹${((_summary['balanceDue'] ?? 0) as num).toStringAsFixed(2)}',
+                        valueColor: scheme.tertiary,
+                      ),
+                    ],
+                  ),
+                ),
+                if (_isLoading)
+                  const Expanded(
+                      child: Center(child: CircularProgressIndicator()))
+                else if (_invoices.isEmpty)
+                  const Expanded(
+                    child: EmptyCanvas(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'No sales records found',
+                      detail:
+                          'Completed checkouts will appear here automatically.',
+                    ),
+                  )
+                else ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                    child: Column(
+                      children: [
+                        for (var index = 0;
+                            index < _invoices.length && index < 2;
+                            index++) ...[
+                          _ReportSaleCard(
+                            invoice: Map<String, dynamic>.from(
+                                _invoices[index] as Map),
+                            index: index,
+                            onTap: () => _openSaleEditModal(
+                              Map<String, dynamic>.from(
+                                  _invoices[index] as Map),
+                            ),
+                          ),
+                          if (index == 0 && _invoices.length > 1)
+                            const SizedBox(height: 12),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const Expanded(child: SizedBox()),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+    if (!widget.fullScreen) return WorkspacePage(child: report);
+    return ColoredBox(
+      color: scheme.surface,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+          child: report,
+        ),
       ),
     );
   }
 }
 
+class _CompactDateRangeDialog extends StatefulWidget {
+  const _CompactDateRangeDialog({
+    required this.initialStart,
+    required this.initialEnd,
+  });
+
+  final DateTime initialStart;
+  final DateTime initialEnd;
+
+  @override
+  State<_CompactDateRangeDialog> createState() =>
+      _CompactDateRangeDialogState();
+}
+
+class _CompactDateRangeDialogState extends State<_CompactDateRangeDialog> {
+  late DateTime _start = widget.initialStart;
+  late DateTime _end = widget.initialEnd;
+  bool _choosingStart = true;
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(_choosingStart ? 'Select start date' : 'Select end date'),
+        contentPadding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+        content: SizedBox(
+          width: 300,
+          height: 330,
+          child: CalendarDatePicker(
+            initialDate: _choosingStart ? _start : _end,
+            firstDate: DateTime(2020),
+            lastDate: DateTime.now(),
+            onDateChanged: (selected) {
+              setState(() {
+                if (_choosingStart) {
+                  _start = selected;
+                  if (_end.isBefore(_start)) _end = _start;
+                  _choosingStart = false;
+                } else {
+                  _end = selected.isBefore(_start) ? _start : selected;
+                }
+              });
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: _choosingStart
+                ? null
+                : () => Navigator.pop(
+                      context,
+                      DateTimeRange(start: _start, end: _end),
+                    ),
+            child: const Text('Apply'),
+          ),
+        ],
+      );
+}
+
+class _AppliedFilter extends StatelessWidget {
+  const _AppliedFilter({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context)
+              .colorScheme
+              .surfaceContainerHighest
+              .withValues(alpha: .72),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+      );
+}
+
+class _ReportTotal extends StatelessWidget {
+  const _ReportTotal({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color:
+                    Theme.of(context).colorScheme.shadow.withValues(alpha: .08),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 6),
+              Text(value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: valueColor,
+                      )),
+            ],
+          ),
+        ),
+      );
+}
+
+class _ReportSaleCard extends StatelessWidget {
+  const _ReportSaleCard({
+    required this.invoice,
+    required this.index,
+    required this.onTap,
+  });
+
+  final Map<String, dynamic> invoice;
+  final int index;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final name = (invoice['customerName'] ?? '').toString().trim();
+    final customer =
+        name.isEmpty || name == 'NO_NAME' ? 'Walk-in customer' : name;
+    final total = (invoice['grandTotal'] as num?)?.toDouble() ?? 0;
+    final due = (invoice['balanceDue'] as num?)?.toDouble() ?? 0;
+    final rawDate = (invoice['invoiceDate'] ?? invoice['createdAt'] ?? '')
+        .toString()
+        .replaceFirst('T', ' ');
+    final date = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
+
+    return Material(
+      color: scheme.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(customer,
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('SALE ${index + 1}',
+                          style: Theme.of(context).textTheme.labelSmall),
+                      const SizedBox(height: 3),
+                      Text(date, style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  _SaleFigure(
+                      label: 'Amount', value: '₹${total.toStringAsFixed(2)}'),
+                  const SizedBox(width: 44),
+                  _SaleFigure(
+                    label: 'Balance',
+                    value: '₹${due.toStringAsFixed(2)}',
+                    valueColor: due > 0 ? scheme.tertiary : scheme.secondary,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SaleFigure extends StatelessWidget {
+  const _SaleFigure({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 3),
+          Text(value,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: valueColor,
+                  )),
+        ],
+      );
+}
+
+// Retained for a future expanded report layout.
+// ignore: unused_element
 class _LedgerHighlight extends StatelessWidget {
   const _LedgerHighlight({
     required this.transactions,
@@ -414,6 +754,8 @@ class _LedgerHighlightValue extends StatelessWidget {
       );
 }
 
+// Retained for a future compact invoice-list layout.
+// ignore: unused_element
 class _InvoiceCard extends StatelessWidget {
   const _InvoiceCard({
     required this.invoice,

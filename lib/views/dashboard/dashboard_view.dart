@@ -97,37 +97,39 @@ class _DashboardViewState extends State<DashboardView> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            PageIntro(
-              eyebrow: 'Overview',
-              title:
-                  '$greeting${provider.username.isEmpty ? '' : ', ${provider.username}'}',
-              description:
-                  'Start selling, check stock pressure, and keep the store moving from one calmer workspace.',
-              action: Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  FilledButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ManualBillingView(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                    label: const Text('New manual bill'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => provider.setNavIndex(1),
-                    icon: const Icon(Icons.bolt_rounded, size: 18),
-                    label: const Text('Quick sale'),
-                  ),
-                ],
+            if (!compact) ...[
+              PageIntro(
+                eyebrow: 'Overview',
+                title:
+                    '$greeting${provider.username.isEmpty ? '' : ', ${provider.username}'}',
+                description:
+                    'Start selling, check stock pressure, and keep the store moving from one calmer workspace.',
+                action: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ManualBillingView(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                      label: const Text('New manual bill'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => provider.setNavIndex(1),
+                      icon: const Icon(Icons.bolt_rounded, size: 18),
+                      label: const Text('Quick sale'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            SizedBox(height: compact ? 14 : 20),
+              const SizedBox(height: 20),
+            ],
             if (compact) ...[
               _MobileSalesPulse(
                 sales: todaySales,
@@ -135,34 +137,18 @@ class _DashboardViewState extends State<DashboardView> {
                 products: totalProducts,
               ),
               const SizedBox(height: 12),
-              _QuickFocusStrip(
-                lowStock: lowStockProducts.length,
-                favourites: mostSoldProducts.length,
+              _MobileBillingActions(
+                onManualBill: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ManualBillingView(),
+                    ),
+                  );
+                },
+                onQuickSale: () => provider.setNavIndex(1),
               ),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  StatusPill(
-                    label: '₹$todaySales today',
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  StatusPill(
-                    label: '$todayInvoices bills',
-                    color: Theme.of(context).colorScheme.secondary,
-                  ),
-                  StatusPill(
-                    label: '$totalProducts products',
-                    color: Theme.of(context).colorScheme.tertiary,
-                  ),
-                  StatusPill(
-                    label: '${lowStockProducts.length} low stock',
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
             ] else ...[
               _HeroCard(
                 sales: todaySales,
@@ -275,58 +261,64 @@ class _MobileSalesPulse extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            scheme.primary.withValues(alpha: .18),
-            scheme.secondary.withValues(alpha: .10),
+            scheme.primary,
+            Color.lerp(scheme.primary, scheme.secondary, .72)!,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: scheme.primary.withValues(alpha: .18)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Today’s sales',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: scheme.onSurface.withValues(alpha: .68),
-                        )),
-                const SizedBox(height: 4),
-                Text('₹$sales',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: scheme.primary,
-                          fontWeight: FontWeight.w800,
-                        )),
-                const SizedBox(height: 6),
-                Text(
-                    '$invoices bill${invoices == 1 ? '' : 's'} completed today',
-                    style: Theme.of(context).textTheme.bodySmall),
-              ],
-            ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.primary.withValues(alpha: .22),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: scheme.surface.withValues(alpha: .72),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(
-              child: Text(
-                '$products',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: scheme.secondary,
-                      fontWeight: FontWeight.w800,
-                    ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "TODAY'S SALES",
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Colors.white.withValues(alpha: .78),
+                  letterSpacing: 1.1,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '₹$sales',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 12),
+          Container(height: 1, color: Colors.white.withValues(alpha: .24)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _PulseMetric(
+                icon: Icons.receipt_long_outlined,
+                label: 'TOTAL BILLS',
+                value: '$invoices',
               ),
-            ),
+              Container(
+                width: 1,
+                height: 38,
+                color: Colors.white.withValues(alpha: .28),
+              ),
+              _PulseMetric(
+                icon: Icons.inventory_2_outlined,
+                label: 'PRODUCTS',
+                value: '$products',
+              ),
+            ],
           ),
         ],
       ),
@@ -334,6 +326,146 @@ class _MobileSalesPulse extends StatelessWidget {
   }
 }
 
+class _PulseMetric extends StatelessWidget {
+  const _PulseMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white.withValues(alpha: .9), size: 20),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Colors.white.withValues(alpha: .72),
+                        letterSpacing: .7,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                      ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+}
+
+class _MobileBillingActions extends StatelessWidget {
+  const _MobileBillingActions({
+    required this.onManualBill,
+    required this.onQuickSale,
+  });
+
+  final VoidCallback onManualBill;
+  final VoidCallback onQuickSale;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        _BillingActionTile(
+          icon: Icons.add_rounded,
+          title: 'New bill',
+          subtitle: 'Create a normal bill',
+          color: scheme.primary,
+          onTap: onManualBill,
+        ),
+        const SizedBox(height: 10),
+        _BillingActionTile(
+          icon: Icons.bolt_rounded,
+          title: 'Quick sale',
+          subtitle: 'Fast billing in seconds',
+          color: scheme.secondary,
+          onTap: onQuickSale,
+        ),
+      ],
+    );
+  }
+}
+
+class _BillingActionTile extends StatelessWidget {
+  const _BillingActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Colors.white,
+                                  )),
+                      const SizedBox(height: 3),
+                      Text(subtitle,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.white.withValues(alpha: .78),
+                                  )),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+// Kept for the wider dashboard layout variant.
+// ignore: unused_element
 class _QuickFocusStrip extends StatelessWidget {
   const _QuickFocusStrip({required this.lowStock, required this.favourites});
 
@@ -639,8 +771,8 @@ class _SalesTrendPanel extends StatelessWidget {
     maxY *= 1.18;
 
     return SectionPanel(
-      title: 'Sales rhythm',
-      subtitle: 'A cleaner view of the recent billing trend.',
+      title: '7-Day sales trend',
+      subtitle: 'Your recent billing activity.',
       child: SizedBox(
         height: 260,
         child: LineChart(
@@ -740,7 +872,7 @@ class _InvoicePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionPanel(
-      title: 'Recent invoices',
+      title: 'Recent bills',
       subtitle: 'Jump back into your latest sales and documents.',
       action: TextButton(
         onPressed: onViewAll,

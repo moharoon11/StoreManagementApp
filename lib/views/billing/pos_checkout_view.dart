@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../config/api_config.dart';
 import '../../providers/app_provider.dart';
 import '../../services/api_service.dart';
+import '../../services/catalogue_service.dart';
 import '../../utils/quantity_utils.dart';
 import '../../widgets/cart_checkout.dart';
 import '../../widgets/workspace_ui.dart';
@@ -94,22 +95,29 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
         setState(() => _isLoadingMore = false);
         return;
       }
-      final params = <String, String>{
-        'pageNumber': '$nextPage',
-        'pageSize': '$_pageSize',
-      };
-      if (_searchTerm.trim().isNotEmpty) {
-        params['searchTerm'] = _searchTerm.trim();
+      List<Map<String, dynamic>> items;
+      if (loadByCategory) {
+        items = await CatalogueService.fetchAcrossCategories(
+          _categories,
+          searchTerm: _searchTerm,
+          pageSize: _pageSize,
+        );
+        if (items.isEmpty) {
+          try {
+            items = await CatalogueService.fetchProducts(
+              searchTerm: _searchTerm,
+              pageSize: _pageSize,
+            );
+          } catch (_) {}
+        }
+      } else {
+        items = await CatalogueService.fetchProducts(
+          categoryId: _selectedCategoryId,
+          searchTerm: _searchTerm,
+          page: nextPage,
+          pageSize: _pageSize,
+        );
       }
-      if (_selectedCategoryId != null) {
-        params['categoryId'] = _selectedCategoryId.toString();
-      }
-      final res = loadByCategory
-          ? null
-          : await ApiService.get(ApiConfig.products, queryParameters: params);
-      final items = loadByCategory
-          ? await _fetchProductsForCategories()
-          : _extractProductItems(res);
       if (mounted) {
         setState(() {
           _products = reset ? items : [..._products, ...items];
@@ -127,44 +135,6 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
         });
       }
     }
-  }
-
-  Future<List<dynamic>> _fetchProductsForCategories() async {
-    final pages = await Future.wait(_categories.map((item) async {
-      final category = Map<String, dynamic>.from(item as Map);
-      try {
-        final res = await ApiService.get(ApiConfig.products, queryParameters: {
-          'categoryId': category['id'].toString(),
-          'pageNumber': '1',
-          'pageSize': '$_pageSize',
-          if (_searchTerm.trim().isNotEmpty) 'searchTerm': _searchTerm.trim(),
-        });
-        return _extractProductItems(res);
-      } catch (_) {
-        return const <dynamic>[];
-      }
-    }));
-    final seenIds = <dynamic>{};
-    return [
-      for (final product in pages.expand((page) => page))
-        if (seenIds.add(Map<String, dynamic>.from(product as Map)['id']))
-          product,
-    ];
-  }
-
-  /// Keep the sales catalogue compatible with every valid response shape the
-  /// deployed endpoint uses, matching the Categories page's tolerant reader.
-  List<dynamic> _extractProductItems(dynamic response) {
-    if (response is List) return List<dynamic>.from(response);
-    if (response is! Map) return const [];
-    final data = response['data'];
-    if (data is List) return List<dynamic>.from(data);
-    if (data is Map) {
-      final items = data['items'] ?? data['products'] ?? data['rows'];
-      if (items is List) return List<dynamic>.from(items);
-    }
-    final items = response['items'] ?? response['products'];
-    return items is List ? List<dynamic>.from(items) : const [];
   }
 
   void _setSearch(String value) {
@@ -189,20 +159,19 @@ class _PosCheckoutViewState extends State<PosCheckoutView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PageIntro(
-            eyebrow: 'Sell',
-            title: 'Checkout workspace',
-            description:
-                'Tap items to add them to the current sale. The product browser and cart now stay compact and readable across screen sizes.',
-            action: provider.cartItems.isEmpty || compact
-                ? null
-                : StatusPill(
-                    label:
-                        '${formatQuantity(provider.cartCount)} items · ₹${provider.cartTotal.toStringAsFixed(0)}',
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+          Row(
+            children: [
+              Text('Sell', style: Theme.of(context).textTheme.titleLarge),
+              const Spacer(),
+              if (provider.cartItems.isNotEmpty)
+                StatusPill(
+                  label:
+                      '${formatQuantity(provider.cartCount)} · ₹${provider.cartTotal.toStringAsFixed(0)}',
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+            ],
           ),
-          SizedBox(height: compact ? 12 : 16),
+          const SizedBox(height: 12),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {

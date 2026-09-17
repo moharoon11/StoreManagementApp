@@ -85,6 +85,7 @@ class ResponsiveLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final compact = MediaQuery.sizeOf(context).width < Ui.compactMax;
+    final isFullScreenReport = compact && provider.selectedNavIndex == 4;
     final active = _navItems[provider.selectedNavIndex];
     final content = IndexedStack(
       index: provider.selectedNavIndex,
@@ -93,28 +94,30 @@ class ResponsiveLayout extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: WorkspaceBackdrop(
-        child: SafeArea(
-          child: compact
-              ? _CompactWorkspace(
-                  active: active,
-                  child: content,
-                  onOpenCart: () => openCart(context),
-                  onShowMore: () => _showMore(context),
-                )
-              : _DesktopWorkspace(
-                  active: active,
-                  selectedIndex: provider.selectedNavIndex,
-                  onSelect: provider.setNavIndex,
-                  child: content,
-                  onQuickSale: () => provider.setNavIndex(1),
-                  onOpenCart: () => openCart(context),
-                  onOpenBusiness: () => provider.setNavIndex(7),
-                  onShowMore: () => _showMore(context),
-                ),
-        ),
-      ),
-      bottomNavigationBar: compact
+      body: isFullScreenReport
+          ? const InvoiceHistoryView(fullScreen: true)
+          : WorkspaceBackdrop(
+              child: SafeArea(
+                child: compact
+                    ? _CompactWorkspace(
+                        active: active,
+                        child: content,
+                        onOpenCart: () => openCart(context),
+                        onShowMore: () => _showMore(context),
+                      )
+                    : _DesktopWorkspace(
+                        active: active,
+                        selectedIndex: provider.selectedNavIndex,
+                        onSelect: provider.setNavIndex,
+                        child: content,
+                        onQuickSale: () => provider.setNavIndex(1),
+                        onOpenCart: () => openCart(context),
+                        onOpenBusiness: () => provider.setNavIndex(7),
+                        onShowMore: () => _showMore(context),
+                      ),
+              ),
+            ),
+      bottomNavigationBar: compact && !isFullScreenReport
           ? _BottomWorkspaceBar(
               selectedIndex: _bottomIndex(provider.selectedNavIndex),
               onSelect: (index) {

@@ -8,6 +8,7 @@ import '../../config/api_config.dart';
 import '../../providers/app_provider.dart';
 import '../../services/adaptive_image_service.dart';
 import '../../services/api_service.dart';
+import '../../services/catalogue_service.dart';
 import '../../utils/quantity_utils.dart';
 import '../../widgets/adaptive_image_preview.dart';
 import '../../widgets/workspace_ui.dart';
@@ -52,12 +53,21 @@ class _ProductsViewState extends State<ProductsView> {
 
   Future<void> _fetchProducts() async {
     try {
-      // The server's unfiltered catalogue response is inconsistent in the
-      // deployed API, while category-scoped results are reliable (as seen on
-      // the Categories page). Build the All-products view from those reliable
-      // category pages instead.
       if (_selectedCategoryId == null && _categories.isNotEmpty) {
-        final items = await _fetchProductsForCategories();
+        final categoryItems = await CatalogueService.fetchAcrossCategories(
+          _categories,
+          searchTerm: _searchTerm,
+        );
+        // Do not allow the unstable root endpoint to discard category results.
+        // Categories proves these product pages are available to the user.
+        var items = categoryItems;
+        if (items.isEmpty) {
+          try {
+            items = await CatalogueService.fetchProducts(
+              searchTerm: _searchTerm,
+            );
+          } catch (_) {}
+        }
         if (mounted) {
           setState(() {
             _products = items;
@@ -66,25 +76,13 @@ class _ProductsViewState extends State<ProductsView> {
         }
         return;
       }
-      final queryParams = <String, String>{
-        'pageNumber': '1',
-        // The live endpoint caps catalogue pages at 30; using 50 made this
-        // screen silently receive no usable page while Categories (30) worked.
-        'pageSize': '30',
-      };
-      if (_searchTerm.isNotEmpty) {
-        queryParams['searchTerm'] = _searchTerm;
-      }
-      if (_selectedCategoryId != null) {
-        queryParams['categoryId'] = _selectedCategoryId.toString();
-      }
-      final res = await ApiService.get(
-        ApiConfig.products,
-        queryParameters: queryParams,
+      final items = await CatalogueService.fetchProducts(
+        categoryId: _selectedCategoryId,
+        searchTerm: _searchTerm,
       );
       if (mounted) {
         setState(() {
-          _products = _extractProductItems(res);
+          _products = items;
           _isLoading = false;
         });
       }
@@ -93,45 +91,6 @@ class _ProductsViewState extends State<ProductsView> {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  Future<List<dynamic>> _fetchProductsForCategories() async {
-    final pages = await Future.wait(_categories.map((item) async {
-      final category = Map<String, dynamic>.from(item as Map);
-      try {
-        final res = await ApiService.get(ApiConfig.products, queryParameters: {
-          'categoryId': category['id'].toString(),
-          'pageNumber': '1',
-          'pageSize': '30',
-          if (_searchTerm.isNotEmpty) 'searchTerm': _searchTerm,
-        });
-        return _extractProductItems(res);
-      } catch (_) {
-        return const <dynamic>[];
-      }
-    }));
-    final seenIds = <dynamic>{};
-    return [
-      for (final product in pages.expand((page) => page))
-        if (seenIds.add(Map<String, dynamic>.from(product as Map)['id']))
-          product,
-    ];
-  }
-
-  /// The deployed catalogue endpoint can return a paged `data.items` value,
-  /// a list in `data`, or a top-level list.  Categories already accepts the
-  /// paged form; accepting all valid forms keeps Products populated too.
-  List<dynamic> _extractProductItems(dynamic response) {
-    if (response is List) return List<dynamic>.from(response);
-    if (response is! Map) return const [];
-    final data = response['data'];
-    if (data is List) return List<dynamic>.from(data);
-    if (data is Map) {
-      final items = data['items'] ?? data['products'] ?? data['rows'];
-      if (items is List) return List<dynamic>.from(items);
-    }
-    final items = response['items'] ?? response['products'];
-    return items is List ? List<dynamic>.from(items) : const [];
   }
 
   void _showAddProductModal() {
@@ -531,50 +490,24 @@ class _ProductsViewState extends State<ProductsView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PageIntro(
-            eyebrow: 'Products',
-            title: 'Catalogue management',
-            description:
-                'A new browsing layout with a proper filter panel, safer card widths, and faster access to edit and favourite actions.',
-            action: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _loadInitialData,
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                  label: const Text('Refresh'),
-                ),
-                FilledButton.icon(
-                  onPressed: _showAddProductModal,
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Add product'),
-                ),
-              ],
-            ),
+          Row(
+            children: [
+              Text('Products', style: Theme.of(context).textTheme.titleLarge),
+              const Spacer(),
+              IconButton(
+                onPressed: _loadInitialData,
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: 'Refresh products',
+              ),
+              FilledButton.icon(
+                onPressed: _showAddProductModal,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Add'),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-          if (compact) ...[
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                StatusPill(
-                  label: '${_products.length} products',
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                StatusPill(
-                  label: '${_categories.length} categories',
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-                StatusPill(
-                  label: '${provider.favouriteProductIds.length} favourites',
-                  color: Theme.of(context).colorScheme.tertiary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-          ] else ...[
+          const SizedBox(height: 12),
+          if (!compact) ...[
             AdaptiveWrapGrid(
               minItemWidth: 180,
               children: [

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../widgets/workspace_ui.dart';
 import 'checkout_screen.dart';
 
 class ManualBillingItemModel {
   final TextEditingController rateController = TextEditingController();
   final TextEditingController qtyController = TextEditingController(text: '1');
 
-  double get rate => double.tryParse(rateController.text) ?? 0.0;
+  double get rate => double.tryParse(rateController.text) ?? 0;
   int get quantity => int.tryParse(qtyController.text) ?? 0;
   double get total => rate * quantity;
 
@@ -17,6 +16,8 @@ class ManualBillingItemModel {
   }
 }
 
+/// Direct-entry billing, deliberately kept close to a familiar invoice grid.
+/// Payment and checkout remain on the existing flow.
 class ManualBillingView extends StatefulWidget {
   const ManualBillingView({super.key});
 
@@ -36,9 +37,7 @@ class _ManualBillingViewState extends State<ManualBillingView> {
     super.dispose();
   }
 
-  void _addItem() {
-    setState(() => _items.add(ManualBillingItemModel()));
-  }
+  void _addItem() => setState(() => _items.add(ManualBillingItemModel()));
 
   void _removeItem(int index) {
     if (_items.length <= 1) return;
@@ -48,41 +47,21 @@ class _ManualBillingViewState extends State<ManualBillingView> {
     });
   }
 
-  double get _grandTotal {
-    double total = 0;
-    for (final item in _items) {
-      total += item.total;
-    }
-    return total;
-  }
-
-  int get _validItemCount {
-    var count = 0;
-    for (final item in _items) {
-      if (item.rate > 0 && item.quantity > 0) count++;
-    }
-    return count;
-  }
+  double get _grandTotal => _items.fold(0, (total, item) => total + item.total);
 
   Future<void> _beginCheckout() async {
     if (_isOpeningCheckout) return;
-
-    final validItems = <Map<String, dynamic>>[];
-    for (final item in _items) {
-      if (item.rate > 0 && item.quantity > 0) {
-        validItems.add({
-          'rate': item.rate,
-          'quantity': item.quantity,
-        });
-      }
-    }
+    final validItems = [
+      for (final item in _items)
+        if (item.rate > 0 && item.quantity > 0)
+          {'rate': item.rate, 'quantity': item.quantity},
+    ];
 
     if (validItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Add at least one item with a valid rate and quantity.',
-          ),
+          content:
+              Text('Add at least one item with a valid rate and quantity.'),
         ),
       );
       return;
@@ -98,159 +77,101 @@ class _ManualBillingViewState extends State<ManualBillingView> {
         ),
       ),
     );
-    if (mounted) {
-      setState(() => _isOpeningCheckout = false);
-    }
+    if (mounted) setState(() => _isOpeningCheckout = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final narrowBar = MediaQuery.sizeOf(context).width < 680;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manual bill'),
+        centerTitle: true,
+        title: const Text('Normal bill'),
       ),
-      body: WorkspacePage(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            PageIntro(
-              eyebrow: 'Billing',
-              title: 'Build a direct manual bill',
-              description:
-                  'Enter rate and quantity only. The checkout, payment, and invoice flow stays the same while the layout becomes denser and easier to scan.',
-              action: FilledButton.icon(
-                onPressed: _addItem,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Add line'),
-              ),
-            ),
-            const SizedBox(height: 16),
-            AdaptiveWrapGrid(
-              minItemWidth: 180,
+      body: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 14),
+            child: Row(
               children: [
-                StatTile(
-                  label: 'Line items',
-                  value: '${_items.length}',
-                  icon: Icons.format_list_bulleted_rounded,
-                  color: scheme.primary,
-                  note: 'Every card represents one bill line',
-                ),
-                StatTile(
-                  label: 'Valid rows',
-                  value: '$_validItemCount',
-                  icon: Icons.check_circle_outline_rounded,
-                  color: scheme.secondary,
-                  note: 'Rows with both rate and quantity',
-                ),
-                StatTile(
-                  label: 'Grand total',
-                  value: '₹${_grandTotal.toStringAsFixed(2)}',
-                  icon: Icons.payments_outlined,
-                  color: scheme.tertiary,
-                  note: 'Calculated live while you type',
+                SizedBox(width: 36, child: Text('#')),
+                SizedBox(width: 12),
+                Expanded(flex: 4, child: Text('Rate (₹)')),
+                SizedBox(width: 12),
+                Expanded(flex: 3, child: Text('Qty')),
+                SizedBox(width: 12),
+                Expanded(flex: 3, child: Text('Total')),
+              ],
+            ),
+          ),
+          Divider(color: scheme.outlineVariant, height: 1),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                for (var index = 0; index < _items.length; index++) ...[
+                  _ManualBillLine(
+                    index: index,
+                    item: _items[index],
+                    canDelete: _items.length > 1,
+                    onChanged: () => setState(() {}),
+                    onDelete: () => _removeItem(index),
+                  ),
+                  Divider(color: scheme.outlineVariant, height: 1),
+                ],
+                TextButton.icon(
+                  onPressed: _addItem,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Add item'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: scheme.secondary,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: SectionPanel(
-                title: 'Bill lines',
-                subtitle:
-                    'Use as many rows as you need. Empty lines are ignored during checkout.',
-                action: OutlinedButton.icon(
-                  onPressed: _addItem,
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Add row'),
-                ),
-                child: ListView.separated(
-                  itemCount: _items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final item = _items[index];
-                    return _ManualBillLineCard(
-                      index: index,
-                      item: item,
-                      canDelete: _items.length > 1,
-                      onChanged: () => setState(() {}),
-                      onDelete: () => _removeItem(index),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: SurfacePanel(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: narrowBar
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _ManualBillSummary(
-                        total: _grandTotal,
-                        validItemCount: _validItemCount,
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _isOpeningCheckout ? null : _beginCheckout,
-                          icon: _isOpeningCheckout
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.lock_outline_rounded,
-                                  size: 18),
-                          label: Text(
-                            _isOpeningCheckout
-                                ? 'Opening checkout...'
-                                : 'Continue to checkout',
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      Expanded(
-                        child: _ManualBillSummary(
-                          total: _grandTotal,
-                          validItemCount: _validItemCount,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      SizedBox(
-                        width: 220,
-                        child: FilledButton.icon(
-                          onPressed: _isOpeningCheckout ? null : _beginCheckout,
-                          icon: _isOpeningCheckout
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.lock_outline_rounded,
-                                  size: 18),
-                          label: Text(
-                            _isOpeningCheckout ? 'Opening...' : 'Checkout',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            border: Border(top: BorderSide(color: scheme.outlineVariant)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Grand total',
+                        style: Theme.of(context).textTheme.bodyMedium),
+                    const SizedBox(height: 2),
+                    Text(
+                      '₹${_grandTotal.toStringAsFixed(2)}',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                width: 168,
+                child: FilledButton(
+                  onPressed: _isOpeningCheckout ? null : _beginCheckout,
+                  child: _isOpeningCheckout
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Checkout'),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -258,45 +179,8 @@ class _ManualBillingViewState extends State<ManualBillingView> {
   }
 }
 
-class _ManualBillSummary extends StatelessWidget {
-  const _ManualBillSummary({
-    required this.total,
-    required this.validItemCount,
-  });
-
-  final double total;
-  final int validItemCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Ready to bill',
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: scheme.primary,
-              ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '₹${total.toStringAsFixed(2)}',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '$validItemCount valid line${validItemCount == 1 ? '' : 's'} included',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
-    );
-  }
-}
-
-class _ManualBillLineCard extends StatelessWidget {
-  const _ManualBillLineCard({
+class _ManualBillLine extends StatelessWidget {
+  const _ManualBillLine({
     required this.index,
     required this.item,
     required this.canDelete,
@@ -313,113 +197,63 @@ class _ManualBillLineCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: .18),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
         children: [
-          Row(
-            children: [
-              StatusPill(
-                label: 'Line ${index + 1}',
-                color: scheme.primary,
-              ),
-              const Spacer(),
-              Text(
-                '₹${item.total.toStringAsFixed(2)}',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: scheme.secondary,
-                    ),
-              ),
-              if (canDelete) ...[
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: onDelete,
-                  tooltip: 'Remove row',
-                  icon:
-                      Icon(Icons.close_rounded, color: scheme.error, size: 18),
-                ),
-              ],
-            ],
+          SizedBox(
+            width: 36,
+            child: Text('${index + 1}.',
+                style: Theme.of(context).textTheme.bodyLarge),
           ),
-          const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final narrow = constraints.maxWidth < 520;
-              if (narrow) {
-                return Column(
-                  children: [
-                    _ManualField(
-                      label: 'Rate (₹)',
-                      controller: item.rateController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => onChanged(),
-                    ),
-                    const SizedBox(height: 10),
-                    _ManualField(
-                      label: 'Quantity',
-                      controller: item.qtyController,
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) => onChanged(),
-                    ),
-                  ],
-                );
-              }
-              return Row(
-                children: [
-                  Expanded(
-                    child: _ManualField(
-                      label: 'Rate (₹)',
-                      controller: item.rateController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => onChanged(),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _ManualField(
-                      label: 'Quantity',
-                      controller: item.qtyController,
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) => onChanged(),
-                    ),
-                  ),
-                ],
-              );
-            },
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 4,
+            child: TextField(
+              controller: item.rateController,
+              onChanged: (_) => onChanged(),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(hintText: '0.00'),
+            ),
           ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 3,
+            child: TextField(
+              controller: item.qtyController,
+              onChanged: (_) => onChanged(),
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              decoration: const InputDecoration(),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 3,
+            child: Text(
+              '₹${item.total.toStringAsFixed(2)}',
+              textAlign: TextAlign.right,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(color: scheme.secondary),
+            ),
+          ),
+          if (canDelete)
+            SizedBox(
+              width: 26,
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints.tightFor(width: 26, height: 26),
+                onPressed: onDelete,
+                icon: Icon(Icons.close_rounded, size: 17, color: scheme.error),
+                tooltip: 'Remove item',
+              ),
+            ),
         ],
       ),
-    );
-  }
-}
-
-class _ManualField extends StatelessWidget {
-  const _ManualField({
-    required this.label,
-    required this.controller,
-    required this.keyboardType,
-    required this.onChanged,
-  });
-
-  final String label;
-  final TextEditingController controller;
-  final TextInputType keyboardType;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      onChanged: onChanged,
-      decoration: InputDecoration(labelText: label),
     );
   }
 }
