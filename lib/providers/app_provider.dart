@@ -1,6 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/favourite_service.dart';
 import '../services/storage_service.dart';
 import '../config/api_config.dart';
 import '../utils/quantity_utils.dart';
@@ -13,6 +15,9 @@ class AppProvider extends ChangeNotifier {
 
   bool _isAuthenticated = false;
   bool get isAuthenticated => _isAuthenticated;
+
+  bool _hasSeenWelcome = false;
+  bool get hasSeenWelcome => _hasSeenWelcome;
 
   String _username = '';
   String get username => _username;
@@ -30,6 +35,8 @@ class AppProvider extends ChangeNotifier {
   AppThemeOption get themeOption => _themeOption;
 
   final Set<int> _favouriteProductIds = <int>{};
+  final Map<int, bool> _pendingFavouriteOperations = <int, bool>{};
+  bool _isSyncingFavourites = false;
   Set<int> get favouriteProductIds => Set.unmodifiable(_favouriteProductIds);
   bool isFavourite(int productId) => _favouriteProductIds.contains(productId);
 
@@ -78,6 +85,7 @@ class AppProvider extends ChangeNotifier {
         orElse: () => AppThemeOption.light,
       );
       _themeOption = _normalizedThemeOption(resolvedTheme);
+      _hasSeenWelcome = await StorageService.hasSeenWelcome();
       if (savedTheme != null && savedTheme != _themeOption.name) {
         await StorageService.saveTheme(_themeOption.name);
       }
@@ -88,6 +96,10 @@ class AppProvider extends ChangeNotifier {
         _favouriteProductIds
           ..clear()
           ..addAll(await StorageService.getFavouriteProductIds());
+        _pendingFavouriteOperations
+          ..clear()
+          ..addAll(await StorageService.getFavouriteSyncOperations());
+        unawaited(_refreshFavouritesFromServer());
       } else {
         _isAuthenticated = false;
       }
@@ -103,6 +115,13 @@ class AppProvider extends ChangeNotifier {
   void setNavIndex(int index) {
     _selectedNavIndex = index;
     notifyListeners();
+  }
+
+  Future<void> completeWelcome() async {
+    if (_hasSeenWelcome) return;
+    _hasSeenWelcome = true;
+    notifyListeners();
+    await StorageService.saveHasSeenWelcome();
   }
 
   Future<void> setThemeOption(AppThemeOption option) async {
@@ -136,8 +155,12 @@ class AppProvider extends ChangeNotifier {
         _favouriteProductIds
           ..clear()
           ..addAll(await StorageService.getFavouriteProductIds());
+        _pendingFavouriteOperations
+          ..clear()
+          ..addAll(await StorageService.getFavouriteSyncOperations());
         _isLoading = false;
         notifyListeners();
+        unawaited(_refreshFavouritesFromServer());
         return true;
       } else {
         _errorMessage = response['message'];
@@ -171,8 +194,15 @@ class AppProvider extends ChangeNotifier {
         );
         _isAuthenticated = true;
         _username = data['username'];
+        _favouriteProductIds
+          ..clear()
+          ..addAll(await StorageService.getFavouriteProductIds());
+        _pendingFavouriteOperations
+          ..clear()
+          ..addAll(await StorageService.getFavouriteSyncOperations());
         _isLoading = false;
         notifyListeners();
+        unawaited(_refreshFavouritesFromServer());
         return true;
       } else {
         _errorMessage = response['message'];
@@ -190,6 +220,8 @@ class AppProvider extends ChangeNotifier {
     await StorageService.clearAuthData();
     _isAuthenticated = false;
     _username = '';
+    _favouriteProductIds.clear();
+    _pendingFavouriteOperations.clear();
     _cartItems.clear();
     _selectedNavIndex = 0;
     notifyListeners();
@@ -248,14 +280,85 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Updates immediately in Flutter and persists locally.  No favourite API
-  /// request is made, which keeps the control instant even when offline.
+  /// Updates instantly on-device, then queues a background API update. This
+  /// keeps the control responsive while favourites remain available on another
+  /// phone after the sync succeeds.
   void toggleFavourite(int productId) {
-    if (!_favouriteProductIds.add(productId)) {
+    final shouldBeFavourite = !_favouriteProductIds.contains(productId);
+    if (shouldBeFavourite) {
+      _favouriteProductIds.add(productId);
+    } else {
       _favouriteProductIds.remove(productId);
     }
+    _pendingFavouriteOperations[productId] = shouldBeFavourite;
     notifyListeners();
-    StorageService.saveFavouriteProductIds(_favouriteProductIds);
+    unawaited(StorageService.saveFavouriteProductIds(_favouriteProductIds));
+    unawaited(
+        StorageService.saveFavouriteSyncOperations(_pendingFavouriteOperations));
+    unawaited(_syncPendingFavourites());
+  }
+
+  Future<void> _refreshFavouritesFromServer() async {
+    if (!_isAuthenticated) return;
+    try {
+      final fromServer = await FavouriteService.fetchIds();
+      // Server data is authoritative except for unsent local actions.
+      for (final entry in _pendingFavouriteOperations.entries) {
+        if (entry.value) {
+          fromServer.add(entry.key);
+        } else {
+          fromServer.remove(entry.key);
+        }
+      }
+      _favouriteProductIds
+        ..clear()
+        ..addAll(fromServer);
+      await StorageService.saveFavouriteProductIds(_favouriteProductIds);
+      notifyListeners();
+    } catch (_) {
+      // The cached list remains available offline; queued updates retry later.
+    }
+    unawaited(_syncPendingFavourites());
+  }
+
+  Future<void> _syncPendingFavourites() async {
+    if (_isSyncingFavourites || !_isAuthenticated) return;
+    _isSyncingFavourites = true;
+    try {
+      while (_pendingFavouriteOperations.isNotEmpty) {
+        if (!_isAuthenticated) {
+          break;
+        }
+        final operations = Map<int, bool>.from(_pendingFavouriteOperations);
+        _pendingFavouriteOperations.clear();
+        await StorageService.saveFavouriteSyncOperations(
+          _pendingFavouriteOperations,
+        );
+        for (final entry in operations.entries) {
+          try {
+            await FavouriteService.setFavourite(
+              productId: entry.key,
+              isFavourite: entry.value,
+            );
+          } catch (_) {
+            // Preserve the newest local intent if the same item was changed
+            // again while this network request was running.
+            _pendingFavouriteOperations.putIfAbsent(
+              entry.key,
+              () => entry.value,
+            );
+          }
+        }
+        await StorageService.saveFavouriteSyncOperations(
+          _pendingFavouriteOperations,
+        );
+        // Avoid a tight retry loop while the phone is offline. The persisted
+        // operations will be retried on the next app start or user action.
+        if (_pendingFavouriteOperations.isNotEmpty) break;
+      }
+    } finally {
+      _isSyncingFavourites = false;
+    }
   }
 
   /// Lets the already-mounted invoice screen show a new checkout immediately,

@@ -507,7 +507,7 @@ class _CompactHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Nexora Commerce',
+                  'BillMate',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: phone
@@ -580,7 +580,7 @@ class _BrandSummary extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Nexora Commerce',
+                'BillMate',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 4),

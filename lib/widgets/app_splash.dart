@@ -76,7 +76,7 @@ class _AppSplashState extends State<AppSplash>
                             ),
                             const SizedBox(height: 22),
                             Text(
-                              'NEXORA',
+                              'BillMate',
                               style: Theme.of(context)
                                   .textTheme
                                   .headlineMedium
@@ -84,7 +84,7 @@ class _AppSplashState extends State<AppSplash>
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Commerce, in perfect flow.',
+                              'Simple billing. Smarter business.',
                               textAlign: TextAlign.center,
                               style: Theme.of(context)
                                   .textTheme

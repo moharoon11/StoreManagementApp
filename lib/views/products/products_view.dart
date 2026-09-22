@@ -944,7 +944,10 @@ class _ProductCard extends StatelessWidget {
                               color: scheme.primary,
                             ),
                       ),
-                      const Spacer(),
+                      // Mobile cards live in a ListView, whose children have
+                      // unbounded height. Use a fixed gap instead of Spacer so
+                      // the catalogue can render on Android as well as web.
+                      const SizedBox(height: 10),
                       Text(
                         '₹${product['sellingPrice']}',
                         style: Theme.of(context).textTheme.titleMedium,

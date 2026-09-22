@@ -422,7 +422,10 @@ class _SellProductCard extends StatelessWidget {
                           color: scheme.primary,
                         ),
                   ),
-                  const Spacer(),
+                  // A ListView gives its children unbounded height on phones.
+                  // Spacer requires a bounded height and prevented Android's
+                  // mobile product cards from being laid out at all.
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       Expanded(

@@ -135,6 +135,7 @@ class _DashboardViewState extends State<DashboardView> {
                 sales: todaySales,
                 invoices: todayInvoices,
                 products: totalProducts,
+                salesTrend: salesTrend,
               ),
               const SizedBox(height: 12),
               _MobileBillingActions(
@@ -192,7 +193,7 @@ class _DashboardViewState extends State<DashboardView> {
                 ],
               ),
             ],
-            if (salesTrend.isNotEmpty) ...[
+            if (!compact && salesTrend.isNotEmpty) ...[
               const SizedBox(height: 16),
               _SalesTrendPanel(salesTrend: salesTrend),
             ],
@@ -250,11 +251,13 @@ class _MobileSalesPulse extends StatelessWidget {
     required this.sales,
     required this.invoices,
     required this.products,
+    required this.salesTrend,
   });
 
   final dynamic sales;
   final dynamic invoices;
   final dynamic products;
+  final List<dynamic> salesTrend;
 
   @override
   Widget build(BuildContext context) {
@@ -299,6 +302,8 @@ class _MobileSalesPulse extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 12),
+          _MobileSalesChart(salesTrend: salesTrend),
+          const SizedBox(height: 12),
           Container(height: 1, color: Colors.white.withValues(alpha: .24)),
           const SizedBox(height: 10),
           Row(
@@ -321,6 +326,78 @@ class _MobileSalesPulse extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A compact version of the existing seven-day chart, placed inside the
+/// mobile Today’s Sales card so it feels like one sales snapshot.
+class _MobileSalesChart extends StatelessWidget {
+  const _MobileSalesChart({required this.salesTrend});
+
+  final List<dynamic> salesTrend;
+
+  @override
+  Widget build(BuildContext context) {
+    final spots = <FlSpot>[];
+    double maxY = 0;
+    for (var index = 0; index < salesTrend.length; index++) {
+      final value = (salesTrend[index]['totalSales'] as num?)?.toDouble() ?? 0;
+      maxY = value > maxY ? value : maxY;
+      spots.add(FlSpot(index.toDouble(), value));
+    }
+
+    if (spots.isEmpty) {
+      return Container(
+        height: 104,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: .08),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          'Sales activity will appear here',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.white.withValues(alpha: .72),
+              ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 112,
+      child: LineChart(
+        LineChartData(
+          minX: 0,
+          maxX: (spots.length - 1).toDouble(),
+          minY: 0,
+          maxY: maxY == 0 ? 100 : maxY * 1.18,
+          borderData: FlBorderData(show: false),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: maxY == 0 ? 25 : maxY / 3,
+            getDrawingHorizontalLine: (_) => FlLine(
+              color: Colors.white.withValues(alpha: .16),
+              strokeWidth: 1,
+            ),
+          ),
+          titlesData: const FlTitlesData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: Colors.white,
+              barWidth: 3,
+              belowBarData: BarAreaData(
+                show: true,
+                color: Colors.white.withValues(alpha: .13),
+              ),
+              dotData: const FlDotData(show: false),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -184,12 +184,12 @@ class _BrandStrip extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'NEXORA',
+                'BILLMATE',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 6),
               Text(
-                'Retail operations, redesigned to feel crisp on both phone and desktop.',
+                'Simple billing and smarter business management for every day.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: scheme.onSurface.withValues(alpha: .72),
                     ),
@@ -397,7 +397,7 @@ class _CompactAuthHeader extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Text(
-            'Nexora Commerce',
+            'BillMate',
             style: Theme.of(context).textTheme.titleLarge,
           ),
         ),

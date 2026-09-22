@@ -18,12 +18,15 @@ void main() {
 
     await tester.pumpWidget(const StoreManagementApp());
 
-    expect(find.text('NEXORA'), findsOneWidget);
-    expect(find.text('Commerce, in perfect flow.'), findsOneWidget);
+    expect(find.text('BillMate'), findsOneWidget);
+    expect(find.text('Simple billing. Smarter business.'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 1400));
     await tester.pump();
-    expect(find.text('Nexora Commerce'), findsOneWidget);
+    expect(find.text('BillMate'), findsWidgets);
+    expect(find.text('Get started'), findsOneWidget);
+    await tester.tap(find.text('Get started'));
+    await tester.pumpAndSettle();
     expect(find.text('Sign in'), findsWidgets);
   });
 
@@ -250,7 +253,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Nexora Commerce'), findsOneWidget);
+    expect(find.text('BillMate'), findsWidgets);
     expect(find.text('Store login'), findsNothing);
     expect(find.text('Sign in'), findsWidgets);
     expect(find.text('What changed'), findsNothing);
