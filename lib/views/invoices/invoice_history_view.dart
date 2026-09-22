@@ -371,30 +371,22 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                     ),
                   )
                 else ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (var index = 0;
-                            index < _invoices.length && index < 2;
-                            index++) ...[
-                          _ReportSaleCard(
-                            invoice: Map<String, dynamic>.from(
-                                _invoices[index] as Map),
-                            index: index,
-                            onTap: () => _openSaleEditModal(
-                              Map<String, dynamic>.from(
-                                  _invoices[index] as Map),
-                            ),
-                          ),
-                          if (index == 0 && _invoices.length > 1)
-                            const SizedBox(height: 6),
-                        ],
-                      ],
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+                      itemCount: _invoices.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      itemBuilder: (context, index) => _ReportSaleCard(
+                        invoice: Map<String, dynamic>.from(
+                            _invoices[index] as Map),
+                        index: index,
+                        onTap: () => _openSaleEditModal(
+                          Map<String, dynamic>.from(
+                              _invoices[index] as Map),
+                        ),
+                      ),
                     ),
                   ),
-                  const Expanded(child: SizedBox()),
                 ],
               ],
             ),
