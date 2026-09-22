@@ -461,18 +461,18 @@ class _MobileBillingActions extends StatelessWidget {
       children: [
         _BillingActionTile(
           icon: Icons.add_rounded,
-          title: 'New bill',
-          subtitle: 'Create a normal bill',
+          title: 'Quick sale',
+          subtitle: 'Fast billing in seconds',
           color: scheme.primary,
-          onTap: onManualBill,
+          onTap: onQuickSale,
         ),
         const SizedBox(height: 10),
         _BillingActionTile(
           icon: Icons.bolt_rounded,
-          title: 'Quick sale',
-          subtitle: 'Fast billing in seconds',
+          title: 'New bill',
+          subtitle: 'Create a normal bill',
           color: scheme.secondary,
-          onTap: onQuickSale,
+          onTap: onManualBill,
         ),
       ],
     );

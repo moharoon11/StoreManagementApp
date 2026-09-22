@@ -68,22 +68,45 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       final customerName = _nameController.text.trim();
+      // A name is optional for the cashier. The hosted API currently rejects
+      // an empty value, so retain the familiar walk-in-customer default when
+      // the field is left blank.
+      final resolvedCustomerName =
+          customerName.isEmpty ? 'Walk-in customer' : customerName;
       final customerMobile = _mobileController.text.trim();
       final invoiceDate = DateFormat('yyyy-MM-dd').format(_invoiceDate);
       final grandTotal =
           widget.isManual ? widget.manualTotal ?? 0.0 : provider.cartTotal;
-      final amountReceived = double.tryParse(_amountReceivedController.text) ??
+      final enteredAmount = double.tryParse(_amountReceivedController.text) ??
           (_isReceived ? grandTotal : 0.0);
+      // The server treats a fully-received invoice as exactly paid. Sending a
+      // stale or manually edited amount while this switch is on can cause its
+      // payment validation to reject an otherwise valid manual bill.
+      final amountReceived = _isReceived
+          ? grandTotal
+          : enteredAmount.clamp(0.0, grandTotal).toDouble();
 
       late final Map<String, dynamic> response;
       if (widget.isManual) {
+        // Send a fresh, strongly typed payload rather than forwarding dynamic
+        // UI values. The API expects a decimal rate and whole-item quantity.
+        final manualItems = [
+          for (final item in widget.manualItems ?? const <Map<String, dynamic>>[])
+            if ((item['rate'] as num?) != null &&
+                (item['rate'] as num) > 0 &&
+                quantityValue(item['quantity']) > 0)
+              {
+                'rate': (item['rate'] as num).toDouble(),
+                'quantity': quantityValue(item['quantity']).round(),
+              },
+        ];
         response = await ApiService.post(ApiConfig.manualCheckout, {
-          'customerName': customerName,
+          'customerName': resolvedCustomerName,
           'customerMobileNumber': customerMobile,
           'isReceived': _isReceived,
           'amountReceived': amountReceived,
           'invoiceDate': invoiceDate,
-          'items': widget.manualItems,
+          'items': manualItems,
         });
       } else {
         final items = provider.cartItems.values.map((item) {
@@ -94,7 +117,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }).toList();
 
         response = await ApiService.post(ApiConfig.checkout, {
-          'customerName': customerName,
+          'customerName': resolvedCustomerName,
           'customerMobileNumber': customerMobile,
           'isReceived': _isReceived,
           'amountReceived': amountReceived,

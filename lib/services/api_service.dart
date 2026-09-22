@@ -159,11 +159,33 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body ?? response.body;
     } else {
-      final message =
-          (body != null && body is Map && body.containsKey('message'))
-              ? body['message']
-              : 'An error occurred (Status ${response.statusCode})';
-      throw Exception(message);
+      throw Exception(_errorMessage(body, response.statusCode));
     }
+  }
+
+  /// ASP.NET validation responses use `errors` rather than the app's usual
+  /// `message` property. Preserve those details so a 400 points to the input
+  /// that needs attention instead of appearing as an unexplained failure.
+  static String _errorMessage(dynamic body, int statusCode) {
+    if (body is! Map) return 'An error occurred (Status $statusCode)';
+    final map = Map<String, dynamic>.from(body);
+    final errors = map['errors'];
+    if (errors is Map) {
+      final details = <String>[];
+      for (final entry in errors.entries) {
+        final value = entry.value;
+        final messages = value is List
+            ? value.map((message) => message.toString()).where((message) => message.isNotEmpty)
+            : [value?.toString() ?? ''];
+        final joined = messages.where((message) => message.isNotEmpty).join(', ');
+        if (joined.isNotEmpty) details.add('${entry.key}: $joined');
+      }
+      if (details.isNotEmpty) return details.join('\n');
+    }
+    for (final key in const ['message', 'detail', 'title']) {
+      final value = map[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return 'An error occurred (Status $statusCode)';
   }
 }
