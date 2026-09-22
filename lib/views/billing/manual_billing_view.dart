@@ -5,6 +5,8 @@ import 'checkout_screen.dart';
 class ManualBillingItemModel {
   final TextEditingController rateController = TextEditingController();
   final TextEditingController qtyController = TextEditingController(text: '1');
+  final FocusNode rateFocusNode = FocusNode();
+  final FocusNode qtyFocusNode = FocusNode();
 
   double get rate => double.tryParse(rateController.text) ?? 0;
   int get quantity => int.tryParse(qtyController.text) ?? 0;
@@ -13,6 +15,8 @@ class ManualBillingItemModel {
   void dispose() {
     rateController.dispose();
     qtyController.dispose();
+    rateFocusNode.dispose();
+    qtyFocusNode.dispose();
   }
 }
 
@@ -37,7 +41,15 @@ class _ManualBillingViewState extends State<ManualBillingView> {
     super.dispose();
   }
 
-  void _addItem() => setState(() => _items.add(ManualBillingItemModel()));
+  void _addItem() {
+    final item = ManualBillingItemModel();
+    setState(() => _items.add(item));
+    // Wait until Flutter has inserted the new row before moving the keyboard
+    // focus, otherwise typing can continue in the previous item by mistake.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) item.rateFocusNode.requestFocus();
+    });
+  }
 
   void _removeItem(int index) {
     if (_items.length <= 1) return;
@@ -211,7 +223,10 @@ class _ManualBillLine extends StatelessWidget {
             flex: 4,
             child: TextField(
               controller: item.rateController,
+              focusNode: item.rateFocusNode,
               onChanged: (_) => onChanged(),
+              textInputAction: TextInputAction.next,
+              onEditingComplete: () => item.qtyFocusNode.requestFocus(),
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(hintText: '0.00'),
@@ -222,7 +237,9 @@ class _ManualBillLine extends StatelessWidget {
             flex: 3,
             child: TextField(
               controller: item.qtyController,
+              focusNode: item.qtyFocusNode,
               onChanged: (_) => onChanged(),
+              textInputAction: TextInputAction.done,
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
               decoration: const InputDecoration(),
