@@ -12,12 +12,16 @@ abstract final class AdaptiveImageService {
     String sheetTitle = 'Select image',
     String galleryLabel = 'Choose from gallery',
     String cameraLabel = 'Take a photo',
-    int imageQuality = 80,
+    int imageQuality = 68,
+    double? maxWidth = 1600,
+    double? maxHeight = 1600,
   }) async {
     if (!PlatformCapabilities.supportsCameraCapture) {
       return _picker.pickImage(
         source: ImageSource.gallery,
         imageQuality: imageQuality,
+        maxWidth: maxWidth,
+        maxHeight: maxHeight,
       );
     }
 
@@ -53,12 +57,19 @@ abstract final class AdaptiveImageService {
     );
 
     if (source == null) return null;
-    return pickDirect(source, imageQuality: imageQuality);
+    return pickDirect(
+      source,
+      imageQuality: imageQuality,
+      maxWidth: maxWidth,
+      maxHeight: maxHeight,
+    );
   }
 
   static Future<XFile?> pickDirect(
     ImageSource source, {
-    int imageQuality = 80,
+    int imageQuality = 68,
+    double? maxWidth = 1600,
+    double? maxHeight = 1600,
   }) {
     final effectiveSource = source == ImageSource.camera &&
             !PlatformCapabilities.supportsCameraCapture
@@ -68,6 +79,8 @@ abstract final class AdaptiveImageService {
     return _picker.pickImage(
       source: effectiveSource,
       imageQuality: imageQuality,
+      maxWidth: maxWidth,
+      maxHeight: maxHeight,
     );
   }
 }

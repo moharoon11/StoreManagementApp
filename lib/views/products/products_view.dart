@@ -186,14 +186,19 @@ class _ProductsViewState extends State<ProductsView> {
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(color: scheme.outlineVariant),
                   ),
-                  child: isUploading
-                      ? const Center(child: CircularProgressIndicator())
-                      : AdaptiveImagePreview(
-                          pickedImage: pickedImageFile,
-                          imageUrl: productImageUrl,
-                          fit: BoxFit.cover,
-                          placeholder: const _ImagePlaceholder(),
-                        ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      AdaptiveImagePreview(
+                        pickedImage: pickedImageFile,
+                        imageUrl: productImageUrl,
+                        fit: BoxFit.cover,
+                        placeholder: const _ImagePlaceholder(),
+                      ),
+                      if (isUploading)
+                        const Center(child: CircularProgressIndicator()),
+                    ],
+                  ),
                 ),
               );
 

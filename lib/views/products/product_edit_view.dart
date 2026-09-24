@@ -372,7 +372,7 @@ class _ProductEditViewState extends State<ProductEditView> {
               ),
             ),
           ),
-          if (_isLoading || _isUploading)
+          if (_isLoading)
             Positioned.fill(
               child: ColoredBox(
                 color: Colors.black.withValues(alpha: .16),
@@ -482,18 +482,23 @@ class _ImageEditorPanel extends StatelessWidget {
                   .withValues(alpha: .22),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: isUploading
-                ? const Center(child: CircularProgressIndicator())
-                : ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: AdaptiveImagePreview(
-                      pickedImage: pickedImageFile,
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      placeholder: const _ProductImagePlaceholder(),
-                    ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: AdaptiveImagePreview(
+                    pickedImage: pickedImageFile,
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    placeholder: const _ProductImagePlaceholder(),
                   ),
+                ),
+                if (isUploading)
+                  const Center(child: CircularProgressIndicator()),
+              ],
+            ),
           ),
         ),
       ),

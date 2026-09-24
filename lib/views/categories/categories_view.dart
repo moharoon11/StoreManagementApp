@@ -66,7 +66,7 @@ class _CategoriesViewState extends State<CategoriesView> {
   void _setLayout(_CategoryLayout layout) {
     if (_layout == layout) return;
     // A search field from the previous layout can retain focus in the
-    // IndexedStack. Clear it so switching views cannot summon the keyboard.
+    // workspace. Clear it so switching views cannot summon the keyboard.
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _layout = layout);
     StorageService.saveCategoryLayout(layout.name);
@@ -549,18 +549,24 @@ class _CategoryEditorViewState extends State<_CategoryEditorView> {
                                 border:
                                     Border.all(color: scheme.outlineVariant),
                               ),
-                              child: _isUploading
-                                  ? const Center(
-                                      child: CircularProgressIndicator())
-                                  : AdaptiveImagePreview(
-                                      pickedImage: _pickedImage,
-                                      imageUrl: _imageUrl,
-                                      fit: BoxFit.cover,
-                                      placeholder: Icon(
-                                        Icons.add_photo_alternate_outlined,
-                                        color: scheme.primary,
-                                      ),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  AdaptiveImagePreview(
+                                    pickedImage: _pickedImage,
+                                    imageUrl: _imageUrl,
+                                    fit: BoxFit.cover,
+                                    placeholder: Icon(
+                                      Icons.add_photo_alternate_outlined,
+                                      color: scheme.primary,
                                     ),
+                                  ),
+                                  if (_isUploading)
+                                    const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                         ),

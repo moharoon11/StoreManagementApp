@@ -86,9 +86,11 @@ class ResponsiveLayout extends StatelessWidget {
     final compact = MediaQuery.sizeOf(context).width < Ui.compactMax;
     final isFullScreenReport = compact && provider.selectedNavIndex == 4;
     final active = _navItems[provider.selectedNavIndex];
-    final content = IndexedStack(
-      index: provider.selectedNavIndex,
-      children: _views,
+    // Screens are recreated only when opened. This keeps every catalogue,
+    // report, and stock view current without asking the user to refresh.
+    final content = KeyedSubtree(
+      key: ValueKey(provider.selectedNavIndex),
+      child: _views[provider.selectedNavIndex],
     );
 
     return Scaffold(
@@ -148,63 +150,69 @@ class ResponsiveLayout extends StatelessWidget {
           final crossAxisCount = width >= 720 ? 3 : 2;
 
           return SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Workspace menu',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: scheme.primary,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * .88,
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Workspace menu',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: scheme.primary,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Jump between tools or sign out.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurface.withValues(alpha: .66),
+                          ),
+                    ),
+                    const SizedBox(height: 18),
+                    GridView.count(
+                      shrinkWrap: true,
+                      crossAxisCount: crossAxisCount,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: width >= 720
+                          ? 2.05
+                          : width < 450
+                              ? 1.34
+                              : 1.85,
+                      children: [
+                        for (var index = 0; index < _navItems.length; index++)
+                          _MenuTile(
+                            item: _navItems[index],
+                            selected: provider.selectedNavIndex == index,
+                            onTap: () {
+                              provider.setNavIndex(index);
+                              Navigator.pop(sheetContext);
+                            },
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(sheetContext);
+                          provider.logout();
+                        },
+                        icon: Icon(Icons.logout_rounded, color: scheme.error),
+                        label: Text(
+                          'Sign out',
+                          style: TextStyle(color: scheme.error),
                         ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Jump between tools or sign out.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurface.withValues(alpha: .66),
-                        ),
-                  ),
-                  const SizedBox(height: 18),
-                  GridView.count(
-                    shrinkWrap: true,
-                    crossAxisCount: crossAxisCount,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: width >= 720
-                        ? 2.05
-                        : width < 450
-                            ? 1.34
-                            : 1.85,
-                    children: [
-                      for (var index = 0; index < _navItems.length; index++)
-                        _MenuTile(
-                          item: _navItems[index],
-                          selected: provider.selectedNavIndex == index,
-                          onTap: () {
-                            provider.setNavIndex(index);
-                            Navigator.pop(sheetContext);
-                          },
-                        ),
-                    ],
-                  ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(sheetContext);
-                        provider.logout();
-                      },
-                      icon: Icon(Icons.logout_rounded, color: scheme.error),
-                      label: Text(
-                        'Sign out',
-                        style: TextStyle(color: scheme.error),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
