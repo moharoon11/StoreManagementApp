@@ -17,6 +17,9 @@ class AppProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
   bool get isAuthenticated => _isAuthenticated;
 
+  bool _hasCompletedStoreSetup = false;
+  bool get hasCompletedStoreSetup => _hasCompletedStoreSetup;
+
   bool _hasSeenWelcome = false;
   bool get hasSeenWelcome => _hasSeenWelcome;
 
@@ -92,6 +95,7 @@ class AppProvider extends ChangeNotifier {
       }
       final token = await StorageService.getToken();
       if (token != null && token.isNotEmpty) {
+        await _refreshStoreSetupStatus();
         _isAuthenticated = true;
         _username = (await StorageService.getUsername()) ?? '';
         _favouriteProductIds
@@ -115,6 +119,28 @@ class AppProvider extends ChangeNotifier {
 
   void setNavIndex(int index) {
     _selectedNavIndex = index;
+    notifyListeners();
+  }
+
+  Future<void> _refreshStoreSetupStatus() async {
+    _hasCompletedStoreSetup = false;
+    try {
+      final response = await ApiService.get(ApiConfig.storeProfile);
+      final data = response is Map ? response['data'] : null;
+      if (response is Map && response['success'] == true && data is Map) {
+        final storeName = data['storeName']?.toString().trim() ?? '';
+        final ownerName = data['ownerName']?.toString().trim() ?? '';
+        _hasCompletedStoreSetup = storeName.isNotEmpty && ownerName.isNotEmpty;
+      }
+    } catch (_) {
+      // A missing profile and an unavailable lookup both keep the account in
+      // the setup flow, where saving the required business details can retry.
+    }
+  }
+
+  void completeStoreSetup() {
+    if (_hasCompletedStoreSetup) return;
+    _hasCompletedStoreSetup = true;
     notifyListeners();
   }
 
@@ -150,6 +176,7 @@ class AppProvider extends ChangeNotifier {
           username: data['username'],
           userId: data['userId'],
         );
+        await _refreshStoreSetupStatus();
         _isAuthenticated = true;
         _username = data['username'];
         _favouriteProductIds
@@ -192,6 +219,7 @@ class AppProvider extends ChangeNotifier {
           username: data['username'],
           userId: data['userId'],
         );
+        await _refreshStoreSetupStatus();
         _isAuthenticated = true;
         _username = data['username'];
         _favouriteProductIds
@@ -219,6 +247,7 @@ class AppProvider extends ChangeNotifier {
   Future<void> logout() async {
     await StorageService.clearAuthData();
     _isAuthenticated = false;
+    _hasCompletedStoreSetup = false;
     _username = '';
     _favouriteProductIds.clear();
     _pendingFavouriteOperations.clear();

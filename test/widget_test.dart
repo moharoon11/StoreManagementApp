@@ -129,6 +129,50 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1300));
   });
 
+  testWidgets('keeps a long current-sale line within a narrow phone',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final provider = AppProvider();
+    provider.addToCart(<String, dynamic>{
+      'id': 1,
+      'name': 'MT15 Deluxe',
+      'sellingPrice': 208000.0,
+      'stockQuantity': 10.0,
+      'unit': 'Piece',
+    });
+
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 620);
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: provider,
+        child: MaterialApp(
+          home: Builder(
+            builder: (pageContext) => Scaffold(
+              body: SizedBox(
+                width: 268,
+                height: 500,
+                child: CartPanel(pageContext: pageContext),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.text('₹208000.00'), findsWidgets);
+    expect(tester.takeException(), isNull);
+
+    await tester.pump(const Duration(milliseconds: 1300));
+  });
+
   testWidgets('renders a picked image preview without Image.file',
       (tester) async {
     final pngBytes = Uint8List.fromList(const [

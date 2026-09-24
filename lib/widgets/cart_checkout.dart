@@ -139,7 +139,10 @@ class _CartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Current sale')),
+      appBar: AppBar(
+        toolbarHeight: 56,
+        title: const Text('Current sale'),
+      ),
       body: WorkspaceBackdrop(
         child: WorkspacePage(
           child: Column(
@@ -281,8 +284,8 @@ class CartPanel extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 390;
-          final tightHeight = constraints.maxHeight < 520;
-          final sectionGap = tightHeight ? 10.0 : 16.0;
+          final tightHeight = constraints.maxHeight < 560;
+          final sectionGap = tightHeight ? 8.0 : 12.0;
           return Column(children: [
             Row(children: [
               Expanded(
@@ -290,22 +293,15 @@ class CartPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Current sale',
-                        style: tightHeight
-                            ? Theme.of(context).textTheme.titleMedium
-                            : Theme.of(context).textTheme.titleLarge),
-                    SizedBox(height: tightHeight ? 2 : 4),
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 2),
                     Text(
                       'Review the basket before checkout.',
-                      maxLines: tightHeight ? 1 : 2,
-                      overflow: tightHeight
-                          ? TextOverflow.ellipsis
-                          : TextOverflow.clip,
-                      style: (tightHeight
-                              ? Theme.of(context).textTheme.bodySmall
-                              : Theme.of(context).textTheme.bodyMedium)
-                          ?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: .62),
-                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurface.withValues(alpha: .62),
+                          ),
                     ),
                   ],
                 ),
@@ -314,9 +310,13 @@ class CartPanel extends StatelessWidget {
                 onPressed: provider.clearCart,
                 tooltip: 'Clear cart',
                 style: IconButton.styleFrom(
+                  minimumSize: const Size.square(40),
+                  maximumSize: const Size.square(40),
+                  padding: EdgeInsets.zero,
                   backgroundColor: scheme.error.withValues(alpha: .10),
                 ),
-                icon: Icon(Icons.delete_sweep_outlined, color: scheme.error),
+                icon: Icon(Icons.delete_sweep_outlined,
+                    size: 20, color: scheme.error),
               ),
             ]),
             SizedBox(height: sectionGap),
@@ -327,7 +327,7 @@ class CartPanel extends StatelessWidget {
                   ? _CartEmptyState(compact: tightHeight)
                   : ListView.separated(
                       itemCount: provider.cartItems.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (_, index) {
                         final item = provider.cartItems.values.elementAt(index);
                         final product =
@@ -349,24 +349,26 @@ class CartPanel extends StatelessWidget {
             SizedBox(height: sectionGap),
             Divider(height: 1, color: scheme.outlineVariant),
             SizedBox(height: sectionGap),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text(
-                'Total',
-                style: tightHeight
-                    ? Theme.of(context).textTheme.titleSmall
-                    : Theme.of(context).textTheme.titleMedium,
-              ),
-              Text(
-                '₹${provider.cartTotal.toStringAsFixed(2)}',
-                style: (tightHeight
-                        ? Theme.of(context).textTheme.titleLarge
-                        : Theme.of(context).textTheme.headlineSmall)
-                    ?.copyWith(
-                  color: scheme.primary,
+            Row(children: [
+              Text('Total', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '₹${provider.cartTotal.toStringAsFixed(2)}',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: scheme.primary,
+                          ),
+                    ),
+                  ),
                 ),
               ),
             ]),
-            SizedBox(height: tightHeight ? 8 : 12),
+            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -377,9 +379,7 @@ class CartPanel extends StatelessWidget {
                 label: Text(
                   _isProcessing
                       ? 'Processing...'
-                      : tightHeight
-                          ? 'Checkout'
-                          : 'Checkout ${formatQuantity(provider.cartCount)} item${provider.cartCount == 1 ? '' : 's'}',
+                      : 'Checkout ${formatQuantity(provider.cartCount)} item${provider.cartCount == 1 ? '' : 's'}',
                 ),
               ),
             ),
@@ -491,33 +491,42 @@ class _CartLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final lineTotal =
+        '₹${((product['sellingPrice'] as num).toDouble() * quantity).toStringAsFixed(2)}';
     final controls = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: .22),
-        borderRadius: BorderRadius.circular(18),
+        color: scheme.surface.withValues(alpha: .72),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
             onPressed: onDecrease,
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.remove_rounded, size: 18),
+            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+            padding: EdgeInsets.zero,
+            icon: const Icon(Icons.remove_rounded, size: 16),
           ),
           TextButton(
             onPressed: onEdit,
+            style: TextButton.styleFrom(
+              minimumSize: const Size(0, 32),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             child: Text(
               formatProductQuantity(quantity, product),
-              style: Theme.of(context).textTheme.labelLarge,
+              style: Theme.of(context).textTheme.labelMedium,
             ),
           ),
           IconButton(
             onPressed: onIncrease,
-            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+            padding: EdgeInsets.zero,
             icon: Icon(
               Icons.add_rounded,
-              size: 18,
+              size: 16,
               color: scheme.primary,
             ),
           ),
@@ -526,10 +535,10 @@ class _CartLine extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(compact ? 10 : 12),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: .18),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(compact ? 18 : 20),
       ),
       child: compact
           ? Column(
@@ -537,25 +546,42 @@ class _CartLine extends StatelessWidget {
               children: [
                 Text(
                   (product['name'] ?? '').toString(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '₹${product['sellingPrice']} · ${productUnit(product)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: scheme.onSurface.withValues(alpha: .62),
                       ),
                 ),
-                const SizedBox(height: 12),
-                Row(
+                const SizedBox(height: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: controls),
-                    const SizedBox(width: 12),
-                    Text(
-                      '₹${((product['sellingPrice'] as num).toDouble() * quantity).toStringAsFixed(2)}',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: scheme.primary,
-                          ),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: controls,
+                    ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          lineTotal,
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    color: scheme.primary,
+                                  ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

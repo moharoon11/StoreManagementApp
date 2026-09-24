@@ -145,8 +145,8 @@ class ResponsiveLayout extends StatelessWidget {
         builder: (context, provider, _) {
           final scheme = Theme.of(context).colorScheme;
           final width = MediaQuery.sizeOf(context).width;
-          // Keep the familiar two-column menu on phones.  The rows are made
-          // taller below instead of changing the visual layout to one column.
+          // Two columns remain easy to scan on phones while compact tiles keep
+          // the full menu inside short device heights.
           final crossAxisCount = width >= 720 ? 3 : 2;
 
           return SafeArea(
@@ -180,10 +180,10 @@ class ResponsiveLayout extends StatelessWidget {
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
                       childAspectRatio: width >= 720
-                          ? 2.05
+                          ? 2.45
                           : width < 450
-                              ? 1.34
-                              : 1.85,
+                              ? 2.05
+                              : 2.3,
                       children: [
                         for (var index = 0; index < _navItems.length; index++)
                           _MenuTile(
@@ -803,7 +803,7 @@ class _MenuTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(22),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
               Container(
@@ -823,30 +823,15 @@ class _MenuTile extends StatelessWidget {
                   size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      item.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: selected ? scheme.primary : scheme.onSurface,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurface.withValues(alpha: .58),
-                          ),
-                    ),
-                  ],
+                child: Text(
+                  item.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: selected ? scheme.primary : scheme.onSurface,
+                      ),
                 ),
               ),
             ],

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 import '../../config/api_config.dart';
+import '../../providers/app_provider.dart';
 import '../../services/adaptive_image_service.dart';
 import '../../services/api_service.dart';
 import '../../services/platform_capabilities.dart';
@@ -9,7 +11,12 @@ import '../../widgets/adaptive_image_preview.dart';
 import '../../widgets/workspace_ui.dart';
 
 class StoreProfileView extends StatefulWidget {
-  const StoreProfileView({super.key});
+  const StoreProfileView({
+    super.key,
+    this.setupRequired = false,
+  });
+
+  final bool setupRequired;
 
   @override
   State<StoreProfileView> createState() => _StoreProfileViewState();
@@ -37,6 +44,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
   @override
   void initState() {
     super.initState();
+    _showEditor = widget.setupRequired;
     _loadProfile();
   }
 
@@ -138,9 +146,16 @@ class _StoreProfileViewState extends State<StoreProfileView> {
 
       if (res['success'] == true && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Store profile saved successfully.')),
+          SnackBar(
+            content: Text(widget.setupRequired
+                ? 'Store registration complete.'
+                : 'Store profile saved successfully.'),
+          ),
         );
         setState(() => _showEditor = false);
+        if (widget.setupRequired) {
+          context.read<AppProvider>().completeStoreSetup();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -159,6 +174,14 @@ class _StoreProfileViewState extends State<StoreProfileView> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (widget.setupRequired) {
+      return Scaffold(
+        body: WorkspaceBackdrop(
+          child: WorkspacePage(child: _buildEditor()),
+        ),
+      );
     }
 
     return WorkspacePage(
@@ -276,15 +299,19 @@ class _StoreProfileViewState extends State<StoreProfileView> {
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         PageIntro(
-          eyebrow: 'Business',
-          title: 'Edit store profile',
-          description:
-              'Update the details used on customer invoices and store records.',
-          action: OutlinedButton.icon(
-            onPressed: () => setState(() => _showEditor = false),
-            icon: const Icon(Icons.arrow_back_rounded, size: 18),
-            label: const Text('Back'),
-          ),
+          eyebrow: widget.setupRequired ? 'Welcome' : 'Business',
+          title:
+              widget.setupRequired ? 'Set up your store' : 'Edit store profile',
+          description: widget.setupRequired
+              ? 'Add your store name and owner details to unlock your workspace.'
+              : 'Update the details used on customer invoices and store records.',
+          action: widget.setupRequired
+              ? null
+              : OutlinedButton.icon(
+                  onPressed: () => setState(() => _showEditor = false),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                  label: const Text('Back'),
+                ),
         ),
         const SizedBox(height: 16),
         SectionPanel(
