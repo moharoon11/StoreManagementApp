@@ -65,6 +65,9 @@ class _CategoriesViewState extends State<CategoriesView> {
 
   void _setLayout(_CategoryLayout layout) {
     if (_layout == layout) return;
+    // A search field from the previous layout can retain focus in the
+    // IndexedStack. Clear it so switching views cannot summon the keyboard.
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _layout = layout);
     StorageService.saveCategoryLayout(layout.name);
   }
@@ -151,6 +154,7 @@ class _CategoriesViewState extends State<CategoriesView> {
 
   void _selectCategory(int categoryId) {
     if (_selectedCategoryId == categoryId) return;
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _selectedCategoryId = categoryId;
       _search = '';
@@ -209,114 +213,14 @@ class _CategoriesViewState extends State<CategoriesView> {
     }
   }
 
-  void _showCategoryDialog({Map<String, dynamic>? category}) {
-    final nameController = TextEditingController(text: category?['name'] ?? '');
-    String imageUrl = category?['imageUrl'] ?? '';
-    XFile? pickedImage;
-    bool uploading = false;
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          Future<void> pickImage() async {
-            try {
-              final image = await AdaptiveImageService.pickForUser(
-                context,
-                sheetTitle: 'Category image',
-                galleryLabel: 'Choose category image',
-              );
-              if (image == null) return;
-              setDialogState(() {
-                pickedImage = image;
-                uploading = true;
-              });
-              final uploaded = await ApiService.uploadImage(image);
-              if (uploaded != null) {
-                setDialogState(() {
-                  imageUrl = uploaded;
-                  uploading = false;
-                });
-              }
-            } catch (error) {
-              setDialogState(() => uploading = false);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Upload failed: $error')),
-              );
-            }
-          }
-
-          final scheme = Theme.of(context).colorScheme;
-          return AlertDialog(
-            title: Text(category == null ? 'Add category' : 'Edit category'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  GestureDetector(
-                    onTap: uploading ? null : pickImage,
-                    child: Container(
-                      width: 124,
-                      height: 96,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: scheme.primary.withValues(alpha: .08),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: scheme.outlineVariant),
-                      ),
-                      child: uploading
-                          ? const Center(child: CircularProgressIndicator())
-                          : AdaptiveImagePreview(
-                              pickedImage: pickedImage,
-                              imageUrl: imageUrl,
-                              fit: BoxFit.cover,
-                              placeholder: const Icon(
-                                Icons.add_photo_alternate_outlined,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: nameController,
-                    autofocus: true,
-                    decoration:
-                        const InputDecoration(labelText: 'Category name'),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: uploading
-                    ? null
-                    : () async {
-                        final name = nameController.text.trim();
-                        if (name.isEmpty) return;
-                        Navigator.pop(dialogContext);
-                        final body = {'name': name, 'imageUrl': imageUrl};
-                        if (category == null) {
-                          await ApiService.post(ApiConfig.categories, body);
-                        } else {
-                          await ApiService.put(
-                            '${ApiConfig.categories}/${category['id']}',
-                            body,
-                          );
-                        }
-                        if (mounted) _fetchCategories();
-                      },
-                child: const Text('Save'),
-              ),
-            ],
-          );
-        },
+  Future<void> _openCategoryEditor({Map<String, dynamic>? category}) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => _CategoryEditorView(category: category),
       ),
-    ).whenComplete(nameController.dispose);
+    );
+    if (saved == true && mounted) await _fetchCategories();
   }
 
   @override
@@ -328,12 +232,10 @@ class _CategoriesViewState extends State<CategoriesView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            PageIntro(
-              eyebrow: 'Categories',
-              title: 'Organise your catalogue',
-              description: 'Create a category to start browsing its products.',
-              action: FilledButton.icon(
-                onPressed: _showCategoryDialog,
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: _openCategoryEditor,
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text('Add category'),
               ),
@@ -356,17 +258,15 @@ class _CategoriesViewState extends State<CategoriesView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PageIntro(
-            eyebrow: 'Categories',
-            title: 'Category browser',
-            description: 'Select a category on the left to see its products.',
-            action: Wrap(
-              spacing: 8,
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(
+              spacing: 4,
               children: [
-                OutlinedButton.icon(
+                IconButton(
                   onPressed: _fetchCategories,
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                  label: const Text('Refresh'),
+                  tooltip: 'Refresh categories',
+                  icon: const Icon(Icons.refresh_rounded),
                 ),
                 PopupMenuButton<_CategoryLayout>(
                   tooltip: 'Change category layout',
@@ -402,7 +302,7 @@ class _CategoriesViewState extends State<CategoriesView> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -416,7 +316,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                     categories: _categories,
                     selectedId: _selectedCategoryId,
                     onSelect: _selectCategory,
-                    onAdd: _showCategoryDialog,
+                    onAdd: _openCategoryEditor,
                     products: _products,
                     isLoading: _isLoadingProducts,
                     isLoadingMore: _isLoadingMore,
@@ -425,7 +325,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                     onSearchChanged: _setSearch,
                     onEdit: selected == null
                         ? null
-                        : () => _showCategoryDialog(category: selected),
+                        : () => _openCategoryEditor(category: selected),
                     onDelete: selected == null
                         ? null
                         : () => _deleteCategory(selected),
@@ -436,7 +336,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                     categories: _categories,
                     selectedId: _selectedCategoryId,
                     onSelect: _selectCategory,
-                    onAdd: _showCategoryDialog,
+                    onAdd: _openCategoryEditor,
                     products: _products,
                     isLoading: _isLoadingProducts,
                     isLoadingMore: _isLoadingMore,
@@ -445,7 +345,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                     onSearchChanged: _setSearch,
                     onEdit: selected == null
                         ? null
-                        : () => _showCategoryDialog(category: selected),
+                        : () => _openCategoryEditor(category: selected),
                     onDelete: selected == null
                         ? null
                         : () => _deleteCategory(selected),
@@ -461,7 +361,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                         selectedId: _selectedCategoryId,
                         compact: railWidth < 140,
                         onSelect: _selectCategory,
-                        onAdd: _showCategoryDialog,
+                        onAdd: _openCategoryEditor,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -476,7 +376,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                         onSearchChanged: _setSearch,
                         onEdit: selected == null
                             ? null
-                            : () => _showCategoryDialog(category: selected),
+                            : () => _openCategoryEditor(category: selected),
                         onDelete: selected == null
                             ? null
                             : () => _deleteCategory(selected),
@@ -490,6 +390,219 @@ class _CategoriesViewState extends State<CategoriesView> {
           const SizedBox(height: 12),
           const CartSummaryBar(),
         ],
+      ),
+    );
+  }
+}
+
+/// A dedicated, scrollable route avoids the short-screen overflow caused by
+/// placing a focused text field in an alert dialog. The controller belongs to
+/// this route for its whole lifetime, including the exit animation.
+class _CategoryEditorView extends StatefulWidget {
+  const _CategoryEditorView({this.category});
+
+  final Map<String, dynamic>? category;
+
+  @override
+  State<_CategoryEditorView> createState() => _CategoryEditorViewState();
+}
+
+class _CategoryEditorViewState extends State<_CategoryEditorView> {
+  late final TextEditingController _nameController;
+  String _imageUrl = '';
+  XFile? _pickedImage;
+  bool _isUploading = false;
+  bool _isSaving = false;
+
+  bool get _isEditing => widget.category != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(
+      text: widget.category?['name']?.toString() ?? '',
+    );
+    _imageUrl = widget.category?['imageUrl']?.toString() ?? '';
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final image = await AdaptiveImageService.pickForUser(
+        context,
+        sheetTitle: 'Category image',
+        galleryLabel: 'Choose category image',
+      );
+      if (image == null || !mounted) return;
+      setState(() {
+        _pickedImage = image;
+        _isUploading = true;
+      });
+      final uploaded = await ApiService.uploadImage(image);
+      if (!mounted) return;
+      setState(() {
+        _imageUrl = uploaded ?? _imageUrl;
+        _isUploading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isUploading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not upload image: $error')),
+      );
+    }
+  }
+
+  Future<void> _save() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a category name.')),
+      );
+      return;
+    }
+
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _isSaving = true);
+    try {
+      final body = <String, dynamic>{'name': name, 'imageUrl': _imageUrl};
+      final response = _isEditing
+          ? await ApiService.put(
+              '${ApiConfig.categories}/${widget.category!['id']}',
+              body,
+            )
+          : await ApiService.post(ApiConfig.categories, body);
+      if (response is Map && response['success'] == false) {
+        throw Exception(response['message'] ?? 'Could not save category.');
+      }
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final busy = _isSaving || _isUploading;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Edit category' : 'Add category'),
+      ),
+      body: SafeArea(
+        top: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              MediaQuery.viewInsetsOf(context).bottom + 24,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth >= 640 ? 560 : double.infinity,
+                ),
+                child: SurfacePanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        _isEditing ? 'Category details' : 'New category',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Use a short, recognisable name to keep browsing tidy.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: scheme.onSurface.withValues(alpha: .66),
+                            ),
+                      ),
+                      const SizedBox(height: 20),
+                      Center(
+                        child: Semantics(
+                          button: true,
+                          label: 'Choose category image',
+                          child: InkWell(
+                            onTap: busy ? null : _pickImage,
+                            borderRadius: BorderRadius.circular(20),
+                            child: Ink(
+                              width: 136,
+                              height: 104,
+                              decoration: BoxDecoration(
+                                color: scheme.primary.withValues(alpha: .08),
+                                borderRadius: BorderRadius.circular(20),
+                                border:
+                                    Border.all(color: scheme.outlineVariant),
+                              ),
+                              child: _isUploading
+                                  ? const Center(
+                                      child: CircularProgressIndicator())
+                                  : AdaptiveImagePreview(
+                                      pickedImage: _pickedImage,
+                                      imageUrl: _imageUrl,
+                                      fit: BoxFit.cover,
+                                      placeholder: Icon(
+                                        Icons.add_photo_alternate_outlined,
+                                        color: scheme.primary,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: busy ? null : _pickImage,
+                        icon: const Icon(Icons.image_outlined, size: 18),
+                        label: const Text('Choose image'),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: _nameController,
+                        textCapitalization: TextCapitalization.words,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _save(),
+                        decoration: const InputDecoration(
+                          labelText: 'Category name',
+                          prefixIcon: Icon(Icons.account_tree_outlined),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      FilledButton.icon(
+                        onPressed: busy ? null : _save,
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.check_rounded),
+                        label: Text(
+                            _isEditing ? 'Save changes' : 'Create category'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -939,6 +1052,7 @@ class _GalleryProductCard extends StatelessWidget {
         const SizedBox(height: 4),
         Text('₹${product['sellingPrice'] ?? '—'}',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 14,
                   color: scheme.primary,
                   fontWeight: FontWeight.w800,
                 )),

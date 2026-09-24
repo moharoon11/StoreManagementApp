@@ -275,7 +275,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
               child: Text(
                 'Sale report',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontSize: 26,
+                      fontSize: 22,
                     ),
               ),
             ),
@@ -377,12 +377,11 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                       itemCount: _invoices.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 6),
                       itemBuilder: (context, index) => _ReportSaleCard(
-                        invoice: Map<String, dynamic>.from(
-                            _invoices[index] as Map),
+                        invoice:
+                            Map<String, dynamic>.from(_invoices[index] as Map),
                         index: index,
                         onTap: () => _openSaleEditModal(
-                          Map<String, dynamic>.from(
-                              _invoices[index] as Map),
+                          Map<String, dynamic>.from(_invoices[index] as Map),
                         ),
                       ),
                     ),

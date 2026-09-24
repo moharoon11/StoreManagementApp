@@ -50,18 +50,6 @@ abstract final class AppTheme {
             onSurface: const Color(0xFFF4F8FC),
             line: const Color(0xFF1F3147),
           ),
-        AppThemeOption.evergreen => _build(
-            brightness: Brightness.light,
-            seed: const Color(0xFF1F6F5C),
-            primary: const Color(0xFF1F6F5C),
-            onPrimary: Colors.white,
-            secondary: const Color(0xFF0F4C81),
-            tertiary: const Color(0xFF2F855A),
-            canvas: const Color(0xFFF3F7F4),
-            surface: const Color(0xFFFFFEFB),
-            onSurface: const Color(0xFF15261E),
-            line: const Color(0xFFD3DED7),
-          ),
       };
 
   static ThemeData _build({
@@ -112,27 +100,27 @@ abstract final class AppTheme {
         );
 
     final textTheme = base.copyWith(
-      displayLarge: display(60),
-      displayMedium: display(50),
-      displaySmall: display(42),
-      headlineLarge: display(38),
-      headlineMedium: display(32),
-      headlineSmall: display(27),
+      displayLarge: display(52),
+      displayMedium: display(44),
+      displaySmall: display(36),
+      headlineLarge: display(30),
+      headlineMedium: display(26),
+      headlineSmall: display(23),
       titleLarge: GoogleFonts.spaceGrotesk(
         color: onSurface,
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: FontWeight.w700,
         height: 1.16,
       ),
       titleMedium: GoogleFonts.plusJakartaSans(
         color: onSurface,
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: FontWeight.w700,
         height: 1.28,
       ),
       titleSmall: GoogleFonts.plusJakartaSans(
         color: onSurface,
-        fontSize: 13.5,
+        fontSize: 13,
         fontWeight: FontWeight.w700,
         height: 1.3,
       ),

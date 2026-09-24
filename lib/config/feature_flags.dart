@@ -4,5 +4,5 @@
 /// `flutter run --dart-define=ENABLE_UPLOAD_BILL=false`
 abstract final class FeatureFlags {
   static const bool enableUploadBill =
-      bool.fromEnvironment('ENABLE_UPLOAD_BILL', defaultValue: true);
+      bool.fromEnvironment('ENABLE_UPLOAD_BILL', defaultValue: false);
 }

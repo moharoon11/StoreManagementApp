@@ -45,9 +45,9 @@ abstract final class Ui {
   /// Heading size that scales with available width.
   static double headingSize(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    if (width < phoneMax) return 20;
-    if (width < compactMax) return 26;
-    if (width < mediumMax) return 32;
-    return 36;
+    if (width < phoneMax) return 18;
+    if (width < compactMax) return 22;
+    if (width < mediumMax) return 26;
+    return 30;
   }
 }

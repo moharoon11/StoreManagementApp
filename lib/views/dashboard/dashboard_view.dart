@@ -474,8 +474,6 @@ class _MobileBillingActions extends StatelessWidget {
           color: scheme.secondary,
           onTap: onManualBill,
         )
-
-      
       ],
     );
   }
@@ -709,7 +707,7 @@ class _HeroCopy extends StatelessWidget {
         Text(
           'Move between billing, stock, and reporting without losing context.',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontSize: 30,
+                fontSize: 24,
               ),
         ),
         const SizedBox(height: 12),

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../config/api_config.dart';
-import '../../config/feature_flags.dart';
 import '../../services/api_service.dart';
 import '../../utils/quantity_utils.dart';
 import '../../widgets/workspace_ui.dart';
-import 'upload_bill_view.dart';
 
 class StockManagementView extends StatefulWidget {
   const StockManagementView({super.key});
@@ -17,7 +15,6 @@ class StockManagementView extends StatefulWidget {
 class _StockManagementViewState extends State<StockManagementView> {
   bool _isLoading = true;
   List<dynamic> _movements = [];
-  List<dynamic> _products = [];
 
   @override
   void initState() {
@@ -27,128 +24,28 @@ class _StockManagementViewState extends State<StockManagementView> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    await _fetchProducts();
     await _fetchMovements();
-  }
-
-  Future<void> _fetchProducts() async {
-    try {
-      final res = await ApiService.get(
-        ApiConfig.products,
-        queryParameters: {'pageSize': '100'},
-      );
-      if (res['success'] == true) {
-        _products = res['data']['items'] ?? [];
-      }
-    } catch (_) {}
   }
 
   Future<void> _fetchMovements() async {
     try {
       final res = await ApiService.get(ApiConfig.stockMovements);
-      if (res['success'] == true && mounted) {
-        setState(() {
-          _movements = res['data'] ?? [];
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      final data = res['data'];
+      final movements = data is List
+          ? data
+          : data is Map
+              ? (data['items'] ?? data['movements'] ?? []) as List
+              : <dynamic>[];
+      setState(() {
+        _movements = movements;
+        _isLoading = false;
+      });
     } catch (_) {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  void _showAdjustStockDialog() {
-    if (_products.isEmpty) return;
-
-    int selectedProductId = _products.first['id'] as int;
-    final qtyController = TextEditingController();
-    String reason = 'STOCK_ADDED';
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
-          title: const Text('Adjust stock'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<int>(
-                  value: selectedProductId,
-                  decoration:
-                      const InputDecoration(labelText: 'Select product'),
-                  items: _products.map<DropdownMenuItem<int>>((product) {
-                    return DropdownMenuItem<int>(
-                      value: product['id'],
-                      child: Text(
-                        '${product['name']} (${formatProductQuantity(product['stockQuantity'], product)})',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) =>
-                      setModalState(() => selectedProductId = value!),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: qtyController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                    signed: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Quantity change (+ add, - reduce)',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: reason,
-                  decoration: const InputDecoration(labelText: 'Reason'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'STOCK_ADDED',
-                      child: Text('STOCK_ADDED'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'MANUAL_ADJUSTMENT',
-                      child: Text('MANUAL_ADJUSTMENT'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'RETURN',
-                      child: Text('RETURN'),
-                    ),
-                  ],
-                  onChanged: (value) => setModalState(() => reason = value!),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final qty = double.tryParse(qtyController.text) ?? 0;
-                if (qty == 0) return;
-
-                Navigator.pop(ctx);
-                await ApiService.post(ApiConfig.stockAdjust, {
-                  'productId': selectedProductId,
-                  'quantityChanged': qty,
-                  'reason': reason,
-                });
-                _loadData();
-              },
-              child: const Text('Submit'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -157,38 +54,11 @@ class _StockManagementViewState extends State<StockManagementView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PageIntro(
+          const PageIntro(
             eyebrow: 'Stock',
             title: 'Inventory movements',
             description:
-                'Review movement history, import supplier bills, and adjust product quantities from a denser operations log.',
-            action: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                if (FeatureFlags.enableUploadBill)
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const UploadBillView(),
-                        ),
-                      );
-                      if (result == true) {
-                        _loadData();
-                      }
-                    },
-                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                    label: const Text('Upload bill'),
-                  ),
-                FilledButton.icon(
-                  onPressed: _showAdjustStockDialog,
-                  icon: const Icon(Icons.edit_note_rounded, size: 18),
-                  label: const Text('Adjust stock'),
-                ),
-              ],
-            ),
+                'Review every sale, return, and inventory update in one reliable log.',
           ),
           const SizedBox(height: 16),
           AdaptiveWrapGrid(
@@ -200,19 +70,14 @@ class _StockManagementViewState extends State<StockManagementView> {
                 icon: Icons.swap_vert_rounded,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              StatTile(
-                label: 'Tracked products',
-                value: '${_products.length}',
-                icon: Icons.inventory_2_outlined,
-                color: Theme.of(context).colorScheme.secondary,
-              ),
             ],
           ),
           const SizedBox(height: 16),
           Expanded(
             child: SectionPanel(
               title: 'Movement log',
-              subtitle: 'Recent quantity adjustments across the store.',
+              subtitle:
+                  'Recent sale, return, and stock updates across the store.',
               child: _isLoading
                   ? const SizedBox(
                       height: 200,
@@ -223,7 +88,7 @@ class _StockManagementViewState extends State<StockManagementView> {
                           icon: Icons.inventory_2_outlined,
                           title: 'No stock movement records found',
                           detail:
-                              'Inventory adjustments and bill imports will appear here.',
+                              'Sales, returns, and product updates will appear here.',
                         )
                       : ListView.separated(
                           itemCount: _movements.length,

@@ -1,13 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+
 import '../services/api_service.dart';
 import '../services/favourite_service.dart';
 import '../services/storage_service.dart';
 import '../config/api_config.dart';
 import '../utils/quantity_utils.dart';
 
-enum AppThemeOption { light, nightOwl, evergreen }
+enum AppThemeOption { light, nightOwl }
 
 class AppProvider extends ChangeNotifier {
   bool _isBootstrapping = true;
@@ -84,7 +85,7 @@ class AppProvider extends ChangeNotifier {
         (option) => option.name == savedTheme,
         orElse: () => AppThemeOption.light,
       );
-      _themeOption = _normalizedThemeOption(resolvedTheme);
+      _themeOption = resolvedTheme;
       _hasSeenWelcome = await StorageService.hasSeenWelcome();
       if (savedTheme != null && savedTheme != _themeOption.name) {
         await StorageService.saveTheme(_themeOption.name);
@@ -125,11 +126,10 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> setThemeOption(AppThemeOption option) async {
-    final resolvedOption = _normalizedThemeOption(option);
-    if (_themeOption == resolvedOption) return;
-    _themeOption = resolvedOption;
+    if (_themeOption == option) return;
+    _themeOption = option;
     notifyListeners();
-    await StorageService.saveTheme(resolvedOption.name);
+    await StorageService.saveTheme(option.name);
   }
 
   Future<bool> login(String username, String password) async {
@@ -293,8 +293,8 @@ class AppProvider extends ChangeNotifier {
     _pendingFavouriteOperations[productId] = shouldBeFavourite;
     notifyListeners();
     unawaited(StorageService.saveFavouriteProductIds(_favouriteProductIds));
-    unawaited(
-        StorageService.saveFavouriteSyncOperations(_pendingFavouriteOperations));
+    unawaited(StorageService.saveFavouriteSyncOperations(
+        _pendingFavouriteOperations));
     unawaited(_syncPendingFavourites());
   }
 
@@ -367,15 +367,5 @@ class AppProvider extends ChangeNotifier {
     _latestInvoice = Map<String, dynamic>.from(invoice);
     _invoiceRevision++;
     notifyListeners();
-  }
-
-  AppThemeOption _normalizedThemeOption(AppThemeOption option) {
-    final isMobilePlatform = !kIsWeb &&
-        (defaultTargetPlatform == TargetPlatform.android ||
-            defaultTargetPlatform == TargetPlatform.iOS);
-    if (isMobilePlatform && option == AppThemeOption.nightOwl) {
-      return AppThemeOption.evergreen;
-    }
-    return option;
   }
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
-import '../theme/app_theme.dart';
 import '../utils/quantity_utils.dart';
 import '../views/billing/pos_checkout_view.dart';
 import '../views/categories/categories_view.dart';
@@ -147,7 +146,6 @@ class ResponsiveLayout extends StatelessWidget {
           // Keep the familiar two-column menu on phones.  The rows are made
           // taller below instead of changing the visual layout to one column.
           final crossAxisCount = width >= 720 ? 3 : 2;
-          final mobile = Ui.isCompact(context);
 
           return SafeArea(
             child: SingleChildScrollView(
@@ -157,11 +155,13 @@ class ResponsiveLayout extends StatelessWidget {
                 children: [
                   Text(
                     'Workspace menu',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: scheme.primary,
+                        ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Jump between tools, switch themes, or sign out.',
+                    'Jump between tools or sign out.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: scheme.onSurface.withValues(alpha: .66),
                         ),
@@ -190,59 +190,6 @@ class ResponsiveLayout extends StatelessWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Appearance',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final narrow = constraints.maxWidth < 480;
-                      final themeOptions = <AppThemeOption>[
-                        AppThemeOption.light,
-                        if (!mobile) AppThemeOption.nightOwl,
-                        AppThemeOption.evergreen,
-                      ];
-
-                      Widget choice(AppThemeOption option) => _ThemeChoice(
-                            option: option,
-                            selected: provider.themeOption == option,
-                            onTap: () => provider.setThemeOption(option),
-                            compact: true,
-                          );
-
-                      if (narrow) {
-                        return Column(
-                          children: [
-                            for (var index = 0;
-                                index < themeOptions.length;
-                                index++) ...[
-                              SizedBox(
-                                width: double.infinity,
-                                child: choice(themeOptions[index]),
-                              ),
-                              if (index != themeOptions.length - 1)
-                                const SizedBox(height: 10),
-                            ],
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        children: [
-                          for (var index = 0;
-                              index < themeOptions.length;
-                              index++) ...[
-                            Expanded(child: choice(themeOptions[index])),
-                            if (index != themeOptions.length - 1)
-                              const SizedBox(width: 10),
-                          ],
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
@@ -892,74 +839,6 @@ class _MenuTile extends StatelessWidget {
                           ),
                     ),
                   ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ThemeChoice extends StatelessWidget {
-  const _ThemeChoice({
-    required this.option,
-    required this.selected,
-    required this.onTap,
-    this.compact = false,
-  });
-
-  final AppThemeOption option;
-  final bool selected;
-  final VoidCallback onTap;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final (label, swatch) = switch (option) {
-      AppThemeOption.light => ('Slate', AppColors.brand),
-      AppThemeOption.nightOwl => ('Midnight', const Color(0xFF67E8F9)),
-      AppThemeOption.evergreen => ('Spruce', const Color(0xFF1F6F5C)),
-    };
-
-    return Material(
-      color: selected ? scheme.primary.withValues(alpha: .12) : scheme.surface,
-      borderRadius: BorderRadius.circular(compact ? 18 : 20),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(compact ? 18 : 20),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 12 : 14,
-            vertical: compact ? 12 : 14,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(compact ? 18 : 20),
-            border: Border.all(
-              color: selected ? scheme.primary : scheme.outlineVariant,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: compact ? 14 : 16,
-                height: compact ? 14 : 16,
-                decoration: BoxDecoration(
-                  color: swatch,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurface,
-                      ),
                 ),
               ),
             ],
