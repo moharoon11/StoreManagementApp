@@ -75,7 +75,7 @@ class AppProvider extends ChangeNotifier {
   AppProvider() {
     checkAuth();
     ApiService.onUnauthorized = () {
-      logout();
+      logout(revokeRemote: false);
     };
   }
 
@@ -93,8 +93,18 @@ class AppProvider extends ChangeNotifier {
       if (savedTheme != null && savedTheme != _themeOption.name) {
         await StorageService.saveTheme(_themeOption.name);
       }
-      final token = await StorageService.getToken();
-      if (token != null && token.isNotEmpty) {
+      var token = await StorageService.getToken();
+      if (token != null &&
+          token.isNotEmpty &&
+          await StorageService.isTokenExpired()) {
+        if (await ApiService.refreshAccessToken()) {
+          token = await StorageService.getToken();
+        }
+      }
+      final hasValidToken = token != null &&
+          token.isNotEmpty &&
+          !(await StorageService.isTokenExpired());
+      if (hasValidToken) {
         await _refreshStoreSetupStatus();
         _isAuthenticated = true;
         _username = (await StorageService.getUsername()) ?? '';
@@ -106,6 +116,9 @@ class AppProvider extends ChangeNotifier {
           ..addAll(await StorageService.getFavouriteSyncOperations());
         unawaited(_refreshFavouritesFromServer());
       } else {
+        if (token != null && token.isNotEmpty) {
+          await StorageService.clearAuthData();
+        }
         _isAuthenticated = false;
       }
     } catch (_) {
@@ -164,15 +177,19 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await ApiService.post(ApiConfig.login, {
-        'username': username,
-        'password': password,
-      });
+      final response = await ApiService.post(
+          ApiConfig.login,
+          {
+            'username': username,
+            'password': password,
+          },
+          includeAuthorization: false);
 
       if (response['success'] == true) {
         final data = response['data'];
         await StorageService.saveAuthData(
           token: data['token'],
+          refreshToken: data['refreshToken'],
           username: data['username'],
           userId: data['userId'],
         );
@@ -207,15 +224,19 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await ApiService.post(ApiConfig.register, {
-        'username': username,
-        'password': password,
-      });
+      final response = await ApiService.post(
+          ApiConfig.register,
+          {
+            'username': username,
+            'password': password,
+          },
+          includeAuthorization: false);
 
       if (response['success'] == true) {
         final data = response['data'];
         await StorageService.saveAuthData(
           token: data['token'],
+          refreshToken: data['refreshToken'],
           username: data['username'],
           userId: data['userId'],
         );
@@ -244,7 +265,10 @@ class AppProvider extends ChangeNotifier {
     return false;
   }
 
-  Future<void> logout() async {
+  Future<void> logout({bool revokeRemote = true}) async {
+    if (revokeRemote) {
+      await ApiService.revokeRefreshToken();
+    }
     await StorageService.clearAuthData();
     _isAuthenticated = false;
     _hasCompletedStoreSetup = false;

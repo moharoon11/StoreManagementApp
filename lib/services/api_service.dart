@@ -9,6 +9,7 @@ import 'storage_service.dart';
 
 class ApiService {
   static void Function()? onUnauthorized;
+  static Future<bool>? _refreshInProgress;
 
   static dynamic _safeJsonDecode(String body) {
     if (body.trim().isEmpty) return null;
@@ -19,16 +20,81 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, String>> _getHeaders({bool isJson = true}) async {
+  static Future<Map<String, String>> _getHeaders({
+    bool isJson = true,
+    bool includeAuthorization = true,
+  }) async {
     final token = await StorageService.getToken();
     final headers = <String, String>{};
     if (isJson) {
       headers['Content-Type'] = 'application/json';
     }
-    if (token != null && token.isNotEmpty) {
+    if (includeAuthorization && token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
     return headers;
+  }
+
+  static Future<bool> refreshAccessToken() {
+    final pending = _refreshInProgress;
+    if (pending != null) return pending;
+    final refresh = _refreshAccessToken();
+    _refreshInProgress = refresh;
+    return refresh.whenComplete(() => _refreshInProgress = null);
+  }
+
+  static Future<bool> _refreshAccessToken() async {
+    final refreshToken = await StorageService.getRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) return false;
+    final response = await http.post(
+      Uri.parse(ApiConfig.baseUrl + ApiConfig.refresh),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({'refreshToken': refreshToken}),
+    );
+    final body = _safeJsonDecode(response.body);
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        body is! Map ||
+        body['success'] != true ||
+        body['data'] is! Map) {
+      return false;
+    }
+    final data = Map<String, dynamic>.from(body['data'] as Map);
+    final token = data['token']?.toString();
+    final replacement = data['refreshToken']?.toString();
+    if (token == null ||
+        token.isEmpty ||
+        replacement == null ||
+        replacement.isEmpty) return false;
+    await StorageService.updateTokens(token: token, refreshToken: replacement);
+    return true;
+  }
+
+  static Future<http.Response> _send(
+    Future<http.Response> Function() request, {
+    bool retryOnUnauthorized = true,
+  }) async {
+    var response = await request();
+    if (retryOnUnauthorized &&
+        response.statusCode == 401 &&
+        await refreshAccessToken()) {
+      response = await request();
+    }
+    return response;
+  }
+
+  static Future<void> revokeRefreshToken() async {
+    final refreshToken = await StorageService.getRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) return;
+    try {
+      await http.post(
+        Uri.parse(ApiConfig.baseUrl + ApiConfig.logout),
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({'refreshToken': refreshToken}),
+      );
+    } catch (_) {
+      // Local credentials are still removed when the device is offline.
+    }
   }
 
   static Future<dynamic> get(String endpoint,
@@ -37,8 +103,10 @@ class ApiService {
     if (queryParameters != null) {
       uri = uri.replace(queryParameters: queryParameters);
     }
-    final headers = await _getHeaders();
-    final response = await http.get(uri, headers: headers);
+    final response = await _send(() async => http.get(
+          uri,
+          headers: await _getHeaders(),
+        ));
     return _processResponse(response);
   }
 
@@ -57,34 +125,49 @@ class ApiService {
     return response.bodyBytes;
   }
 
-  static Future<dynamic> post(String endpoint, dynamic data) async {
+  static Future<dynamic> post(
+    String endpoint,
+    dynamic data, {
+    bool includeAuthorization = true,
+  }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-    final headers = await _getHeaders();
-    final response =
-        await http.post(uri, headers: headers, body: jsonEncode(data));
+    final response = await _send(
+      () async => http.post(
+        uri,
+        headers: await _getHeaders(includeAuthorization: includeAuthorization),
+        body: jsonEncode(data),
+      ),
+      retryOnUnauthorized: includeAuthorization,
+    );
     return _processResponse(response);
   }
 
   static Future<dynamic> put(String endpoint, dynamic data) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-    final headers = await _getHeaders();
-    final response =
-        await http.put(uri, headers: headers, body: jsonEncode(data));
+    final response = await _send(() async => http.put(
+          uri,
+          headers: await _getHeaders(),
+          body: jsonEncode(data),
+        ));
     return _processResponse(response);
   }
 
   static Future<dynamic> patch(String endpoint, dynamic data) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-    final headers = await _getHeaders();
-    final response =
-        await http.patch(uri, headers: headers, body: jsonEncode(data));
+    final response = await _send(() async => http.patch(
+          uri,
+          headers: await _getHeaders(),
+          body: jsonEncode(data),
+        ));
     return _processResponse(response);
   }
 
   static Future<dynamic> delete(String endpoint) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-    final headers = await _getHeaders();
-    final response = await http.delete(uri, headers: headers);
+    final response = await _send(() async => http.delete(
+          uri,
+          headers: await _getHeaders(),
+        ));
     return _processResponse(response);
   }
 
@@ -175,9 +258,12 @@ class ApiService {
       for (final entry in errors.entries) {
         final value = entry.value;
         final messages = value is List
-            ? value.map((message) => message.toString()).where((message) => message.isNotEmpty)
+            ? value
+                .map((message) => message.toString())
+                .where((message) => message.isNotEmpty)
             : [value?.toString() ?? ''];
-        final joined = messages.where((message) => message.isNotEmpty).join(', ');
+        final joined =
+            messages.where((message) => message.isNotEmpty).join(', ');
         if (joined.isNotEmpty) details.add('${entry.key}: $joined');
       }
       if (details.isNotEmpty) return details.join('\n');

@@ -1,29 +1,79 @@
+import 'dart:convert';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {
   static const String _keyToken = 'jwt_token';
+  static const String _keyRefreshToken = 'refresh_token';
+  static const String _keyHasSecureAuth = 'has_secure_auth';
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   static const String _keyUsername = 'username';
   static const String _keyUserId = 'user_id';
   static const String _keyTheme = 'app_theme';
   static const String _keyHasSeenWelcome = 'has_seen_welcome';
   static const String _keyFavouriteProductIds = 'favourite_product_ids';
-  static const String _keyFavouriteSyncOperations =
-      'favourite_sync_operations';
+  static const String _keyFavouriteSyncOperations = 'favourite_sync_operations';
   static const String _keyCategoryLayout = 'category_layout';
 
   static Future<void> saveAuthData(
       {required String token,
+      required String refreshToken,
       required String username,
       required int userId}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyToken, token);
+    await _secureStorage.write(key: _keyToken, value: token);
+    await _secureStorage.write(key: _keyRefreshToken, value: refreshToken);
+    await prefs.setBool(_keyHasSecureAuth, true);
     await prefs.setString(_keyUsername, username);
     await prefs.setInt(_keyUserId, userId);
   }
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyToken);
+    if (prefs.getBool(_keyHasSecureAuth) != true) return null;
+    return _secureStorage.read(key: _keyToken);
+  }
+
+  // JWT expiry is stored as seconds since Unix epoch in its `exp` claim.
+  static Future<String?> getRefreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_keyHasSecureAuth) != true) return null;
+    return _secureStorage.read(key: _keyRefreshToken);
+  }
+
+  static Future<void> updateTokens({
+    required String token,
+    required String refreshToken,
+  }) async {
+    await _secureStorage.write(key: _keyToken, value: token);
+    await _secureStorage.write(key: _keyRefreshToken, value: refreshToken);
+  }
+
+  static Future<bool> isTokenExpired() async {
+    final token = await getToken();
+    if (token == null || token.isEmpty) return true;
+
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      );
+      if (payload is! Map) return true;
+
+      final expirySeconds = int.tryParse(payload['exp']?.toString() ?? '');
+      if (expirySeconds == null) return true;
+
+      final expiresAt = DateTime.fromMillisecondsSinceEpoch(
+        expirySeconds * 1000,
+        isUtc: true,
+      );
+      return !expiresAt.isAfter(DateTime.now().toUtc());
+    } catch (_) {
+      return true;
+    }
   }
 
   static Future<String?> getUsername() async {
@@ -120,7 +170,9 @@ class StorageService {
 
   static Future<void> clearAuthData() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyToken);
+    await _secureStorage.delete(key: _keyToken);
+    await _secureStorage.delete(key: _keyRefreshToken);
+    await prefs.remove(_keyHasSecureAuth);
     await prefs.remove(_keyUsername);
     await prefs.remove(_keyUserId);
   }
