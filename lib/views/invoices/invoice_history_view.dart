@@ -23,7 +23,12 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   static const paidColor = Color(0xFF2E7D32);
 
   bool _isLoading = true;
+  bool _showPendingOnly = false;
+  final TextEditingController _nameSearchController = TextEditingController();
+  final TextEditingController _mobileSearchController = TextEditingController();
   List<dynamic> _invoices = [];
+  String _nameQuery = '';
+  String _mobileQuery = '';
   Map<String, dynamic> _summary = {
     'totalTransactions': 0,
     'totalSale': 0.0,
@@ -57,6 +62,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   @override
   void dispose() {
     _appProvider?.removeListener(_onAppStateChanged);
+    _nameSearchController.dispose();
+    _mobileSearchController.dispose();
     super.dispose();
   }
 
@@ -244,6 +251,47 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     return const [];
   }
 
+  String _customerNameOf(Map<String, dynamic> invoice) {
+    final name = (invoice['customerName'] ?? '').toString().trim();
+    return name == 'NO_NAME' ? '' : name;
+  }
+
+  String _mobileOf(Map<String, dynamic> invoice) {
+    return (invoice['customerMobileNumber'] ?? '').toString().trim();
+  }
+
+  bool get _hasFilters =>
+      _showPendingOnly || _nameQuery.isNotEmpty || _mobileQuery.isNotEmpty;
+
+  List<dynamic> get _filteredInvoices {
+    return _invoices.where((invoice) {
+      final row = Map<String, dynamic>.from(invoice as Map);
+      final balanceDue = (row['balanceDue'] as num?)?.toDouble() ?? 0.0;
+      final name = _customerNameOf(row).toLowerCase();
+      final mobile = _mobileOf(row).toLowerCase();
+
+      if (_showPendingOnly && balanceDue <= 0) return false;
+      if (_nameQuery.isNotEmpty && !name.contains(_nameQuery.toLowerCase())) {
+        return false;
+      }
+      if (_mobileQuery.isNotEmpty &&
+          !mobile.contains(_mobileQuery.toLowerCase())) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  void _clearFilters() {
+    _nameSearchController.clear();
+    _mobileSearchController.clear();
+    setState(() {
+      _showPendingOnly = false;
+      _nameQuery = '';
+      _mobileQuery = '';
+    });
+  }
+
   Future<void> _downloadPdf(int invoiceId, String invoiceNum) async {
     try {
       final bytes = await InvoicePdfService.fetch(invoiceId);
@@ -300,7 +348,6 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    const paidColor = _InvoiceHistoryViewState.paidColor;
     final canvas = Theme.of(context).scaffoldBackgroundColor;
     final reportAccent = Color.alphaBlend(
       scheme.primary.withValues(
@@ -332,6 +379,11 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                     .titleLarge
                     ?.copyWith(fontSize: 22),
               ),
+            ),
+            IconButton(
+              onPressed: _isLoading ? null : _loadData,
+              icon: const Icon(Icons.refresh_rounded),
+              tooltip: 'Refresh invoices',
             ),
           ],
         ),
@@ -379,6 +431,54 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
           ),
         ),
         const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _nameSearchController,
+                      onChanged: (value) => setState(
+                        () => _nameQuery = value.trim(),
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: 'Search by customer name',
+                        prefixIcon: Icon(Icons.person_search_outlined),
+                      ),
+                    ),
+                  ),
+                  if (_hasFilters) ...[
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: _clearFilters,
+                      child: const Text('Clear'),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _mobileSearchController,
+                onChanged: (value) => setState(
+                  () => _mobileQuery = value.trim(),
+                ),
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  hintText: 'Search by mobile number',
+                  prefixIcon: Icon(Icons.phone_outlined),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         Expanded(
           child: Container(
             // A low-contrast gradient keeps the report tied to the active
@@ -413,6 +513,10 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                         value:
                             '₹${((_summary['balanceDue'] ?? 0) as num).toStringAsFixed(2)}',
                         valueColor: scheme.error,
+                        isSelected: _showPendingOnly,
+                        onTap: () => setState(
+                          () => _showPendingOnly = !_showPendingOnly,
+                        ),
                       ),
                     ],
                   ),
@@ -421,28 +525,33 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                   const Expanded(
                     child: Center(child: CircularProgressIndicator()),
                   )
-                else if (_invoices.isEmpty)
-                  const Expanded(
+                else if (_filteredInvoices.isEmpty)
+                  Expanded(
                     child: EmptyCanvas(
                       icon: Icons.receipt_long_outlined,
-                      title: 'No sales records found',
-                      detail:
-                          'Completed checkouts will appear here automatically.',
+                      title: _invoices.isEmpty
+                          ? 'No sales records found'
+                          : 'No matching invoices found',
+                      detail: _invoices.isEmpty
+                          ? 'Completed checkouts will appear here automatically.'
+                          : 'Try another name, mobile number, or clear the pending filter.',
                     ),
                   )
                 else ...[
                   Expanded(
                     child: ListView.separated(
                       padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-                      itemCount: _invoices.length,
+                      itemCount: _filteredInvoices.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 6),
                       itemBuilder: (context, index) => _ReportSaleCard(
                         invoice: Map<String, dynamic>.from(
-                          _invoices[index] as Map,
+                          _filteredInvoices[index] as Map,
                         ),
                         index: index,
                         onTap: () => _openSaleEditModal(
-                          Map<String, dynamic>.from(_invoices[index] as Map),
+                          Map<String, dynamic>.from(
+                            _filteredInvoices[index] as Map,
+                          ),
                         ),
                       ),
                     ),
@@ -528,48 +637,71 @@ class _ReportTotal extends StatelessWidget {
     required this.label,
     required this.value,
     this.valueColor,
+    this.onTap,
+    this.isSelected = false,
   });
 
   final String label;
   final String value;
   final Color? valueColor;
+  final VoidCallback? onTap;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
             borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color:
-                    Theme.of(context).colorScheme.shadow.withValues(alpha: .08),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? (valueColor ?? Theme.of(context).colorScheme.primary)
+                        .withValues(alpha: .10)
+                    : Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: isSelected
+                    ? Border.all(
+                        color: (valueColor ??
+                                Theme.of(context).colorScheme.primary)
+                            .withValues(alpha: .35),
+                      )
+                    : null,
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .shadow
+                        .withValues(alpha: .08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(color: valueColor),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(color: valueColor),
-              ),
-            ],
+            ),
           ),
         ),
       );
