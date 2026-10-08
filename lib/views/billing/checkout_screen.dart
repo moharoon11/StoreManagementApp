@@ -806,7 +806,7 @@ class _CheckoutDetailsPanel extends StatelessWidget {
                     ),
                     Switch.adaptive(
                       value: isReceived,
-                      activeThumbColor: paidColor,
+                      activeColor: paidColor,
                       activeTrackColor: paidColor.withValues(alpha: .4),
                       onChanged: onToggleReceived,
                     ),
