@@ -133,11 +133,28 @@ Future<void> openCart(BuildContext context) async {
   }
 }
 
-class _CartScreen extends StatelessWidget {
+class _CartScreen extends StatefulWidget {
   const _CartScreen();
 
   @override
+  State<_CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<_CartScreen> {
+  bool _queuedClose = false;
+
+  @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    if (provider.cartItems.isEmpty && !_queuedClose) {
+      _queuedClose = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 56,

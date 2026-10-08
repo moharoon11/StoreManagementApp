@@ -373,33 +373,69 @@ class _SellProductCard extends StatelessWidget {
     final stock = quantityValue(product['stockQuantity']);
     final selectedQuantity =
         quantityValue(provider.cartItems[product['id']]?['quantity']);
+    final productId = product['id'] as int;
     final imageUrl = (product['imageUrl'] ?? '').toString();
 
-    final addAction = InkWell(
+    Widget actionButton({
+      required IconData icon,
+      required VoidCallback? onTap,
+      required Color color,
+      required Color iconColor,
+    }) {
+      final size = compact ? 34.0 : (dense ? 34.0 : 38.0);
+      final radius = compact ? 12.0 : (dense ? 12.0 : 14.0);
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(radius),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          child: Icon(
+            icon,
+            size: compact ? 17 : 18,
+            color: iconColor,
+          ),
+        ),
+      );
+    }
+
+    final addAction = actionButton(
+      icon: Icons.add_rounded,
       onTap: stock > 0 ? () => provider.addToCart(product) : null,
-      borderRadius: BorderRadius.circular(dense ? 14 : 16),
-      child: Container(
-        width: dense ? 38 : 42,
-        height: dense ? 38 : 42,
-        decoration: BoxDecoration(
-          color: stock > 0
-              ? scheme.primary.withValues(alpha: .12)
-              : scheme.surfaceContainerHighest.withValues(alpha: .42),
-          borderRadius: BorderRadius.circular(dense ? 14 : 16),
-        ),
-        child: Icon(
-          Icons.add_rounded,
-          size: dense ? 18 : 22,
-          color: stock > 0
-              ? scheme.primary
-              : scheme.onSurface.withValues(alpha: .34),
-        ),
-      ),
+      color: stock > 0
+          ? scheme.primary.withValues(alpha: .12)
+          : scheme.surfaceContainerHighest.withValues(alpha: .42),
+      iconColor:
+          stock > 0 ? scheme.primary : scheme.onSurface.withValues(alpha: .34),
+    );
+
+    final removeAction = selectedQuantity > 0
+        ? actionButton(
+            icon: Icons.remove_rounded,
+            onTap: () => provider.removeFromCart(productId),
+            color: scheme.surfaceContainerHighest.withValues(alpha: .5),
+            iconColor: scheme.onSurfaceVariant,
+          )
+        : null;
+
+    final actionRow = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (removeAction != null) ...[
+          removeAction,
+          const SizedBox(width: 6),
+        ],
+        addAction,
+      ],
     );
 
     if (compact) {
       return SurfacePanel(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(8),
         child: Row(
           children: [
             _SellProductImage(
@@ -407,7 +443,7 @@ class _SellProductCard extends StatelessWidget {
               compact: true,
               selectedQuantity: selectedQuantity,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,28 +452,30 @@ class _SellProductCard extends StatelessWidget {
                     (product['name'] ?? '').toString(),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontSize: 15,
+                        ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     (product['categoryName'] ?? 'Product').toString(),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: scheme.primary,
                         ),
                   ),
-                  // A ListView gives its children unbounded height on phones.
-                  // Spacer requires a bounded height and prevented Android's
-                  // mobile product cards from being laid out at all.
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           '₹${product['sellingPrice']}',
-                          style: Theme.of(context).textTheme.titleMedium,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontSize: 15.5),
                         ),
                       ),
-                      addAction,
+                      actionRow,
                     ],
                   ),
                 ],
@@ -449,7 +487,7 @@ class _SellProductCard extends StatelessWidget {
     }
 
     return SurfacePanel(
-      padding: EdgeInsets.all(dense ? 10 : 12),
+      padding: EdgeInsets.all(dense ? 9 : 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -458,7 +496,7 @@ class _SellProductCard extends StatelessWidget {
             dense: dense,
             selectedQuantity: selectedQuantity,
           ),
-          SizedBox(height: dense ? 8 : 10),
+          SizedBox(height: dense ? 6 : 8),
           Text(
             (product['categoryName'] ?? 'Product').toString(),
             maxLines: 1,
@@ -480,6 +518,7 @@ class _SellProductCard extends StatelessWidget {
                     )
                 : Theme.of(context).textTheme.titleSmall,
           ),
+          SizedBox(height: dense ? 6 : 8),
           const Spacer(),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -502,7 +541,7 @@ class _SellProductCard extends StatelessWidget {
                         color: stock > 0 ? scheme.primary : scheme.error,
                       ),
                     ),
-                    SizedBox(height: dense ? 4 : 8),
+                    SizedBox(height: dense ? 2 : 6),
                     Text(
                       stock > 0
                           ? '${formatProductQuantity(stock, product)} left'
@@ -516,8 +555,8 @@ class _SellProductCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              addAction,
+              const SizedBox(width: 6),
+              actionRow,
             ],
           ),
         ],
@@ -544,12 +583,12 @@ class _SellProductImage extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final borderRadius = BorderRadius.circular(dense ? 18 : 20);
     final image = Container(
-      width: compact ? 82 : double.infinity,
+      width: compact ? 72 : double.infinity,
       height: compact
-          ? 82
+          ? 72
           : dense
-              ? 74
-              : 88,
+              ? 68
+              : 82,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: .26),
@@ -578,12 +617,12 @@ class _SellProductImage extends StatelessWidget {
       children: [
         image,
         Positioned(
-          top: 6,
-          right: 6,
+          top: 5,
+          right: 5,
           child: Container(
             padding: EdgeInsets.symmetric(
-              horizontal: compact ? 6 : 7,
-              vertical: compact ? 2 : 3,
+              horizontal: compact ? 5 : 6,
+              vertical: compact ? 2 : 2.5,
             ),
             decoration: BoxDecoration(
               color: scheme.primary,
