@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/api_config.dart';
@@ -19,6 +20,8 @@ class InvoiceHistoryView extends StatefulWidget {
 }
 
 class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
+  static const paidColor = Color(0xFF2E7D32);
+
   bool _isLoading = true;
   List<dynamic> _invoices = [];
   Map<String, dynamic> _summary = {
@@ -71,8 +74,9 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
       setState(() {
         _invoices = [
           Map<String, dynamic>.from(latest),
-          ..._invoices.where((invoice) =>
-              Map<String, dynamic>.from(invoice as Map)['id'] != id),
+          ..._invoices.where(
+            (invoice) => Map<String, dynamic>.from(invoice as Map)['id'] != id,
+          ),
         ];
       });
     }
@@ -83,10 +87,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    await Future.wait([
-      _fetchInvoices(),
-      _fetchSummary(),
-    ]);
+    await Future.wait([_fetchInvoices(), _fetchSummary()]);
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -110,14 +111,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
       if (!mounted) return;
 
       if (res is List) {
-        final rows = List<dynamic>.from(res);
-        final latest = _appProvider?.latestInvoice;
-        final latestId = latest?['id'];
-        _invoices = latest != null &&
-                !rows.any((invoice) =>
-                    Map<String, dynamic>.from(invoice as Map)['id'] == latestId)
-            ? [Map<String, dynamic>.from(latest), ...rows]
-            : rows;
+        _invoices = _mergeLatestInvoiceIntoRows(List<dynamic>.from(res));
         return;
       }
 
@@ -127,16 +121,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
 
       if (res is Map) {
         final rows = _extractInvoiceRows(res);
-        final latest = _appProvider?.latestInvoice;
-        final latestId = latest?['id'];
-        // A newly completed checkout can reach this screen before an
-        // eventually-consistent history endpoint includes it. Keep the local
-        // checkout result visible until the server returns the same invoice.
-        _invoices = latest != null &&
-                !rows.any((invoice) =>
-                    Map<String, dynamic>.from(invoice as Map)['id'] == latestId)
-            ? [Map<String, dynamic>.from(latest), ...rows]
-            : rows;
+        _invoices = _mergeLatestInvoiceIntoRows(rows);
       }
     } catch (_) {}
   }
@@ -161,6 +146,74 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
         _summary = res['data'] ?? _summary;
       }
     } catch (_) {}
+  }
+
+  bool _isGenericManualName(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized.isEmpty ||
+        normalized == 'manual item' ||
+        normalized == 'manualitem' ||
+        normalized == 'item';
+  }
+
+  Map<String, dynamic> _mergeInvoiceWithLatest(
+    Map<String, dynamic> invoice,
+    Map<String, dynamic> latest,
+  ) {
+    final invoiceItems = (invoice['items'] as List?) ?? const [];
+    final latestItems = (latest['items'] as List?) ?? const [];
+
+    if (invoiceItems.isEmpty && latestItems.isEmpty) {
+      return {...invoice, ...latest};
+    }
+
+    final itemCount = invoiceItems.length > latestItems.length
+        ? invoiceItems.length
+        : latestItems.length;
+    final mergedItems = <Map<String, dynamic>>[];
+
+    for (var index = 0; index < itemCount; index++) {
+      final currentItem = index < invoiceItems.length
+          ? Map<String, dynamic>.from(invoiceItems[index] as Map)
+          : const <String, dynamic>{};
+      final latestItem = index < latestItems.length
+          ? Map<String, dynamic>.from(latestItems[index] as Map)
+          : const <String, dynamic>{};
+      final currentName = (currentItem['productName'] ?? '').toString().trim();
+      final latestName = (latestItem['productName'] ?? '').toString().trim();
+
+      mergedItems.add({
+        ...currentItem,
+        ...latestItem,
+        'productName': !_isGenericManualName(currentName)
+            ? currentName
+            : (!_isGenericManualName(latestName) ? latestName : currentName),
+      });
+    }
+
+    return {
+      ...invoice,
+      ...latest,
+      'items': mergedItems,
+    };
+  }
+
+  List<dynamic> _mergeLatestInvoiceIntoRows(List<dynamic> rows) {
+    final latest = _appProvider?.latestInvoice;
+    if (latest == null) return rows;
+
+    final latestId = latest['id'];
+    var matched = false;
+    final mergedRows = rows.map((invoice) {
+      final row = Map<String, dynamic>.from(invoice as Map);
+      if (row['id'] != latestId) return row;
+      matched = true;
+      return _mergeInvoiceWithLatest(row, Map<String, dynamic>.from(latest));
+    }).toList();
+
+    return matched
+        ? mergedRows
+        : [Map<String, dynamic>.from(latest), ...mergedRows];
   }
 
   List<dynamic> _extractInvoiceRows(Map response) {
@@ -194,8 +247,10 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   Future<void> _downloadPdf(int invoiceId, String invoiceNum) async {
     try {
       final bytes = await InvoicePdfService.fetch(invoiceId);
-      final wasSaved =
-          await InvoicePdfService.save(bytes, 'Invoice_$invoiceNum.pdf');
+      final wasSaved = await InvoicePdfService.save(
+        bytes,
+        'Invoice_$invoiceNum.pdf',
+      );
       if (mounted && wasSaved) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -209,9 +264,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error downloading PDF: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error downloading PDF: $e')));
     }
   }
 
@@ -232,10 +286,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   Future<void> _pickDateRange() async {
     final range = await showDialog<DateTimeRange>(
       context: context,
-      builder: (context) => _CompactDateRangeDialog(
-        initialStart: _fromDate,
-        initialEnd: _toDate,
-      ),
+      builder: (context) =>
+          _CompactDateRangeDialog(initialStart: _fromDate, initialEnd: _toDate),
     );
     if (range == null || !mounted) return;
     setState(() {
@@ -248,6 +300,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    const paidColor = _InvoiceHistoryViewState.paidColor;
     final canvas = Theme.of(context).scaffoldBackgroundColor;
     final reportAccent = Color.alphaBlend(
       scheme.primary.withValues(
@@ -274,9 +327,10 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
             Expanded(
               child: Text(
                 'Sale report',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontSize: 22,
-                    ),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontSize: 22),
               ),
             ),
           ],
@@ -295,11 +349,15 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
               children: [
                 SizedBox(
                   width: 112,
-                  child: Text('This month',
-                      style: Theme.of(context).textTheme.bodyMedium),
+                  child: Text(
+                    'This month',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
                 ),
-                Icon(Icons.keyboard_arrow_down_rounded,
-                    color: scheme.secondary),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: scheme.secondary,
+                ),
                 const SizedBox(width: 8),
                 Container(width: 1, height: 28, color: scheme.outlineVariant),
                 const SizedBox(width: 10),
@@ -310,9 +368,10 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                     '${date(_fromDate)} – ${date(_toDate)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontSize: 11.5,
-                        ),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(fontSize: 11.5),
                   ),
                 ),
               ],
@@ -353,14 +412,15 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                         label: 'Balance due',
                         value:
                             '₹${((_summary['balanceDue'] ?? 0) as num).toStringAsFixed(2)}',
-                        valueColor: scheme.tertiary,
+                        valueColor: scheme.error,
                       ),
                     ],
                   ),
                 ),
                 if (_isLoading)
                   const Expanded(
-                      child: Center(child: CircularProgressIndicator()))
+                    child: Center(child: CircularProgressIndicator()),
+                  )
                 else if (_invoices.isEmpty)
                   const Expanded(
                     child: EmptyCanvas(
@@ -377,8 +437,9 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                       itemCount: _invoices.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 6),
                       itemBuilder: (context, index) => _ReportSaleCard(
-                        invoice:
-                            Map<String, dynamic>.from(_invoices[index] as Map),
+                        invoice: Map<String, dynamic>.from(
+                          _invoices[index] as Map,
+                        ),
                         index: index,
                         onTap: () => _openSaleEditModal(
                           Map<String, dynamic>.from(_invoices[index] as Map),
@@ -396,9 +457,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     if (!widget.fullScreen) return WorkspacePage(child: report);
     return ColoredBox(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: SafeArea(
-        child: report,
-      ),
+      child: SafeArea(child: report),
     );
   }
 }
@@ -494,17 +553,22 @@ class _ReportTotal extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               const SizedBox(height: 6),
-              Text(value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: valueColor,
-                      )),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(color: valueColor),
+              ),
             ],
           ),
         ),
@@ -525,6 +589,7 @@ class _ReportSaleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    const paidColor = _InvoiceHistoryViewState.paidColor;
     final name = (invoice['customerName'] ?? '').toString().trim();
     final customer =
         name.isEmpty || name == 'NO_NAME' ? 'Walk-in customer' : name;
@@ -577,7 +642,7 @@ class _ReportSaleCard extends StatelessWidget {
                   _SaleFigure(
                     label: 'Balance',
                     value: hasBalance ? '₹${due.toStringAsFixed(2)}' : 'Paid',
-                    valueColor: hasBalance ? scheme.tertiary : scheme.secondary,
+                    valueColor: hasBalance ? scheme.error : paidColor,
                   ),
                 ],
               );
@@ -590,10 +655,10 @@ class _ReportSaleCard extends StatelessWidget {
                       customer,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 3),
                     metadata,
@@ -660,12 +725,14 @@ class _SaleFigure extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 2),
-          Text(value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: 13.5,
-                    color: valueColor,
-                    fontWeight: FontWeight.w600,
-                  )),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontSize: 13.5,
+                  color: valueColor,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
         ],
       );
 }
@@ -723,8 +790,10 @@ class _LedgerHighlight extends StatelessWidget {
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Sales at a glance',
-                        style: Theme.of(context).textTheme.titleSmall),
+                    Text(
+                      'Sales at a glance',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
                     const SizedBox(height: 10),
                     Wrap(spacing: 18, runSpacing: 10, children: stats),
                   ],
@@ -732,13 +801,17 @@ class _LedgerHighlight extends StatelessWidget {
               : Row(
                   children: [
                     Expanded(
-                      child: Text('Sales at a glance',
-                          style: Theme.of(context).textTheme.titleSmall),
+                      child: Text(
+                        'Sales at a glance',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                     ),
-                    ...stats.map((stat) => Padding(
-                          padding: const EdgeInsets.only(left: 18),
-                          child: stat,
-                        )),
+                    ...stats.map(
+                      (stat) => Padding(
+                        padding: const EdgeInsets.only(left: 18),
+                        child: stat,
+                      ),
+                    ),
                   ],
                 );
         },
@@ -764,11 +837,13 @@ class _LedgerHighlightValue extends StatelessWidget {
         children: [
           Text(label, style: Theme.of(context).textTheme.labelSmall),
           const SizedBox(height: 2),
-          Text(value,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w800,
-                  )),
+          Text(
+            value,
+            style: Theme.of(context)
+                .textTheme
+                .titleSmall
+                ?.copyWith(color: color, fontWeight: FontWeight.w800),
+          ),
         ],
       );
 }
@@ -776,10 +851,7 @@ class _LedgerHighlightValue extends StatelessWidget {
 // Retained for a future compact invoice-list layout.
 // ignore: unused_element
 class _InvoiceCard extends StatelessWidget {
-  const _InvoiceCard({
-    required this.invoice,
-    required this.onTap,
-  });
+  const _InvoiceCard({required this.invoice, required this.onTap});
 
   final Map<String, dynamic> invoice;
   final VoidCallback onTap;
@@ -808,14 +880,16 @@ class _InvoiceCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: compact
-                ? (balanceDue > 0 ? scheme.error : scheme.primary)
-                    .withValues(alpha: balanceDue > 0 ? .09 : .065)
+                ? (balanceDue > 0 ? scheme.error : scheme.primary).withValues(
+                    alpha: balanceDue > 0 ? .09 : .065,
+                  )
                 : scheme.surfaceContainerHighest.withValues(alpha: .18),
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
               color: compact
-                  ? (balanceDue > 0 ? scheme.error : scheme.primary)
-                      .withValues(alpha: .14)
+                  ? (balanceDue > 0 ? scheme.error : scheme.primary).withValues(
+                      alpha: .14,
+                    )
                   : Colors.transparent,
             ),
           ),
@@ -838,7 +912,9 @@ class _InvoiceCard extends StatelessWidget {
                       StatusPill(
                         label:
                             balanceDue > 0 ? 'Due $balanceText' : 'Fully paid',
-                        color: balanceDue > 0 ? scheme.error : scheme.secondary,
+                        color: balanceDue > 0
+                            ? scheme.error
+                            : _InvoiceHistoryViewState.paidColor,
                       ),
                     ],
                   );
@@ -850,12 +926,14 @@ class _InvoiceCard extends StatelessWidget {
                     Row(
                       children: [
                         _InvoiceMark(
-                            color:
-                                balanceDue > 0 ? scheme.error : scheme.primary),
+                          color: balanceDue > 0 ? scheme.error : scheme.primary,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: Text(nameDisplay,
-                              style: Theme.of(context).textTheme.titleSmall),
+                          child: Text(
+                            nameDisplay,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
                         ),
                       ],
                     ),
@@ -875,14 +953,17 @@ class _InvoiceCard extends StatelessWidget {
               return Row(
                 children: [
                   _InvoiceMark(
-                      color: balanceDue > 0 ? scheme.error : scheme.primary),
+                    color: balanceDue > 0 ? scheme.error : scheme.primary,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(nameDisplay,
-                            style: Theme.of(context).textTheme.titleSmall),
+                        Text(
+                          nameDisplay,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           '${invoice['invoiceNumber'] ?? 'Sale ${invoice['id']}'} · $dateFormatted',
@@ -941,18 +1022,31 @@ class _SaleDetailModal extends StatefulWidget {
 }
 
 class _SaleDetailModalState extends State<_SaleDetailModal> {
+  static const _paidColor = Color(0xFF2E7D32);
+
   late TextEditingController _nameController;
   late TextEditingController _mobileController;
   late TextEditingController _amountReceivedController;
   late bool _isReceived;
   bool _isSaving = false;
 
+  bool get _isReceiptLocked {
+    final grandTotal =
+        (widget.invoice['grandTotal'] as num?)?.toDouble() ?? 0.0;
+    final amountReceived =
+        (widget.invoice['amountReceived'] as num?)?.toDouble() ?? grandTotal;
+    final isReceived = (widget.invoice['isReceived'] as bool?) ??
+        (amountReceived >= grandTotal);
+    return isReceived || amountReceived >= grandTotal;
+  }
+
   @override
   void initState() {
     super.initState();
     final customerName = (widget.invoice['customerName'] ?? '').toString();
     _nameController = TextEditingController(
-        text: customerName == 'NO_NAME' ? '' : customerName);
+      text: customerName == 'NO_NAME' ? '' : customerName,
+    );
     _mobileController = TextEditingController(
       text: (widget.invoice['customerMobileNumber'] ?? '').toString(),
     );
@@ -963,8 +1057,9 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
         (widget.invoice['amountReceived'] as num?)?.toDouble() ?? grandTotal;
     _isReceived = (widget.invoice['isReceived'] as bool?) ??
         (amountReceived >= grandTotal);
-    _amountReceivedController =
-        TextEditingController(text: amountReceived.toStringAsFixed(2));
+    _amountReceivedController = TextEditingController(
+      text: amountReceived.toStringAsFixed(2),
+    );
   }
 
   @override
@@ -980,15 +1075,23 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
     try {
       final grandTotal =
           (widget.invoice['grandTotal'] as num?)?.toDouble() ?? 0.0;
-      final amountReceived = double.tryParse(_amountReceivedController.text) ??
-          (_isReceived ? grandTotal : 0.0);
+      final lockedAmount =
+          (widget.invoice['amountReceived'] as num?)?.toDouble() ?? grandTotal;
+      final amountReceived = _isReceiptLocked
+          ? lockedAmount
+          : (double.tryParse(_amountReceivedController.text) ??
+              (_isReceived ? grandTotal : 0.0));
+      final isReceived = _isReceiptLocked
+          ? ((widget.invoice['isReceived'] as bool?) ??
+              (lockedAmount >= grandTotal))
+          : _isReceived;
 
       final res = await ApiService.put(
         '${ApiConfig.invoices}/${widget.invoice['id']}',
         {
           'customerName': _nameController.text.trim(),
           'customerMobileNumber': _mobileController.text.trim(),
-          'isReceived': _isReceived,
+          'isReceived': isReceived,
           'amountReceived': amountReceived,
         },
       );
@@ -1007,11 +1110,53 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _sharePdf() async {
+    try {
+      final invoiceId = widget.invoice['id'] as int;
+      final invoiceNumber = widget.invoice['invoiceNumber'] ?? '1';
+      final pdfFilename = 'Invoice_$invoiceNumber.pdf';
+      final bytes = await InvoicePdfService.fetch(invoiceId);
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: pdfFilename,
+        subject: 'Invoice $invoiceNumber',
+        body:
+            'Invoice #$invoiceNumber - Total: ₹${widget.invoice['grandTotal']}',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            PlatformCapabilities.opensPdfInsteadOfShare
+                ? 'Error opening PDF: $e'
+                : 'Error sharing PDF: $e',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _printPdf() async {
+    try {
+      final invoiceId = widget.invoice['id'] as int;
+      final invoiceNumber = widget.invoice['invoiceNumber'] ?? '1';
+      final bytes = await InvoicePdfService.fetch(invoiceId);
+      await Printing.layoutPdf(
+        onLayout: (format) async => bytes,
+        name: 'Invoice_$invoiceNumber.pdf',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error printing PDF: $e')));
     }
   }
 
@@ -1020,8 +1165,9 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete sale'),
-        content:
-            const Text('Are you sure you want to delete this sale invoice?'),
+        content: const Text(
+          'Are you sure you want to delete this sale invoice?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -1040,20 +1186,19 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
     setState(() => _isSaving = true);
     try {
       final res = await ApiService.delete(
-          '${ApiConfig.invoices}/${widget.invoice['id']}');
+        '${ApiConfig.invoices}/${widget.invoice['id']}',
+      );
       if (res['success'] == true) {
         widget.onUpdated();
         if (!mounted) return;
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sale deleted.')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Sale deleted.')));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error deleting: $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -1065,11 +1210,14 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
         (widget.invoice['grandTotal'] as num?)?.toDouble() ?? 0.0;
     final amountReceived = double.tryParse(_amountReceivedController.text) ??
         (_isReceived ? grandTotal : 0.0);
-    final balanceDue =
-        (grandTotal - amountReceived).clamp(0.0, double.infinity);
+    final balanceDue = (grandTotal - amountReceived).clamp(
+      0.0,
+      double.infinity,
+    );
     final items = (widget.invoice['items'] as List?) ?? [];
     final scheme = Theme.of(context).colorScheme;
     final wide = MediaQuery.sizeOf(context).width >= 860;
+    final paidColor = _paidColor;
 
     return Container(
       height: MediaQuery.sizeOf(context).height * .92,
@@ -1087,8 +1235,10 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Sale ${widget.invoice['id']}',
-                          style: Theme.of(context).textTheme.titleLarge),
+                      Text(
+                        'Sale ${widget.invoice['id']}',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         (widget.invoice['invoiceDate'] ??
@@ -1106,8 +1256,23 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
                 ),
                 IconButton(
                   onPressed: widget.onPdfRequested,
-                  icon:
-                      Icon(Icons.picture_as_pdf_outlined, color: scheme.error),
+                  icon: Icon(
+                    Icons.picture_as_pdf_outlined,
+                    color: scheme.error,
+                  ),
+                ),
+                IconButton(
+                  onPressed: _sharePdf,
+                  icon: Icon(
+                    PlatformCapabilities.opensPdfInsteadOfShare
+                        ? Icons.open_in_new_rounded
+                        : Icons.share_outlined,
+                    color: paidColor,
+                  ),
+                ),
+                IconButton(
+                  onPressed: _printPdf,
+                  icon: Icon(Icons.print_outlined, color: scheme.primary),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
@@ -1134,9 +1299,12 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
                                 amountReceivedController:
                                     _amountReceivedController,
                                 isReceived: _isReceived,
+                                isReceiptLocked: _isReceiptLocked,
                                 grandTotal: grandTotal,
                                 balanceDue: balanceDue,
+                                paidColor: paidColor,
                                 onChangedReceived: (value) {
+                                  if (_isReceiptLocked) return;
                                   setState(() {
                                     _isReceived = value;
                                     if (_isReceived) {
@@ -1167,9 +1335,12 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
                               amountReceivedController:
                                   _amountReceivedController,
                               isReceived: _isReceived,
+                              isReceiptLocked: _isReceiptLocked,
                               grandTotal: grandTotal,
                               balanceDue: balanceDue,
+                              paidColor: paidColor,
                               onChangedReceived: (value) {
+                                if (_isReceiptLocked) return;
                                 setState(() {
                                   _isReceived = value;
                                   if (_isReceived) {
@@ -1234,8 +1405,10 @@ class _SaleMetaPanel extends StatelessWidget {
     required this.mobileController,
     required this.amountReceivedController,
     required this.isReceived,
+    required this.isReceiptLocked,
     required this.grandTotal,
     required this.balanceDue,
+    required this.paidColor,
     required this.onChangedReceived,
     required this.onAmountChanged,
   });
@@ -1244,8 +1417,10 @@ class _SaleMetaPanel extends StatelessWidget {
   final TextEditingController mobileController;
   final TextEditingController amountReceivedController;
   final bool isReceived;
+  final bool isReceiptLocked;
   final double grandTotal;
   final double balanceDue;
+  final Color paidColor;
   final ValueChanged<bool> onChangedReceived;
   final VoidCallback onAmountChanged;
 
@@ -1290,16 +1465,26 @@ class _SaleMetaPanel extends StatelessWidget {
                 children: [
                   Checkbox(
                     value: isReceived,
-                    onChanged: (value) => onChangedReceived(value ?? true),
+                    onChanged: isReceiptLocked
+                        ? null
+                        : (value) => onChangedReceived(value ?? true),
                   ),
-                  const Text('Received'),
+                  Text(
+                    'Received',
+                    style: TextStyle(
+                      color: isReceived ? paidColor : null,
+                      fontWeight: isReceived ? FontWeight.w600 : null,
+                    ),
+                  ),
                   const Spacer(),
                   SizedBox(
                     width: 140,
                     child: TextField(
                       controller: amountReceivedController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      enabled: !isReceiptLocked,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       onChanged: (_) => onAmountChanged(),
                       decoration: const InputDecoration(
                         prefixText: '₹ ',
@@ -1318,7 +1503,7 @@ class _SaleMetaPanel extends StatelessWidget {
                     label: '₹${balanceDue.toStringAsFixed(2)}',
                     color: balanceDue > 0
                         ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.secondary,
+                        : paidColor,
                   ),
                 ],
               ),
@@ -1331,10 +1516,7 @@ class _SaleMetaPanel extends StatelessWidget {
 }
 
 class _ItemLedgerPanel extends StatelessWidget {
-  const _ItemLedgerPanel({
-    required this.items,
-    required this.grandTotal,
-  });
+  const _ItemLedgerPanel({required this.items, required this.grandTotal});
 
   final List<dynamic> items;
   final double grandTotal;
@@ -1356,6 +1538,15 @@ class _ItemLedgerPanel extends StatelessWidget {
               final qty = quantityValue(item['quantity']);
               final total =
                   (item['total'] as num?)?.toDouble() ?? (price * qty);
+              final itemName = [
+                item['productName'],
+                item['name'],
+                item['title'],
+                item['description'],
+              ].map((value) => value?.toString().trim() ?? '').firstWhere(
+                    (value) => value.isNotEmpty,
+                    orElse: () => 'Manual item',
+                  );
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Container(
@@ -1374,7 +1565,7 @@ class _ItemLedgerPanel extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              (item['productName'] ?? 'Item').toString(),
+                              itemName,
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
                             const SizedBox(height: 4),

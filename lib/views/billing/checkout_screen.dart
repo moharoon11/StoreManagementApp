@@ -38,6 +38,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isReceived = true;
   bool _isProcessing = false;
 
+  static const _paidColor = Color(0xFF2E7D32);
+
+  bool _isGenericManualName(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized.isEmpty ||
+        normalized == 'manual item' ||
+        normalized == 'manualitem' ||
+        normalized == 'item';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +64,80 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _mobileController.dispose();
     _amountReceivedController.dispose();
     super.dispose();
+  }
+
+  double get _grandTotalValue => widget.isManual
+      ? widget.manualTotal ?? 0.0
+      : Provider.of<AppProvider>(context, listen: false).cartTotal;
+
+  double _enteredAmountFor(double grandTotal) {
+    final rawAmount = _amountReceivedController.text.trim();
+    if (rawAmount.isEmpty) return 0.0;
+    return double.tryParse(rawAmount) ?? 0.0;
+  }
+
+  void _syncReceivedStateFromAmount() {
+    final grandTotal = _grandTotalValue;
+    final enteredAmount = _enteredAmountFor(grandTotal);
+    final shouldMarkReceived = enteredAmount >= grandTotal && grandTotal > 0;
+    if (_isReceived != shouldMarkReceived) {
+      setState(() => _isReceived = shouldMarkReceived);
+    } else {
+      setState(() {});
+    }
+  }
+
+  Map<String, dynamic> _decorateManualInvoiceResponse(
+    Map<String, dynamic> invoice,
+  ) {
+    if (!widget.isManual) return invoice;
+
+    final manualItems = widget.manualItems ?? const <Map<String, dynamic>>[];
+    final responseItems = (invoice['items'] as List?) ?? const [];
+    if (responseItems.isEmpty) return invoice;
+
+    final mergedItems = <Map<String, dynamic>>[];
+    for (var index = 0; index < responseItems.length; index++) {
+      final responseItem =
+          Map<String, dynamic>.from(responseItems[index] as Map);
+      final sourceItem = index < manualItems.length
+          ? manualItems[index]
+          : const <String, dynamic>{};
+      final productName = (responseItem['productName'] ?? '').toString().trim();
+      final fallbackName = (sourceItem['productName'] ?? '').toString().trim();
+      final rate = (responseItem['sellingPrice'] as num?)?.toDouble() ??
+          (sourceItem['rate'] as num?)?.toDouble() ??
+          0.0;
+      final quantity = quantityValue(
+        responseItem['quantity'] ?? sourceItem['quantity'] ?? 0,
+      );
+      mergedItems.add({
+        ...responseItem,
+        'productName': !_isGenericManualName(productName)
+            ? productName
+            : (fallbackName.isNotEmpty
+                ? fallbackName
+                : 'Manual item ${index + 1}'),
+        'sellingPrice': rate,
+        'quantity': quantity,
+        'total':
+            (responseItem['total'] as num?)?.toDouble() ?? (rate * quantity),
+      });
+    }
+
+    return {
+      ...invoice,
+      'items': mergedItems,
+    };
+  }
+
+  void _onToggleReceived(bool value) {
+    final grandTotal = _grandTotalValue;
+    setState(() {
+      _isReceived = value;
+      _amountReceivedController.text =
+          value ? grandTotal.toStringAsFixed(2) : '0.00';
+    });
   }
 
   Future<void> _completeCheckout() async {
@@ -75,10 +159,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           customerName.isEmpty ? 'Walk-in customer' : customerName;
       final customerMobile = _mobileController.text.trim();
       final invoiceDate = DateFormat('yyyy-MM-dd').format(_invoiceDate);
-      final grandTotal =
-          widget.isManual ? widget.manualTotal ?? 0.0 : provider.cartTotal;
-      final enteredAmount = double.tryParse(_amountReceivedController.text) ??
-          (_isReceived ? grandTotal : 0.0);
+      final grandTotal = _grandTotalValue;
+      final enteredAmount = _enteredAmountFor(grandTotal);
       // The server treats a fully-received invoice as exactly paid. Sending a
       // stale or manually edited amount while this switch is on can cause its
       // payment validation to reject an otherwise valid manual bill.
@@ -91,11 +173,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         // Send a fresh, strongly typed payload rather than forwarding dynamic
         // UI values. The API expects a decimal rate and whole-item quantity.
         final manualItems = [
-          for (final item in widget.manualItems ?? const <Map<String, dynamic>>[])
+          for (final item
+              in widget.manualItems ?? const <Map<String, dynamic>>[])
             if ((item['rate'] as num?) != null &&
                 (item['rate'] as num) > 0 &&
                 quantityValue(item['quantity']) > 0)
               {
+                'productName': (item['productName'] ?? '').toString().trim(),
                 'rate': (item['rate'] as num).toDouble(),
                 'quantity': quantityValue(item['quantity']).round(),
               },
@@ -129,21 +213,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (response['success'] == true) {
         final invoice = response['data'];
         if (invoice is Map) {
-          provider.registerCheckoutInvoice(Map<String, dynamic>.from(invoice));
+          final enrichedInvoice = _decorateManualInvoiceResponse(
+            Map<String, dynamic>.from(invoice),
+          );
+          provider.registerCheckoutInvoice(enrichedInvoice);
         }
         if (!widget.isManual) {
           provider.clearCart();
         }
         if (!mounted) return;
         final navigator = Navigator.of(context);
-        navigator.pop();
         await _showInvoiceSuccessDialog(
-            navigator.context, invoice, _invoiceDate);
+          context,
+          invoice is Map
+              ? _decorateManualInvoiceResponse(
+                  Map<String, dynamic>.from(invoice))
+              : invoice,
+          _invoiceDate,
+        );
+        if (!mounted) return;
+        navigator.pop(widget.isManual ? true : null);
       } else {
         messenger.showSnackBar(
           SnackBar(
-            content:
-                Text((response['message'] ?? 'Checkout failed.').toString()),
+            content: Text(
+              (response['message'] ?? 'Checkout failed.').toString(),
+            ),
           ),
         );
       }
@@ -185,8 +280,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         final price = (item['rate'] as num?)?.toDouble() ??
             (item['price'] as num?)?.toDouble() ??
             0.0;
+        final productName = (item['productName'] ?? '').toString().trim();
         return _PreviewLine(
-          title: 'Manual item ${entry.key + 1}',
+          title: productName.isEmpty
+              ? 'Manual item ${entry.key + 1}'
+              : productName,
           quantity: qty,
           unit: '',
           price: price,
@@ -283,8 +381,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     onTap: () async {
                       try {
                         final bytes = await InvoicePdfService.fetch(invoiceId);
-                        final wasSaved =
-                            await InvoicePdfService.save(bytes, pdfFilename);
+                        final wasSaved = await InvoicePdfService.save(
+                          bytes,
+                          pdfFilename,
+                        );
                         if (dialogContext.mounted && wasSaved) {
                           ScaffoldMessenger.of(dialogContext).showSnackBar(
                             SnackBar(
@@ -377,12 +477,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final lines = _previewLines(provider);
-    final grandTotal =
-        widget.isManual ? widget.manualTotal ?? 0.0 : provider.cartTotal;
-    final amountReceived = double.tryParse(_amountReceivedController.text) ??
-        (_isReceived ? grandTotal : 0.0);
-    final balanceDue =
-        (grandTotal - amountReceived).clamp(0.0, double.infinity);
+    final grandTotal = _grandTotalValue;
+    final amountReceived = _enteredAmountFor(grandTotal);
+    final balanceDue = (grandTotal - amountReceived).clamp(
+      0.0,
+      double.infinity,
+    );
     final width = MediaQuery.sizeOf(context).width;
     final wide = width >= 940;
     final compact = width < Ui.compactMax;
@@ -411,21 +511,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         amountReceivedController: _amountReceivedController,
                         invoiceDate: _invoiceDate,
                         isReceived: _isReceived,
+                        paidColor: _paidColor,
                         grandTotal: grandTotal,
                         balanceDue: balanceDue,
                         onSelectInvoiceDate: _selectInvoiceDate,
-                        onToggleReceived: (value) {
-                          setState(() {
-                            _isReceived = value;
-                            if (_isReceived) {
-                              _amountReceivedController.text =
-                                  grandTotal.toStringAsFixed(2);
-                            } else {
-                              _amountReceivedController.text = '0.00';
-                            }
-                          });
-                        },
-                        onAmountChanged: () => setState(() {}),
+                        onToggleReceived: _onToggleReceived,
+                        onAmountChanged: _syncReceivedStateFromAmount,
                       );
 
                       final review = _CheckoutReviewPanel(
@@ -453,7 +544,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                       : 'Fully received',
                                   color: balanceDue > 0
                                       ? scheme.error
-                                      : scheme.tertiary,
+                                      : _paidColor,
                                 ),
                               ],
                             )
@@ -482,7 +573,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   icon: Icons.account_balance_wallet_outlined,
                                   color: balanceDue > 0
                                       ? scheme.error
-                                      : scheme.tertiary,
+                                      : _paidColor,
                                   note: balanceDue > 0
                                       ? 'Outstanding after this checkout'
                                       : 'Marked as fully received',
@@ -532,9 +623,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: scheme.surface,
-            border: Border(
-              top: BorderSide(color: scheme.outlineVariant),
-            ),
+            border: Border(top: BorderSide(color: scheme.outlineVariant)),
             boxShadow: [
               BoxShadow(
                 color: scheme.shadow.withValues(alpha: .05),
@@ -570,8 +659,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.check_circle_outline_rounded,
-                            size: 18),
+                        : const Icon(
+                            Icons.check_circle_outline_rounded,
+                            size: 18,
+                          ),
                     label: Text(
                       _isProcessing ? 'Processing...' : 'Complete checkout',
                     ),
@@ -582,11 +673,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
-                    children: [
-                      summary,
-                      const SizedBox(height: 12),
-                      action,
-                    ],
+                    children: [summary, const SizedBox(height: 12), action],
                   );
                 }
 
@@ -629,6 +716,7 @@ class _CheckoutDetailsPanel extends StatelessWidget {
     required this.amountReceivedController,
     required this.invoiceDate,
     required this.isReceived,
+    required this.paidColor,
     required this.grandTotal,
     required this.balanceDue,
     required this.onSelectInvoiceDate,
@@ -641,6 +729,7 @@ class _CheckoutDetailsPanel extends StatelessWidget {
   final TextEditingController amountReceivedController;
   final DateTime invoiceDate;
   final bool isReceived;
+  final Color paidColor;
   final double grandTotal;
   final double balanceDue;
   final VoidCallback onSelectInvoiceDate;
@@ -737,6 +826,8 @@ class _CheckoutDetailsPanel extends StatelessWidget {
                     ),
                     Switch.adaptive(
                       value: isReceived,
+                      activeThumbColor: paidColor,
+                      activeTrackColor: paidColor.withValues(alpha: .4),
                       onChanged: onToggleReceived,
                     ),
                   ],
@@ -745,8 +836,9 @@ class _CheckoutDetailsPanel extends StatelessWidget {
               const SizedBox(height: 12),
               TextField(
                 controller: amountReceivedController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 onChanged: (_) => onAmountChanged(),
                 decoration: const InputDecoration(
                   labelText: 'Amount received',
@@ -782,10 +874,7 @@ class _CheckoutDetailsPanel extends StatelessWidget {
 }
 
 class _CheckoutReviewPanel extends StatelessWidget {
-  const _CheckoutReviewPanel({
-    required this.lines,
-    required this.grandTotal,
-  });
+  const _CheckoutReviewPanel({required this.lines, required this.grandTotal});
 
   final List<_PreviewLine> lines;
   final double grandTotal;
@@ -804,7 +893,9 @@ class _CheckoutReviewPanel extends StatelessWidget {
           ],
           const SizedBox(height: 14),
           Divider(
-              height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+            height: 1,
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -826,10 +917,7 @@ class _CheckoutReviewPanel extends StatelessWidget {
 }
 
 class _CheckoutItemTile extends StatelessWidget {
-  const _CheckoutItemTile({
-    required this.index,
-    required this.line,
-  });
+  const _CheckoutItemTile({required this.index, required this.line});
 
   final int index;
   final _PreviewLine line;
@@ -858,9 +946,10 @@ class _CheckoutItemTile extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               '$index',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: scheme.primary,
-                  ),
+              style: Theme.of(context)
+                  .textTheme
+                  .labelLarge
+                  ?.copyWith(color: scheme.primary),
             ),
           ),
           const SizedBox(width: 12),
@@ -868,10 +957,7 @@ class _CheckoutItemTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  line.title,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
+                Text(line.title, style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 4),
                 Text(
                   '${formatQuantity(line.quantity)}$unit x ₹${line.price.toStringAsFixed(2)}',
@@ -883,9 +969,10 @@ class _CheckoutItemTile extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             '₹${line.total.toStringAsFixed(2)}',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: scheme.secondary,
-                ),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(color: scheme.secondary),
           ),
         ],
       ),
@@ -917,15 +1004,11 @@ class _MiniSummaryCard extends StatelessWidget {
         children: [
           Text(
             label.toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
-                ),
+            style:
+                Theme.of(context).textTheme.labelSmall?.copyWith(color: color),
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text(value, style: Theme.of(context).textTheme.titleMedium),
         ],
       ),
     );
@@ -950,9 +1033,10 @@ class _CheckoutBottomSummary extends StatelessWidget {
       children: [
         Text(
           'Sale summary',
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: scheme.primary,
-              ),
+          style: Theme.of(context)
+              .textTheme
+              .labelMedium
+              ?.copyWith(color: scheme.primary),
         ),
         const SizedBox(height: 4),
         Text(
@@ -989,16 +1073,12 @@ class _InvoiceMetaRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
         ),
         Text(
           value,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: accent,
-              ),
+          style:
+              Theme.of(context).textTheme.titleSmall?.copyWith(color: accent),
         ),
       ],
     );
@@ -1025,10 +1105,7 @@ class _InvoiceActionButton extends StatelessWidget {
         onTap();
       },
       icon: Icon(icon, color: color, size: 18),
-      label: Text(
-        label,
-        style: TextStyle(color: color),
-      ),
+      label: Text(label, style: TextStyle(color: color)),
     );
   }
 }

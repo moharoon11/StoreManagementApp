@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'checkout_screen.dart';
 
 class ManualBillingItemModel {
+  final TextEditingController nameController = TextEditingController();
   final TextEditingController rateController = TextEditingController();
   final TextEditingController qtyController = TextEditingController(text: '1');
+  final FocusNode nameFocusNode = FocusNode();
   final FocusNode rateFocusNode = FocusNode();
   final FocusNode qtyFocusNode = FocusNode();
 
@@ -13,8 +15,10 @@ class ManualBillingItemModel {
   double get total => rate * quantity;
 
   void dispose() {
+    nameController.dispose();
     rateController.dispose();
     qtyController.dispose();
+    nameFocusNode.dispose();
     rateFocusNode.dispose();
     qtyFocusNode.dispose();
   }
@@ -66,21 +70,26 @@ class _ManualBillingViewState extends State<ManualBillingView> {
     final validItems = [
       for (final item in _items)
         if (item.rate > 0 && item.quantity > 0)
-          {'rate': item.rate, 'quantity': item.quantity},
+          {
+            'productName': item.nameController.text.trim(),
+            'rate': item.rate,
+            'quantity': item.quantity,
+          },
     ];
 
     if (validItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content:
-              Text('Add at least one item with a valid rate and quantity.'),
+          content: Text(
+            'Add at least one item with a valid rate and quantity.',
+          ),
         ),
       );
       return;
     }
 
     setState(() => _isOpeningCheckout = true);
-    await Navigator.of(context).push(
+    final completed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => CheckoutScreen(
           isManual: true,
@@ -89,17 +98,19 @@ class _ManualBillingViewState extends State<ManualBillingView> {
         ),
       ),
     );
-    if (mounted) setState(() => _isOpeningCheckout = false);
+    if (!mounted) return;
+    if (completed == true) {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() => _isOpeningCheckout = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: const Text('Normal bill'),
-      ),
+      appBar: AppBar(centerTitle: true, title: const Text('Normal bill')),
       body: Column(
         children: [
           const Padding(
@@ -107,6 +118,8 @@ class _ManualBillingViewState extends State<ManualBillingView> {
             child: Row(
               children: [
                 SizedBox(width: 36, child: Text('#')),
+                SizedBox(width: 12),
+                Expanded(flex: 5, child: Text('Product name')),
                 SizedBox(width: 12),
                 Expanded(flex: 4, child: Text('Rate (₹)')),
                 SizedBox(width: 12),
@@ -160,8 +173,10 @@ class _ManualBillingViewState extends State<ManualBillingView> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Grand total',
-                        style: Theme.of(context).textTheme.bodyMedium),
+                    Text(
+                      'Grand total',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       '₹${_grandTotal.toStringAsFixed(2)}',
@@ -215,8 +230,21 @@ class _ManualBillLine extends StatelessWidget {
         children: [
           SizedBox(
             width: 36,
-            child: Text('${index + 1}.',
-                style: Theme.of(context).textTheme.bodyLarge),
+            child: Text(
+              '${index + 1}.',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 5,
+            child: TextField(
+              controller: item.nameController,
+              focusNode: item.nameFocusNode,
+              textInputAction: TextInputAction.next,
+              onEditingComplete: () => item.rateFocusNode.requestFocus(),
+              decoration: const InputDecoration(hintText: 'Product name'),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -227,8 +255,9 @@ class _ManualBillLine extends StatelessWidget {
               onChanged: (_) => onChanged(),
               textInputAction: TextInputAction.next,
               onEditingComplete: () => item.qtyFocusNode.requestFocus(),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(hintText: '0.00'),
             ),
           ),
@@ -262,8 +291,10 @@ class _ManualBillLine extends StatelessWidget {
               width: 26,
               child: IconButton(
                 padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints.tightFor(width: 26, height: 26),
+                constraints: const BoxConstraints.tightFor(
+                  width: 26,
+                  height: 26,
+                ),
                 onPressed: onDelete,
                 icon: Icon(Icons.close_rounded, size: 17, color: scheme.error),
                 tooltip: 'Remove item',
