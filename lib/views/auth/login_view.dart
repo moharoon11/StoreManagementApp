@@ -39,9 +39,17 @@ class _LoginViewState extends State<LoginView>
   Future<void> _submit() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
+    final errorColor = Theme.of(context).colorScheme.error;
+    final onErrorColor = Theme.of(context).colorScheme.onError;
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter your username and password.')),
+        SnackBar(
+          content: Text(
+            'Enter your username and password.',
+            style: TextStyle(color: onErrorColor),
+          ),
+          backgroundColor: errorColor,
+        ),
       );
       return;
     }
@@ -51,7 +59,13 @@ class _LoginViewState extends State<LoginView>
       final usernameError = AppProvider.validateRegistrationUsername(username);
       if (usernameError != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(usernameError)),
+          SnackBar(
+            content: Text(
+              usernameError,
+              style: TextStyle(color: onErrorColor),
+            ),
+            backgroundColor: errorColor,
+          ),
         );
         return;
       }
@@ -66,7 +80,9 @@ class _LoginViewState extends State<LoginView>
           content: Text(
             provider.errorMessage ??
                 'We could not sign you in. Please try again.',
+            style: TextStyle(color: onErrorColor),
           ),
+          backgroundColor: errorColor,
         ),
       );
     }
