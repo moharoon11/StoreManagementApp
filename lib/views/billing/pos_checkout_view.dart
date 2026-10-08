@@ -371,7 +371,8 @@ class _SellProductCard extends StatelessWidget {
     final provider = context.watch<AppProvider>();
     final scheme = Theme.of(context).colorScheme;
     final stock = quantityValue(product['stockQuantity']);
-    final inCart = provider.cartItems.containsKey(product['id']);
+    final selectedQuantity =
+        quantityValue(provider.cartItems[product['id']]?['quantity']);
     final imageUrl = (product['imageUrl'] ?? '').toString();
 
     final addAction = InkWell(
@@ -382,17 +383,15 @@ class _SellProductCard extends StatelessWidget {
         height: dense ? 38 : 42,
         decoration: BoxDecoration(
           color: stock > 0
-              ? (inCart
-                  ? scheme.primary
-                  : scheme.primary.withValues(alpha: .12))
+              ? scheme.primary.withValues(alpha: .12)
               : scheme.surfaceContainerHighest.withValues(alpha: .42),
           borderRadius: BorderRadius.circular(dense ? 14 : 16),
         ),
         child: Icon(
-          inCart ? Icons.check_rounded : Icons.add_rounded,
+          Icons.add_rounded,
           size: dense ? 18 : 22,
           color: stock > 0
-              ? (inCart ? scheme.onPrimary : scheme.primary)
+              ? scheme.primary
               : scheme.onSurface.withValues(alpha: .34),
         ),
       ),
@@ -403,7 +402,11 @@ class _SellProductCard extends StatelessWidget {
         padding: const EdgeInsets.all(10),
         child: Row(
           children: [
-            _SellProductImage(imageUrl: imageUrl, compact: true),
+            _SellProductImage(
+              imageUrl: imageUrl,
+              compact: true,
+              selectedQuantity: selectedQuantity,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -450,7 +453,11 @@ class _SellProductCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SellProductImage(imageUrl: imageUrl, dense: dense),
+          _SellProductImage(
+            imageUrl: imageUrl,
+            dense: dense,
+            selectedQuantity: selectedQuantity,
+          ),
           SizedBox(height: dense ? 8 : 10),
           Text(
             (product['categoryName'] ?? 'Product').toString(),
@@ -524,16 +531,19 @@ class _SellProductImage extends StatelessWidget {
     required this.imageUrl,
     this.compact = false,
     this.dense = false,
+    this.selectedQuantity = 0,
   });
 
   final String imageUrl;
   final bool compact;
   final bool dense;
+  final double selectedQuantity;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
+    final borderRadius = BorderRadius.circular(dense ? 18 : 20);
+    final image = Container(
       width: compact ? 82 : double.infinity,
       height: compact
           ? 82
@@ -543,7 +553,7 @@ class _SellProductImage extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: .26),
-        borderRadius: BorderRadius.circular(dense ? 18 : 20),
+        borderRadius: borderRadius,
       ),
       child: imageUrl.isEmpty
           ? Icon(
@@ -560,6 +570,43 @@ class _SellProductImage extends StatelessWidget {
                 size: dense ? 28 : 32,
               ),
             ),
+    );
+
+    if (selectedQuantity <= 0) return image;
+
+    return Stack(
+      children: [
+        image,
+        Positioned(
+          top: 6,
+          right: 6,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 6 : 7,
+              vertical: compact ? 2 : 3,
+            ),
+            decoration: BoxDecoration(
+              color: scheme.primary,
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: [
+                BoxShadow(
+                  color: scheme.shadow.withValues(alpha: .14),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              formatQuantity(selectedQuantity),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.onPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: compact ? 10 : 10.5,
+                  ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

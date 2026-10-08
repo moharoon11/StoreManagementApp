@@ -258,19 +258,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  Future<void> _selectInvoiceDate() async {
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: _invoiceDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      helpText: 'Select invoice date',
-    );
-    if (selected != null && mounted) {
-      setState(() => _invoiceDate = selected);
-    }
-  }
-
   List<_PreviewLine> _previewLines(AppProvider provider) {
     if (widget.isManual) {
       final items = widget.manualItems ?? const <Map<String, dynamic>>[];
@@ -514,7 +501,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         paidColor: _paidColor,
                         grandTotal: grandTotal,
                         balanceDue: balanceDue,
-                        onSelectInvoiceDate: _selectInvoiceDate,
                         onToggleReceived: _onToggleReceived,
                         onAmountChanged: _syncReceivedStateFromAmount,
                       );
@@ -719,7 +705,6 @@ class _CheckoutDetailsPanel extends StatelessWidget {
     required this.paidColor,
     required this.grandTotal,
     required this.balanceDue,
-    required this.onSelectInvoiceDate,
     required this.onToggleReceived,
     required this.onAmountChanged,
   });
@@ -732,7 +717,6 @@ class _CheckoutDetailsPanel extends StatelessWidget {
   final Color paidColor;
   final double grandTotal;
   final double balanceDue;
-  final VoidCallback onSelectInvoiceDate;
   final ValueChanged<bool> onToggleReceived;
   final VoidCallback onAmountChanged;
 
@@ -743,7 +727,7 @@ class _CheckoutDetailsPanel extends StatelessWidget {
       children: [
         SectionPanel(
           title: 'Customer details',
-          subtitle: 'Customer info and invoice date for the sale.',
+          subtitle: 'Customer info for today\'s sale.',
           child: Column(
             children: [
               TextFormField(
@@ -774,19 +758,15 @@ class _CheckoutDetailsPanel extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 12),
-              InkWell(
-                onTap: onSelectInvoiceDate,
-                borderRadius: BorderRadius.circular(20),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Invoice date',
-                    prefixIcon: Icon(Icons.calendar_today_outlined),
-                    suffixIcon: Icon(Icons.edit_calendar_outlined),
-                  ),
-                  child: Text(
-                    DateFormat('dd MMM yyyy').format(invoiceDate),
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
+              InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Invoice date',
+                  prefixIcon: Icon(Icons.calendar_today_outlined),
+                  suffixIcon: Icon(Icons.lock_outline_rounded),
+                ),
+                child: Text(
+                  DateFormat('dd MMM yyyy').format(invoiceDate),
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
               ),
             ],

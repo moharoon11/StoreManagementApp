@@ -43,7 +43,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _fromDate = DateTime(now.year, now.month);
+    _fromDate = DateTime(now.year, now.month, now.day);
     _toDate = now;
     _loadData();
   }
@@ -292,6 +292,12 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     });
   }
 
+  bool _isSameDay(DateTime first, DateTime second) {
+    return first.year == second.year &&
+        first.month == second.month &&
+        first.day == second.day;
+  }
+
   Future<void> _downloadPdf(int invoiceId, String invoiceNum) async {
     try {
       final bytes = await InvoicePdfService.fetch(invoiceId);
@@ -357,6 +363,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     );
     String date(DateTime value) =>
         '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+    final periodLabel = _isSameDay(_fromDate, _toDate) ? 'Today' : 'Custom';
 
     final report = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,7 +409,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                 SizedBox(
                   width: 112,
                   child: Text(
-                    'This month',
+                    periodLabel,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
@@ -431,52 +438,88 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
           ),
         ),
         const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: scheme.outlineVariant),
-          ),
-          child: Column(
-            children: [
-              Row(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final stackFields = constraints.maxWidth < 640;
+            final nameField = TextField(
+              controller: _nameSearchController,
+              onChanged: (value) => setState(() => _nameQuery = value.trim()),
+              textInputAction:
+                  stackFields ? TextInputAction.next : TextInputAction.search,
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Customer name',
+                prefixIcon: const Icon(Icons.person_search_outlined, size: 18),
+                suffixIcon: _nameQuery.isEmpty
+                    ? null
+                    : IconButton(
+                        onPressed: () {
+                          _nameSearchController.clear();
+                          setState(() => _nameQuery = '');
+                        },
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                      ),
+              ),
+            );
+            final mobileField = TextField(
+              controller: _mobileSearchController,
+              onChanged: (value) => setState(() => _mobileQuery = value.trim()),
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Customer mobile',
+                prefixIcon: const Icon(Icons.phone_outlined, size: 18),
+                suffixIcon: _mobileQuery.isEmpty
+                    ? null
+                    : IconButton(
+                        onPressed: () {
+                          _mobileSearchController.clear();
+                          setState(() => _mobileQuery = '');
+                        },
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                      ),
+              ),
+            );
+
+            if (stackFields) {
+              return Column(
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _nameSearchController,
-                      onChanged: (value) => setState(
-                        () => _nameQuery = value.trim(),
-                      ),
-                      decoration: const InputDecoration(
-                        hintText: 'Search by customer name',
-                        prefixIcon: Icon(Icons.person_search_outlined),
-                      ),
-                    ),
+                  nameField,
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(child: mobileField),
+                      if (_hasFilters) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: _clearFilters,
+                          tooltip: 'Clear filters',
+                          icon: const Icon(Icons.filter_alt_off_rounded),
+                        ),
+                      ],
+                    ],
                   ),
-                  if (_hasFilters) ...[
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: _clearFilters,
-                      child: const Text('Clear'),
-                    ),
-                  ],
                 ],
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _mobileSearchController,
-                onChanged: (value) => setState(
-                  () => _mobileQuery = value.trim(),
-                ),
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  hintText: 'Search by mobile number',
-                  prefixIcon: Icon(Icons.phone_outlined),
-                ),
-              ),
-            ],
-          ),
+              );
+            }
+
+            return Row(
+              children: [
+                Expanded(child: nameField),
+                const SizedBox(width: 10),
+                Expanded(child: mobileField),
+                if (_hasFilters) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: _clearFilters,
+                    tooltip: 'Clear filters',
+                    icon: const Icon(Icons.filter_alt_off_rounded),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
         const SizedBox(height: 16),
         Expanded(
