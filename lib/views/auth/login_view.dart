@@ -47,6 +47,16 @@ class _LoginViewState extends State<LoginView>
     }
 
     final provider = context.read<AppProvider>();
+    if (_isRegisterMode) {
+      final usernameError = AppProvider.validateRegistrationUsername(username);
+      if (usernameError != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(usernameError)),
+        );
+        return;
+      }
+    }
+
     final success = _isRegisterMode
         ? await provider.register(username, password)
         : await provider.login(username, password);
@@ -312,9 +322,14 @@ class _AuthForm extends StatelessWidget {
         TextField(
           controller: usernameController,
           textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(
+          autocorrect: false,
+          enableSuggestions: false,
+          decoration: InputDecoration(
             labelText: 'Username',
-            prefixIcon: Icon(Icons.person_outline_rounded),
+            prefixIcon: const Icon(Icons.person_outline_rounded),
+            helperText: register
+                ? 'Use letters, numbers, . and _ only. No spaces.'
+                : null,
           ),
         ),
         const SizedBox(height: 12),

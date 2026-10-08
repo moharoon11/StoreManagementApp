@@ -11,6 +11,8 @@ import '../utils/quantity_utils.dart';
 enum AppThemeOption { light, nightOwl }
 
 class AppProvider extends ChangeNotifier {
+  static final RegExp _validUsernamePattern = RegExp(r'^[A-Za-z0-9._]+$');
+
   bool _isBootstrapping = true;
   bool get isBootstrapping => _isBootstrapping;
 
@@ -219,6 +221,13 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<bool> register(String username, String password) async {
+    final usernameError = validateRegistrationUsername(username);
+    if (usernameError != null) {
+      _errorMessage = usernameError;
+      notifyListeners();
+      return false;
+    }
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -263,6 +272,26 @@ class AppProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
     return false;
+  }
+
+  static String? validateRegistrationUsername(String username) {
+    final value = username.trim();
+    if (value.isEmpty) {
+      return 'Username is required.';
+    }
+    if (value.length < 3 || value.length > 30) {
+      return 'Username must be 3 to 30 characters long.';
+    }
+    if (!_validUsernamePattern.hasMatch(value)) {
+      return 'Use only letters, numbers, periods, and underscores. Spaces are not allowed.';
+    }
+    if (value.startsWith('.') || value.endsWith('.')) {
+      return 'Username cannot start or end with a period.';
+    }
+    if (value.contains('..')) {
+      return 'Username cannot contain consecutive periods.';
+    }
+    return null;
   }
 
   Future<void> logout({bool revokeRemote = true}) async {
