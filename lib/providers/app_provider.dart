@@ -46,11 +46,6 @@ class AppProvider extends ChangeNotifier {
   Set<int> get favouriteProductIds => Set.unmodifiable(_favouriteProductIds);
   bool isFavourite(int productId) => _favouriteProductIds.contains(productId);
 
-  int _invoiceRevision = 0;
-  int get invoiceRevision => _invoiceRevision;
-  Map<String, dynamic>? _latestInvoice;
-  Map<String, dynamic>? get latestInvoice => _latestInvoice;
-
   // Cart State for Billing / POS
   final Map<int, Map<String, dynamic>> _cartItems =
       {}; // productId -> {product, quantity}
@@ -443,11 +438,4 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  /// Lets the already-mounted invoice screen show a new checkout immediately,
-  /// then it can revalidate against the server in the background.
-  void registerCheckoutInvoice(Map<String, dynamic> invoice) {
-    _latestInvoice = Map<String, dynamic>.from(invoice);
-    _invoiceRevision++;
-    notifyListeners();
-  }
 }

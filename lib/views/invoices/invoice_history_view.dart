@@ -34,8 +34,6 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     'totalSale': 0.0,
     'balanceDue': 0.0,
   };
-  AppProvider? _appProvider;
-  int _seenInvoiceRevision = 0;
   late DateTime _fromDate;
   late DateTime _toDate;
 
@@ -49,47 +47,10 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final provider = context.read<AppProvider>();
-    if (identical(provider, _appProvider)) return;
-    _appProvider?.removeListener(_onAppStateChanged);
-    _appProvider = provider;
-    _seenInvoiceRevision = provider.invoiceRevision;
-    provider.addListener(_onAppStateChanged);
-  }
-
-  @override
   void dispose() {
-    _appProvider?.removeListener(_onAppStateChanged);
     _nameSearchController.dispose();
     _mobileSearchController.dispose();
     super.dispose();
-  }
-
-  void _onAppStateChanged() {
-    final provider = _appProvider;
-    if (!mounted ||
-        provider == null ||
-        provider.invoiceRevision == _seenInvoiceRevision) {
-      return;
-    }
-    _seenInvoiceRevision = provider.invoiceRevision;
-    final latest = provider.latestInvoice;
-    if (latest != null) {
-      final id = latest['id'];
-      setState(() {
-        _invoices = [
-          Map<String, dynamic>.from(latest),
-          ..._invoices.where(
-            (invoice) => Map<String, dynamic>.from(invoice as Map)['id'] != id,
-          ),
-        ];
-      });
-    }
-    // Revalidate totals and server-side invoice formatting without making the
-    // freshly completed sale wait for a manual refresh.
-    _loadData();
   }
 
   Future<void> _loadData() async {
@@ -118,7 +79,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
       if (!mounted) return;
 
       if (res is List) {
-        _invoices = _mergeLatestInvoiceIntoRows(List<dynamic>.from(res));
+        _invoices = List<dynamic>.from(res);
         return;
       }
 
@@ -128,7 +89,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
 
       if (res is Map) {
         final rows = _extractInvoiceRows(res);
-        _invoices = _mergeLatestInvoiceIntoRows(rows);
+        _invoices = rows;
       }
     } catch (_) {}
   }
@@ -153,74 +114,6 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
         _summary = res['data'] ?? _summary;
       }
     } catch (_) {}
-  }
-
-  bool _isGenericManualName(String value) {
-    final normalized = value.trim().toLowerCase();
-    return normalized.isEmpty ||
-        normalized == 'manual item' ||
-        normalized == 'manualitem' ||
-        normalized == 'item';
-  }
-
-  Map<String, dynamic> _mergeInvoiceWithLatest(
-    Map<String, dynamic> invoice,
-    Map<String, dynamic> latest,
-  ) {
-    final invoiceItems = (invoice['items'] as List?) ?? const [];
-    final latestItems = (latest['items'] as List?) ?? const [];
-
-    if (invoiceItems.isEmpty && latestItems.isEmpty) {
-      return {...invoice, ...latest};
-    }
-
-    final itemCount = invoiceItems.length > latestItems.length
-        ? invoiceItems.length
-        : latestItems.length;
-    final mergedItems = <Map<String, dynamic>>[];
-
-    for (var index = 0; index < itemCount; index++) {
-      final currentItem = index < invoiceItems.length
-          ? Map<String, dynamic>.from(invoiceItems[index] as Map)
-          : const <String, dynamic>{};
-      final latestItem = index < latestItems.length
-          ? Map<String, dynamic>.from(latestItems[index] as Map)
-          : const <String, dynamic>{};
-      final currentName = (currentItem['productName'] ?? '').toString().trim();
-      final latestName = (latestItem['productName'] ?? '').toString().trim();
-
-      mergedItems.add({
-        ...currentItem,
-        ...latestItem,
-        'productName': !_isGenericManualName(currentName)
-            ? currentName
-            : (!_isGenericManualName(latestName) ? latestName : currentName),
-      });
-    }
-
-    return {
-      ...invoice,
-      ...latest,
-      'items': mergedItems,
-    };
-  }
-
-  List<dynamic> _mergeLatestInvoiceIntoRows(List<dynamic> rows) {
-    final latest = _appProvider?.latestInvoice;
-    if (latest == null) return rows;
-
-    final latestId = latest['id'];
-    var matched = false;
-    final mergedRows = rows.map((invoice) {
-      final row = Map<String, dynamic>.from(invoice as Map);
-      if (row['id'] != latestId) return row;
-      matched = true;
-      return _mergeInvoiceWithLatest(row, Map<String, dynamic>.from(latest));
-    }).toList();
-
-    return matched
-        ? mergedRows
-        : [Map<String, dynamic>.from(latest), ...mergedRows];
   }
 
   List<dynamic> _extractInvoiceRows(Map response) {
@@ -570,14 +463,17 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                   )
                 else if (_filteredInvoices.isEmpty)
                   Expanded(
-                    child: EmptyCanvas(
-                      icon: Icons.receipt_long_outlined,
-                      title: _invoices.isEmpty
-                          ? 'No sales records found'
-                          : 'No matching invoices found',
-                      detail: _invoices.isEmpty
-                          ? 'Completed checkouts will appear here automatically.'
-                          : 'Try another name, mobile number, or clear the pending filter.',
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          _invoices.isEmpty
+                              ? 'No sales records found'
+                              : 'No matching invoices found',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
                     ),
                   )
                 else ...[

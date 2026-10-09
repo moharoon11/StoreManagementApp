@@ -212,12 +212,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (response['success'] == true) {
         final invoice = response['data'];
-        if (invoice is Map) {
-          final enrichedInvoice = _decorateManualInvoiceResponse(
-            Map<String, dynamic>.from(invoice),
-          );
-          provider.registerCheckoutInvoice(enrichedInvoice);
-        }
         if (!widget.isManual) {
           provider.clearCart();
         }
