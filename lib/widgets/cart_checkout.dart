@@ -9,6 +9,7 @@ import '../services/invoice_pdf_service.dart';
 import '../services/platform_capabilities.dart';
 import '../views/billing/checkout_screen.dart';
 import '../utils/quantity_utils.dart';
+import '../utils/amount_range_input_formatter.dart';
 import 'workspace_ui.dart';
 
 /// Shared cart + checkout building blocks used by both the Sell page and the
@@ -302,23 +303,34 @@ class CartPanel extends StatelessWidget {
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 390;
           final tightHeight = constraints.maxHeight < 560;
-          final sectionGap = tightHeight ? 8.0 : 12.0;
+          final sectionGap = tightHeight ? 6.0 : 10.0;
           return Column(children: [
             Row(children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Current sale',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 2),
                     Text(
-                      'Review the basket before checkout.',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurface.withValues(alpha: .62),
-                          ),
+                      'Current sale',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: scheme.primary.withValues(alpha: .10),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        '${formatQuantity(provider.cartCount)} item${provider.cartCount == 1 ? '' : 's'}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: scheme.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
                     ),
                   ],
                 ),
@@ -344,7 +356,7 @@ class CartPanel extends StatelessWidget {
                   ? _CartEmptyState(compact: tightHeight)
                   : ListView.separated(
                       itemCount: provider.cartItems.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
                       itemBuilder: (_, index) {
                         final item = provider.cartItems.values.elementAt(index);
                         final product =
@@ -385,7 +397,7 @@ class CartPanel extends StatelessWidget {
                 ),
               ),
             ]),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -511,24 +523,25 @@ class _CartLine extends StatelessWidget {
     final lineTotal =
         '₹${((product['sellingPrice'] as num).toDouble() * quantity).toStringAsFixed(2)}';
     final controls = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
-        color: scheme.surface.withValues(alpha: .72),
-        borderRadius: BorderRadius.circular(14),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .7)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
             onPressed: onDecrease,
-            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+            constraints: const BoxConstraints.tightFor(width: 30, height: 30),
             padding: EdgeInsets.zero,
             icon: const Icon(Icons.remove_rounded, size: 16),
           ),
           TextButton(
             onPressed: onEdit,
             style: TextButton.styleFrom(
-              minimumSize: const Size(0, 32),
+              minimumSize: const Size(0, 30),
               padding: const EdgeInsets.symmetric(horizontal: 6),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
@@ -539,7 +552,7 @@ class _CartLine extends StatelessWidget {
           ),
           IconButton(
             onPressed: onIncrease,
-            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+            constraints: const BoxConstraints.tightFor(width: 30, height: 30),
             padding: EdgeInsets.zero,
             icon: Icon(
               Icons.add_rounded,
@@ -554,8 +567,9 @@ class _CartLine extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(compact ? 10 : 12),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: .18),
-        borderRadius: BorderRadius.circular(compact ? 18 : 20),
+        color: scheme.primary.withValues(alpha: .045),
+        borderRadius: BorderRadius.circular(compact ? 14 : 16),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .6)),
       ),
       child: compact
           ? Column(
@@ -576,28 +590,26 @@ class _CartLine extends StatelessWidget {
                         color: scheme.onSurface.withValues(alpha: .62),
                       ),
                 ),
-                const SizedBox(height: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 6),
+                Row(
                   children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: controls,
-                    ),
-                    const SizedBox(height: 6),
-                    Align(
-                      alignment: Alignment.centerRight,
+                    Flexible(
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          lineTotal,
-                          style:
-                              Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    color: scheme.primary,
-                                  ),
-                        ),
+                        alignment: Alignment.centerLeft,
+                        child: controls,
+                      ),
+                    ),
+                    const Spacer(),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        lineTotal,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              color: scheme.primary,
+                              fontWeight: FontWeight.w800,
+                            ),
                       ),
                     ),
                   ],
@@ -792,6 +804,9 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
                               keyboardType:
                                   const TextInputType.numberWithOptions(
                                       decimal: true),
+                              inputFormatters: [
+                                AmountRangeInputFormatter(maxAmount: total),
+                              ],
                               style: const TextStyle(
                                   color: Color(0xFF0F172A),
                                   fontWeight: FontWeight.bold,
@@ -845,8 +860,12 @@ class _CustomerDetailsDialogState extends State<_CustomerDetailsDialog> {
             if (!(_formKey.currentState?.validate() ?? false)) return;
             final name = _nameController.text.trim();
             final mobile = _mobileController.text.trim();
-            final recAmount = double.tryParse(_amountReceivedController.text) ??
-                (_isReceived ? total : 0.0);
+            final recAmount = (double.tryParse(
+                      _amountReceivedController.text,
+                    ) ??
+                    (_isReceived ? total : 0.0))
+                .clamp(0.0, total)
+                .toDouble();
 
             Navigator.of(context).pop();
             await processCheckout(
@@ -877,6 +896,9 @@ Future<void> processCheckout(
   final provider = context.read<AppProvider>();
   if (provider.cartItems.isEmpty || _isProcessing) return;
   _isProcessing = true;
+  final total = provider.cartTotal;
+  final safeAmountReceived =
+      isReceived ? total : (amountReceived ?? 0.0).clamp(0.0, total).toDouble();
   final messenger = ScaffoldMessenger.of(context);
   final errorColor = Theme.of(context).colorScheme.error;
   try {
@@ -891,7 +913,7 @@ Future<void> processCheckout(
       'customerName': customerName,
       'customerMobileNumber': customerMobile,
       'isReceived': isReceived,
-      'amountReceived': amountReceived,
+      'amountReceived': safeAmountReceived,
       'items': items,
     });
 

@@ -8,6 +8,7 @@ import '../../services/api_service.dart';
 import '../../services/invoice_pdf_service.dart';
 import '../../services/platform_capabilities.dart';
 import '../../utils/quantity_utils.dart';
+import '../../utils/amount_range_input_formatter.dart';
 import '../../widgets/workspace_ui.dart';
 
 class InvoiceHistoryView extends StatefulWidget {
@@ -1151,7 +1152,9 @@ class _SaleDetailModalState extends State<_SaleDetailModal> {
       final amountReceived = _isReceiptLocked
           ? lockedAmount
           : (double.tryParse(_amountReceivedController.text) ??
-              (_isReceived ? grandTotal : 0.0));
+                  (_isReceived ? grandTotal : 0.0))
+              .clamp(0.0, grandTotal)
+              .toDouble();
       final isReceived = _isReceiptLocked
           ? ((widget.invoice['isReceived'] as bool?) ??
               (lockedAmount >= grandTotal))
@@ -1556,6 +1559,9 @@ class _SaleMetaPanel extends StatelessWidget {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      inputFormatters: [
+                        AmountRangeInputFormatter(maxAmount: grandTotal),
+                      ],
                       onChanged: (_) => onAmountChanged(),
                       decoration: const InputDecoration(
                         prefixText: '₹ ',

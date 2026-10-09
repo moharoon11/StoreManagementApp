@@ -9,6 +9,7 @@ import '../../services/api_service.dart';
 import '../../services/invoice_pdf_service.dart';
 import '../../services/platform_capabilities.dart';
 import '../../utils/quantity_utils.dart';
+import '../../utils/amount_range_input_formatter.dart';
 import '../../widgets/ui_breakpoints.dart';
 import '../../widgets/workspace_ui.dart';
 
@@ -813,6 +814,9 @@ class _CheckoutDetailsPanel extends StatelessWidget {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
+                inputFormatters: [
+                  AmountRangeInputFormatter(maxAmount: grandTotal),
+                ],
                 onChanged: (_) => onAmountChanged(),
                 decoration: const InputDecoration(
                   labelText: 'Amount received',
