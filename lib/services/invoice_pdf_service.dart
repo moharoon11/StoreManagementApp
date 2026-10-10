@@ -32,7 +32,8 @@ class InvoicePdfService {
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
 
-    final document = pw.Document();
+    final fonts = await PdfDocumentFonts.load();
+    final document = pw.Document(theme: fonts.theme);
     final invoiceNumber = _text(invoice['invoiceNumber'], fallback: 'Invoice');
     final date = _formatDate(invoice['invoiceDate'] ?? invoice['createdAt']);
     final isManualInvoice =
@@ -146,8 +147,7 @@ class InvoicePdfService {
     List<Map<String, dynamic>> items,
     bool isManualInvoice,
   ) {
-    final showProductColumn =
-        !isManualInvoice ||
+    final showProductColumn = !isManualInvoice ||
         items.any((item) => _text(item['productName']).isNotEmpty);
     final headers = <String>['#'];
     if (showProductColumn) headers.add('Product');
@@ -238,9 +238,8 @@ class InvoicePdfService {
   }
 
   static String _money(dynamic value) {
-    final amount = value is num
-        ? value.toDouble()
-        : double.tryParse('$value') ?? 0;
+    final amount =
+        value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
     return 'Rs. ${amount.toStringAsFixed(2)}';
   }
 
@@ -285,8 +284,7 @@ class InvoicePdfService {
     String filename,
   ) async {
     try {
-      final baseDirectory =
-          await getDownloadsDirectory() ??
+      final baseDirectory = await getDownloadsDirectory() ??
           await getApplicationDocumentsDirectory();
       final file = await _uniqueLocalFile(baseDirectory, filename);
       await file.writeAsBytes(bytes, flush: true);
@@ -318,5 +316,38 @@ class InvoicePdfService {
       counter++;
     }
     return candidate;
+  }
+}
+
+/// Fonts embedded in every generated PDF. The built-in PDF fonts cannot draw
+/// Tamil or the Indian rupee symbol, which is why they previously appeared as
+/// empty boxes in downloaded, shared, and printed invoices.
+class PdfDocumentFonts {
+  const PdfDocumentFonts._(this.theme);
+
+  final pw.ThemeData theme;
+
+  static Future<PdfDocumentFonts> load() async {
+    final fonts = await Future.wait<pw.Font>([
+      PdfGoogleFonts.notoSansRegular(),
+      PdfGoogleFonts.notoSansBold(),
+      PdfGoogleFonts.notoSansTamilRegular(),
+      PdfGoogleFonts.notoSansDevanagariRegular(),
+      PdfGoogleFonts.notoSansTeluguRegular(),
+      PdfGoogleFonts.notoSansMalayalamRegular(),
+      PdfGoogleFonts.notoSansKannadaRegular(),
+      PdfGoogleFonts.notoSansBengaliRegular(),
+      PdfGoogleFonts.notoSansGujaratiRegular(),
+      PdfGoogleFonts.notoSansGurmukhiRegular(),
+      PdfGoogleFonts.notoSansArabicRegular(),
+      PdfGoogleFonts.notoSansThaiRegular(),
+    ]);
+    return PdfDocumentFonts._(
+      pw.ThemeData.withFont(
+        base: fonts[0],
+        bold: fonts[1],
+        fontFallback: fonts.skip(2).toList(),
+      ),
+    );
   }
 }

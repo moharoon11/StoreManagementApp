@@ -33,6 +33,7 @@ class _PaymentTransactionsViewState extends State<PaymentTransactionsView> {
   _RangeScope _scope = _RangeScope.today;
   DateTime? _fromDate;
   DateTime? _toDate;
+  Map<String, dynamic> _store = const {};
   List<_PaymentTransaction> _transactions = const [];
 
   @override
@@ -51,20 +52,33 @@ class _PaymentTransactionsViewState extends State<PaymentTransactionsView> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
+      final storeRequest = _loadStore();
       final results = await Future.wait<_PaymentTransactionList>([
         _safeLoad(_loadInvoices()),
         _safeLoad(_loadCredit()),
       ]);
       final invoices = results[0];
       final credit = results[1];
+      final store = await storeRequest;
       if (mounted) {
         setState(() {
+          _store = store;
           _transactions = [...invoices, ...credit]
             ..sort((a, b) => b.date.compareTo(a.date));
         });
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<Map<String, dynamic>> _loadStore() async {
+    try {
+      final response = await ApiService.get(ApiConfig.storeProfile);
+      final data = response is Map ? response['data'] : null;
+      return data is Map ? Map<String, dynamic>.from(data) : const {};
+    } catch (_) {
+      return const {};
     }
   }
 
@@ -273,10 +287,17 @@ class _PaymentTransactionsViewState extends State<PaymentTransactionsView> {
   }
 
   Future<void> _export(_ExportAction action) async {
-    final bytes = await _PaymentPdf.createHistory(_visible, _rangeLabel);
+    if (action == _ExportAction.selectRange) {
+      await _pickCustomRange();
+      return;
+    }
+    final bytes =
+        await _PaymentPdf.createHistory(_visible, _rangeLabel, _store);
     final filename =
         'Payment_history_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf';
     switch (action) {
+      case _ExportAction.selectRange:
+        return;
       case _ExportAction.download:
         await InvoicePdfService.save(bytes, filename);
       case _ExportAction.share:
@@ -323,12 +344,30 @@ class _PaymentTransactionsViewState extends State<PaymentTransactionsView> {
                 onSelected: _export,
                 itemBuilder: (_) => const [
                   PopupMenuItem(
+                      value: _ExportAction.selectRange,
+                      child: _ExportMenuItem(
+                          icon: Icons.date_range_outlined,
+                          label: 'Choose date range',
+                          color: Colors.deepPurple)),
+                  PopupMenuDivider(),
+                  PopupMenuItem(
                       value: _ExportAction.download,
-                      child: Text('Download PDF')),
+                      child: _ExportMenuItem(
+                          icon: Icons.download_outlined,
+                          label: 'Download PDF',
+                          color: Colors.blue)),
                   PopupMenuItem(
-                      value: _ExportAction.share, child: Text('Share PDF')),
+                      value: _ExportAction.share,
+                      child: _ExportMenuItem(
+                          icon: Icons.share_outlined,
+                          label: 'Share PDF',
+                          color: Colors.teal)),
                   PopupMenuItem(
-                      value: _ExportAction.print, child: Text('Print PDF')),
+                      value: _ExportAction.print,
+                      child: _ExportMenuItem(
+                          icon: Icons.print_outlined,
+                          label: 'Print PDF',
+                          color: Colors.orange)),
                 ],
               ),
             ]),
@@ -389,7 +428,8 @@ class _PaymentTransactionsViewState extends State<PaymentTransactionsView> {
                             .textTheme
                             .titleSmall
                             ?.copyWith(color: scheme.onSurfaceVariant))),
-                ...group.value.map((item) => _PaymentTile(item: item)),
+                ...group.value
+                    .map((item) => _PaymentTile(item: item, store: _store)),
               ],
             const SizedBox(height: 36),
           ],
@@ -445,9 +485,28 @@ class _SummaryValue extends StatelessWidget {
       ]));
 }
 
+class _ExportMenuItem extends StatelessWidget {
+  const _ExportMenuItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 10),
+        Text(label),
+      ]);
+}
+
 class _PaymentTile extends StatelessWidget {
-  const _PaymentTile({required this.item});
+  const _PaymentTile({required this.item, required this.store});
   final _PaymentTransaction item;
+  final Map<String, dynamic> store;
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -464,7 +523,7 @@ class _PaymentTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => _PaymentDetailPage(item: item))),
+              builder: (_) => _PaymentDetailPage(item: item, store: store))),
           borderRadius: BorderRadius.circular(18),
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -536,14 +595,17 @@ class _DetailRow extends StatelessWidget {
 }
 
 class _PaymentDetailPage extends StatelessWidget {
-  const _PaymentDetailPage({required this.item});
+  const _PaymentDetailPage({required this.item, required this.store});
   final _PaymentTransaction item;
+  final Map<String, dynamic> store;
 
   Future<void> _usePdf(BuildContext context, _ExportAction action) async {
-    final bytes = await _PaymentPdf.createTransaction(item);
+    final bytes = await _PaymentPdf.createTransaction(item, store);
     final filename =
         'Payment_${item.reference.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_')}.pdf';
     switch (action) {
+      case _ExportAction.selectRange:
+        return;
       case _ExportAction.download:
         await InvoicePdfService.save(bytes, filename);
       case _ExportAction.share:
@@ -616,10 +678,12 @@ class _PaymentDetailPage extends StatelessWidget {
 }
 
 class _PaymentPdf {
-  static Future<Uint8List> createTransaction(_PaymentTransaction item) =>
+  static Future<Uint8List> createTransaction(
+          _PaymentTransaction item, Map<String, dynamic> store) =>
       _document(
         title: 'PAYMENT RECEIPT',
         subtitle: item.reference,
+        store: store,
         rows: [
           ['Activity', item.title],
           [
@@ -629,24 +693,22 @@ class _PaymentPdf {
           ['Status', item.status.label],
           ['Date', DateFormat('dd MMM y, h:mm a').format(item.date)],
           ...item.details.entries.map((entry) => [entry.key, entry.value]),
-          [
-            'Amount',
-            '${item.direction == _Direction.outgoing ? '-' : '+'}${_money(item.amount)}'
-          ],
+          ['Amount', _pdfAmount(item.amount, item.direction)],
         ],
       );
 
-  static Future<Uint8List> createHistory(
-          List<_PaymentTransaction> items, String period) =>
+  static Future<Uint8List> createHistory(List<_PaymentTransaction> items,
+          String period, Map<String, dynamic> store) =>
       _document(
         title: 'PAYMENT HISTORY',
         subtitle: period,
+        store: store,
         rows: items
             .map((item) => [
                   DateFormat('dd MMM y').format(item.date),
                   item.customer.isEmpty ? item.title : item.customer,
                   item.reference,
-                  '${item.direction == _Direction.outgoing ? '-' : '+'}${_money(item.amount)}',
+                  _pdfAmount(item.amount, item.direction),
                 ])
             .toList(),
         headers: const ['Date', 'Customer', 'Reference', 'Amount'],
@@ -655,13 +717,23 @@ class _PaymentPdf {
   static Future<Uint8List> _document(
       {required String title,
       required String subtitle,
+      required Map<String, dynamic> store,
       required List<List<String>> rows,
       List<String>? headers}) async {
-    final document = pw.Document();
+    final fonts = await PdfDocumentFonts.load();
+    final document = pw.Document(theme: fonts.theme);
+    final storeName = _storeText(store['storeName'], 'STORE MANAGEMENT');
+    final owner = _storeText(store['ownerName'], '');
+    final address = _storeText(store['address'], '');
     document.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.all(28),
       build: (_) => [
+        pw.Text(storeName,
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+        if (owner.isNotEmpty) pw.Text('Owner: $owner'),
+        if (address.isNotEmpty) pw.Text(address),
+        pw.SizedBox(height: 14),
         pw.Text(title,
             style: pw.TextStyle(
                 fontSize: 20,
@@ -694,7 +766,7 @@ enum _RangeScope {
   final String label;
 }
 
-enum _ExportAction { download, share, print }
+enum _ExportAction { selectRange, download, share, print }
 
 enum _TransactionStatus {
   completed('Completed'),
@@ -745,6 +817,13 @@ double _number(dynamic value) =>
     double.tryParse(value?.toString() ?? '') ??
     0;
 String _money(double value) => '₹${value.toStringAsFixed(2)}';
+String _pdfAmount(double value, _Direction direction) =>
+    '${direction == _Direction.outgoing ? '-' : '+'} INR ${value.toStringAsFixed(2)}';
+String _storeText(dynamic value, String fallback) {
+  final text = value?.toString().trim() ?? '';
+  return text.isEmpty || text == 'null' ? fallback : text;
+}
+
 DateTime _dateOf(dynamic value) =>
     DateTime.tryParse(value?.toString() ?? '')?.toLocal() ?? DateTime.now();
 String _customerOf(Map<String, dynamic> row) {
