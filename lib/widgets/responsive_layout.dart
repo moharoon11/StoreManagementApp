@@ -48,7 +48,7 @@ const _navItems = <_Destination>[
     selectedIcon: Icons.receipt_long_rounded,
   ),
   _Destination(
-    title: 'Customer Credit',
+    title: 'Credit',
     subtitle: 'Pending customer balances',
     icon: Icons.account_balance_wallet_outlined,
     selectedIcon: Icons.account_balance_wallet_rounded,
