@@ -7,6 +7,7 @@ import '../views/billing/pos_checkout_view.dart';
 import '../views/categories/categories_view.dart';
 import '../views/dashboard/dashboard_view.dart';
 import '../views/invoices/invoice_history_view.dart';
+import '../views/invoices/customer_credit_invoices_view.dart';
 import '../views/products/products_view.dart';
 import '../views/reports/sales_reports_view.dart';
 import '../views/stock/stock_management_view.dart';
@@ -47,6 +48,12 @@ const _navItems = <_Destination>[
     selectedIcon: Icons.receipt_long_rounded,
   ),
   _Destination(
+    title: 'Customer Credit',
+    subtitle: 'Pending customer balances',
+    icon: Icons.account_balance_wallet_outlined,
+    selectedIcon: Icons.account_balance_wallet_rounded,
+  ),
+  _Destination(
     title: 'Stock',
     subtitle: 'Inventory movement and updates',
     icon: Icons.warehouse_outlined,
@@ -75,6 +82,7 @@ class ResponsiveLayout extends StatelessWidget {
     ProductsView(),
     CategoriesView(),
     InvoiceHistoryView(),
+    CustomerCreditInvoicesView(),
     StockManagementView(),
     SalesReportsView(),
     StoreProfileView(),
@@ -113,7 +121,7 @@ class ResponsiveLayout extends StatelessWidget {
                         child: content,
                         onQuickSale: () => provider.setNavIndex(1),
                         onOpenCart: () => openCart(context),
-                        onOpenBusiness: () => provider.setNavIndex(7),
+                        onOpenBusiness: () => provider.setNavIndex(8),
                         onShowMore: () => _showMore(context),
                       ),
               ),

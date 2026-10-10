@@ -40,6 +40,7 @@ class ApiConfig {
   static const String checkout = '/billing/checkout';
   static const String manualCheckout = '/billing/manual-checkout';
   static const String invoices = '/invoices';
+  static const String customerCreditInvoices = '/customer-credit-invoices';
   static const String stockMovements = '/stock/movements';
   static const String stockAdjust = '/stock/adjust';
   static const String salesReports = '/reports/sales';

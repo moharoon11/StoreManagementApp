@@ -1,16 +1,9 @@
-# store_management_app
+# Store Management App
 
-A new Flutter project.
+## Customer credit invoices setup
 
-## Getting Started
+1. Run `StoreManagementApi/Scripts/create_customer_credit_invoices.sql` once on the MySQL database configured as `DefaultConnection` for the API.
+2. Start the API from `StoreManagementApi` with `dotnet run`.
+3. Configure the Flutter API address with `--dart-define=API_BASE_URL=https://your-host/api` when needed, then run the Flutter app.
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+The **Customer Credit** workspace lists pending balances. A new invoice creates its opening credit transaction; the plus action adds further credit, and **Received** records a settlement and retains the invoice in the database while removing it from the pending list.
