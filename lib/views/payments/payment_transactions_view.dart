@@ -1,8 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../../config/api_config.dart';
 import '../../services/api_service.dart';
+import '../../services/invoice_pdf_service.dart';
 import '../../widgets/ui_breakpoints.dart';
 import '../../widgets/workspace_ui.dart';
 
@@ -24,6 +30,7 @@ class _PaymentTransactionsViewState extends State<PaymentTransactionsView> {
   bool _loading = true;
   String _query = '';
   _TransactionFilter _filter = _TransactionFilter.all;
+  _RangeScope _scope = _RangeScope.today;
   DateTime? _fromDate;
   DateTime? _toDate;
   List<_PaymentTransaction> _transactions = const [];
@@ -31,6 +38,7 @@ class _PaymentTransactionsViewState extends State<PaymentTransactionsView> {
   @override
   void initState() {
     super.initState();
+    _applyScope(_RangeScope.today, reload: false);
     _load();
   }
 
@@ -215,26 +223,72 @@ class _PaymentTransactionsViewState extends State<PaymentTransactionsView> {
     return groups;
   }
 
-  Future<void> _pickDate(bool from) async {
-    final current = from ? _fromDate : _toDate;
-    final picked = await showDatePicker(
+  Future<void> _pickCustomRange() async {
+    final start = await showDatePicker(
       context: context,
-      initialDate: current ?? DateTime.now(),
+      initialDate: _fromDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
+      helpText: 'START DATE',
     );
-    if (picked == null) return;
+    if (start == null || !mounted) return;
+    final end = await showDatePicker(
+      context: context,
+      initialDate:
+          _toDate == null || _toDate!.isBefore(start) ? start : _toDate!,
+      firstDate: start,
+      lastDate: DateTime.now(),
+      helpText: 'END DATE',
+    );
+    if (end == null || !mounted) return;
     setState(() {
-      if (from) {
-        _fromDate = picked;
-        if (_toDate != null && _toDate!.isBefore(picked)) _toDate = picked;
-      } else {
-        _toDate = picked;
-        if (_fromDate != null && _fromDate!.isAfter(picked)) _fromDate = picked;
-      }
+      _scope = _RangeScope.custom;
+      _fromDate = start;
+      _toDate = end;
     });
     _load();
   }
+
+  void _applyScope(_RangeScope scope, {bool reload = true}) {
+    final today = DateTime.now();
+    final startOfToday = DateTime(today.year, today.month, today.day);
+    setState(() {
+      _scope = scope;
+      switch (scope) {
+        case _RangeScope.today:
+          _fromDate = startOfToday;
+          _toDate = startOfToday;
+        case _RangeScope.week:
+          _fromDate =
+              startOfToday.subtract(Duration(days: startOfToday.weekday - 1));
+          _toDate = startOfToday;
+        case _RangeScope.month:
+          _fromDate = DateTime(today.year, today.month, 1);
+          _toDate = startOfToday;
+        case _RangeScope.custom:
+          break;
+      }
+    });
+    if (reload) _load();
+  }
+
+  Future<void> _export(_ExportAction action) async {
+    final bytes = await _PaymentPdf.createHistory(_visible, _rangeLabel);
+    final filename =
+        'Payment_history_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf';
+    switch (action) {
+      case _ExportAction.download:
+        await InvoicePdfService.save(bytes, filename);
+      case _ExportAction.share:
+        await Printing.sharePdf(bytes: bytes, filename: filename);
+      case _ExportAction.print:
+        await Printing.layoutPdf(onLayout: (_) async => bytes, name: filename);
+    }
+  }
+
+  String get _rangeLabel => _scope == _RangeScope.custom
+      ? '${_fromDate == null ? 'Start' : DateFormat('dd MMM y').format(_fromDate!)} – ${_toDate == null ? 'Now' : DateFormat('dd MMM y').format(_toDate!)}'
+      : _scope.label;
 
   @override
   Widget build(BuildContext context) {
@@ -256,67 +310,65 @@ class _PaymentTransactionsViewState extends State<PaymentTransactionsView> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: Ui.pagePadding(context),
           children: [
-            PageIntro(
-              eyebrow: 'Read-only ledger',
-              title: 'Payments',
-              description:
-                  'A single timeline of invoice receipts and customer credit activity.',
-              action: IconButton.filledTonal(
+            Row(children: [
+              Expanded(
+                  child: Text('Payments',
+                      style: Theme.of(context).textTheme.headlineSmall)),
+              IconButton(
                   onPressed: _load,
                   icon: const Icon(Icons.refresh_rounded),
-                  tooltip: 'Refresh payments'),
+                  tooltip: 'Refresh'),
+              PopupMenuButton<_ExportAction>(
+                icon: const Icon(Icons.more_vert_rounded),
+                onSelected: _export,
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                      value: _ExportAction.download,
+                      child: Text('Download PDF')),
+                  PopupMenuItem(
+                      value: _ExportAction.share, child: Text('Share PDF')),
+                  PopupMenuItem(
+                      value: _ExportAction.print, child: Text('Print PDF')),
+                ],
+              ),
+            ]),
+            const SizedBox(height: 12),
+            _Summary(incoming: completedIn, outgoing: outgoing),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _search,
+              onChanged: (value) => setState(() => _query = value.trim()),
+              decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search_rounded),
+                  hintText: 'Search customer or invoice',
+                  border: OutlineInputBorder()),
             ),
-            const SizedBox(height: 16),
-            _Summary(
-                incoming: completedIn,
-                outgoing: outgoing,
-                count: visible.length),
-            const SizedBox(height: 16),
-            SurfacePanel(
-              child: Column(children: [
-                TextField(
-                  controller: _search,
-                  onChanged: (value) => setState(() => _query = value.trim()),
-                  decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search_rounded),
-                      hintText: 'Search customer or invoice',
-                      border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  for (final filter in _TransactionFilter.values)
-                    ChoiceChip(
-                        label: Text(filter.label),
-                        selected: _filter == filter,
-                        onSelected: (_) => setState(() => _filter = filter)),
-                ]),
-                const SizedBox(height: 12),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  OutlinedButton.icon(
-                      onPressed: () => _pickDate(true),
-                      icon: const Icon(Icons.calendar_today_outlined, size: 18),
-                      label: Text(_fromDate == null
-                          ? 'From date'
-                          : DateFormat('dd MMM y').format(_fromDate!))),
-                  OutlinedButton.icon(
-                      onPressed: () => _pickDate(false),
-                      icon: const Icon(Icons.calendar_today_outlined, size: 18),
-                      label: Text(_toDate == null
-                          ? 'To date'
-                          : DateFormat('dd MMM y').format(_toDate!))),
-                  if (_fromDate != null || _toDate != null)
-                    TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _fromDate = null;
-                            _toDate = null;
-                          });
-                          _load();
-                        },
-                        child: const Text('Clear dates')),
-                ]),
-              ]),
-            ),
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(children: [
+                  for (final scope in _RangeScope.values)
+                    Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                            label: Text(scope.label),
+                            selected: _scope == scope,
+                            onSelected: (_) => scope == _RangeScope.custom
+                                ? _pickCustomRange()
+                                : _applyScope(scope))),
+                  const SizedBox(width: 4),
+                  for (final filter in _TransactionFilter.values
+                      .where((filter) => filter != _TransactionFilter.all))
+                    Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: FilterChip(
+                            label: Text(filter.label),
+                            selected: _filter == filter,
+                            onSelected: (_) => setState(() => _filter =
+                                _filter == filter
+                                    ? _TransactionFilter.all
+                                    : filter))),
+                ])),
             const SizedBox(height: 20),
             if (_loading)
               const Padding(
@@ -348,74 +400,48 @@ class _PaymentTransactionsViewState extends State<PaymentTransactionsView> {
 }
 
 class _Summary extends StatelessWidget {
-  const _Summary(
-      {required this.incoming, required this.outgoing, required this.count});
+  const _Summary({required this.incoming, required this.outgoing});
   final double incoming;
   final double outgoing;
-  final int count;
   @override
-  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
-        final cards = [
-          _SummaryValue(
-              label: 'Received',
-              value: _money(incoming),
-              icon: Icons.south_west_rounded,
-              color: Colors.green),
-          _SummaryValue(
-              label: 'Credit issued',
-              value: _money(outgoing),
-              icon: Icons.north_east_rounded,
-              color: Colors.orange),
-          _SummaryValue(
-              label: 'Entries',
-              value: '$count',
-              icon: Icons.receipt_long_outlined,
-              color: Theme.of(context).colorScheme.primary),
-        ];
-        return box.maxWidth < 470
-            ? Column(children: [
-                for (final card in cards)
-                  Padding(
-                      padding: const EdgeInsets.only(bottom: 8), child: card)
-              ])
-            : Row(children: [
-                for (final card in cards)
-                  Expanded(
-                      child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: card))
-              ]);
-      });
+  Widget build(BuildContext context) => Row(children: [
+        Expanded(
+            child: _SummaryValue(
+                label: 'Received',
+                value: _money(incoming),
+                color: Colors.green)),
+        const SizedBox(width: 10),
+        Expanded(
+            child: _SummaryValue(
+                label: 'Credit issued',
+                value: _money(outgoing),
+                color: Colors.orange)),
+      ]);
 }
 
 class _SummaryValue extends StatelessWidget {
   const _SummaryValue(
-      {required this.label,
-      required this.value,
-      required this.icon,
-      required this.color});
+      {required this.label, required this.value, required this.color});
   final String label, value;
-  final IconData icon;
   final Color color;
   @override
-  Widget build(BuildContext context) => SurfacePanel(
+  Widget build(BuildContext context) => Container(
       padding: const EdgeInsets.all(14),
-      child: Row(children: [
-        CircleAvatar(
-            backgroundColor: color.withValues(alpha: .14),
-            foregroundColor: color,
-            child: Icon(icon)),
-        const SizedBox(width: 10),
-        Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          Text(value,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700))
-        ]))
+      decoration: BoxDecoration(
+          color: color.withValues(alpha: .1),
+          borderRadius: BorderRadius.circular(16)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label,
+            style: Theme.of(context)
+                .textTheme
+                .labelMedium
+                ?.copyWith(color: color)),
+        const SizedBox(height: 4),
+        Text(value,
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w800)),
       ]));
 }
 
@@ -437,19 +463,19 @@ class _PaymentTile extends StatelessWidget {
         color: scheme.surface,
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
-          onTap: () => _showDetails(context),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => _PaymentDetailPage(item: item))),
           borderRadius: BorderRadius.circular(18),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(children: [
               CircleAvatar(
-                  backgroundColor: color.withValues(alpha: .14),
+                  backgroundColor: color.withValues(alpha: .16),
                   foregroundColor: color,
-                  child: Icon(item.status == _TransactionStatus.pending
-                      ? Icons.schedule_rounded
-                      : outgoing
-                          ? Icons.arrow_upward_rounded
-                          : Icons.arrow_downward_rounded)),
+                  child: Text(
+                      _initials(
+                          item.customer.isEmpty ? item.title : item.customer),
+                      style: const TextStyle(fontWeight: FontWeight.w800))),
               const SizedBox(width: 12),
               Expanded(
                   child: Column(
@@ -489,34 +515,6 @@ class _PaymentTile extends StatelessWidget {
       ),
     );
   }
-
-  void _showDetails(BuildContext context) => showModalBottomSheet<void>(
-        context: context,
-        showDragHandle: true,
-        useSafeArea: true,
-        builder: (context) => Padding(
-          padding: const EdgeInsets.fromLTRB(24, 6, 24, 28),
-          child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Payment details',
-                    style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 18),
-                _DetailRow('Amount',
-                    '${item.direction == _Direction.outgoing ? '-' : '+'}${_money(item.amount)}'),
-                _DetailRow('Status', item.status.label),
-                _DetailRow('Activity', item.title),
-                _DetailRow('Customer',
-                    item.customer.isEmpty ? 'Walk-in customer' : item.customer),
-                _DetailRow('Reference', item.reference),
-                _DetailRow(
-                    'Date', DateFormat('dd MMMM y, h:mm a').format(item.date)),
-                for (final detail in item.details.entries)
-                  _DetailRow(detail.key, detail.value),
-              ]),
-        ),
-      );
 }
 
 class _DetailRow extends StatelessWidget {
@@ -537,7 +535,166 @@ class _DetailRow extends StatelessWidget {
       ]));
 }
 
+class _PaymentDetailPage extends StatelessWidget {
+  const _PaymentDetailPage({required this.item});
+  final _PaymentTransaction item;
+
+  Future<void> _usePdf(BuildContext context, _ExportAction action) async {
+    final bytes = await _PaymentPdf.createTransaction(item);
+    final filename =
+        'Payment_${item.reference.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_')}.pdf';
+    switch (action) {
+      case _ExportAction.download:
+        await InvoicePdfService.save(bytes, filename);
+      case _ExportAction.share:
+        await Printing.sharePdf(bytes: bytes, filename: filename);
+      case _ExportAction.print:
+        await Printing.layoutPdf(onLayout: (_) async => bytes, name: filename);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final outgoing = item.direction == _Direction.outgoing;
+    final color = outgoing ? Colors.orange.shade800 : Colors.green.shade700;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Payment details')),
+      body: SafeArea(
+        child: ListView(padding: const EdgeInsets.all(20), children: [
+          Center(
+              child: CircleAvatar(
+                  radius: 30,
+                  backgroundColor: color.withValues(alpha: .15),
+                  foregroundColor: color,
+                  child: Text(
+                      _initials(
+                          item.customer.isEmpty ? item.title : item.customer),
+                      style: const TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.w800)))),
+          const SizedBox(height: 14),
+          Center(
+              child: Text('${outgoing ? '-' : '+'}${_money(item.amount)}',
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineMedium
+                      ?.copyWith(color: color, fontWeight: FontWeight.w800))),
+          const SizedBox(height: 4),
+          Center(
+              child: Text(item.status.label,
+                  style: TextStyle(color: color, fontWeight: FontWeight.w700))),
+          const SizedBox(height: 28),
+          _DetailRow('Activity', item.title),
+          _DetailRow('Customer',
+              item.customer.isEmpty ? 'Walk-in customer' : item.customer),
+          _DetailRow('Reference', item.reference),
+          _DetailRow('Date', DateFormat('dd MMMM y, h:mm a').format(item.date)),
+          for (final detail in item.details.entries)
+            _DetailRow(detail.key, detail.value),
+          const SizedBox(height: 18),
+          Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                OutlinedButton.icon(
+                    onPressed: () => _usePdf(context, _ExportAction.download),
+                    icon: const Icon(Icons.download_outlined),
+                    label: const Text('Download')),
+                OutlinedButton.icon(
+                    onPressed: () => _usePdf(context, _ExportAction.share),
+                    icon: const Icon(Icons.share_outlined),
+                    label: const Text('Share')),
+                FilledButton.icon(
+                    onPressed: () => _usePdf(context, _ExportAction.print),
+                    icon: const Icon(Icons.print_outlined),
+                    label: const Text('Print')),
+              ]),
+        ]),
+      ),
+    );
+  }
+}
+
+class _PaymentPdf {
+  static Future<Uint8List> createTransaction(_PaymentTransaction item) =>
+      _document(
+        title: 'PAYMENT RECEIPT',
+        subtitle: item.reference,
+        rows: [
+          ['Activity', item.title],
+          [
+            'Customer',
+            item.customer.isEmpty ? 'Walk-in customer' : item.customer
+          ],
+          ['Status', item.status.label],
+          ['Date', DateFormat('dd MMM y, h:mm a').format(item.date)],
+          ...item.details.entries.map((entry) => [entry.key, entry.value]),
+          [
+            'Amount',
+            '${item.direction == _Direction.outgoing ? '-' : '+'}${_money(item.amount)}'
+          ],
+        ],
+      );
+
+  static Future<Uint8List> createHistory(
+          List<_PaymentTransaction> items, String period) =>
+      _document(
+        title: 'PAYMENT HISTORY',
+        subtitle: period,
+        rows: items
+            .map((item) => [
+                  DateFormat('dd MMM y').format(item.date),
+                  item.customer.isEmpty ? item.title : item.customer,
+                  item.reference,
+                  '${item.direction == _Direction.outgoing ? '-' : '+'}${_money(item.amount)}',
+                ])
+            .toList(),
+        headers: const ['Date', 'Customer', 'Reference', 'Amount'],
+      );
+
+  static Future<Uint8List> _document(
+      {required String title,
+      required String subtitle,
+      required List<List<String>> rows,
+      List<String>? headers}) async {
+    final document = pw.Document();
+    document.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(28),
+      build: (_) => [
+        pw.Text(title,
+            style: pw.TextStyle(
+                fontSize: 20,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.blue800)),
+        pw.SizedBox(height: 5),
+        pw.Text(subtitle),
+        pw.SizedBox(height: 20),
+        pw.TableHelper.fromTextArray(
+            headers: headers ?? const ['Field', 'Value'],
+            data: rows,
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+            cellPadding: const pw.EdgeInsets.all(7)),
+      ],
+    ));
+    return document.save();
+  }
+}
+
 enum _Direction { incoming, outgoing }
+
+enum _RangeScope {
+  today('Today'),
+  week('This week'),
+  month('This month'),
+  custom('Custom');
+
+  const _RangeScope(this.label);
+  final String label;
+}
+
+enum _ExportAction { download, share, print }
 
 enum _TransactionStatus {
   completed('Completed'),
@@ -593,6 +750,16 @@ DateTime _dateOf(dynamic value) =>
 String _customerOf(Map<String, dynamic> row) {
   final name = (row['customerName'] ?? '').toString().trim();
   return name == 'NO_NAME' || name == 'Walk-in customer' ? '' : name;
+}
+
+String _initials(String value) {
+  final words = value
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .toList();
+  if (words.isEmpty) return '?';
+  return words.take(2).map((word) => word[0].toUpperCase()).join();
 }
 
 String _dayLabel(DateTime date) {
