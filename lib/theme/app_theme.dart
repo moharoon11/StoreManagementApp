@@ -40,15 +40,15 @@ abstract final class AppTheme {
           ),
         AppThemeOption.nightOwl => _build(
             brightness: Brightness.dark,
-            seed: const Color(0xFF38BDF8),
+            seed: const Color(0xFF22D3EE),
             primary: const Color(0xFF67E8F9),
-            onPrimary: const Color(0xFF062033),
-            secondary: const Color(0xFF60A5FA),
-            tertiary: const Color(0xFF34D399),
-            canvas: const Color(0xFF07111F),
-            surface: const Color(0xFF0B1728),
-            onSurface: const Color(0xFFF4F8FC),
-            line: const Color(0xFF1F3147),
+            onPrimary: const Color(0xFF06222B),
+            secondary: const Color(0xFF93C5FD),
+            tertiary: const Color(0xFF5EEAD4),
+            canvas: const Color(0xFF080D16),
+            surface: const Color(0xFF101925),
+            onSurface: const Color(0xFFF3F7FC),
+            line: const Color(0xFF2A3A4E),
           ),
       };
 
@@ -82,6 +82,26 @@ abstract final class AppTheme {
           : const Color(0xFFB42318),
       shadow: Colors.black,
       surfaceTint: primary,
+      surfaceContainerLowest:
+          brightness == Brightness.dark ? const Color(0xFF080D16) : null,
+      surfaceContainerLow:
+          brightness == Brightness.dark ? const Color(0xFF0D1520) : null,
+      surfaceContainer:
+          brightness == Brightness.dark ? const Color(0xFF121D2A) : null,
+      surfaceContainerHigh:
+          brightness == Brightness.dark ? const Color(0xFF182536) : null,
+      surfaceContainerHighest:
+          brightness == Brightness.dark ? const Color(0xFF203148) : null,
+      onSurfaceVariant:
+          brightness == Brightness.dark ? const Color(0xFFC5D1E0) : null,
+      primaryContainer:
+          brightness == Brightness.dark ? const Color(0xFF164252) : null,
+      onPrimaryContainer:
+          brightness == Brightness.dark ? const Color(0xFFB7F3FB) : null,
+      secondaryContainer:
+          brightness == Brightness.dark ? const Color(0xFF1C3155) : null,
+      onSecondaryContainer:
+          brightness == Brightness.dark ? const Color(0xFFD7E6FF) : null,
     );
 
     final base = GoogleFonts.plusJakartaSansTextTheme(
@@ -353,6 +373,31 @@ abstract final class AppTheme {
             size: 22,
           );
         }),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? primary
+              : onSurface.withValues(alpha: .62),
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? primary.withValues(alpha: .32)
+              : colorScheme.outlineVariant,
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          side: WidgetStatePropertyAll(
+            BorderSide(color: colorScheme.outlineVariant),
+          ),
+          foregroundColor: WidgetStatePropertyAll(onSurface),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? primary.withValues(alpha: .18)
+                : surface,
+          ),
+        ),
       ),
       scrollbarTheme: ScrollbarThemeData(
         radius: const Radius.circular(999),

@@ -15,6 +15,7 @@ class StorageService {
   static const String _keyFavouriteProductIds = 'favourite_product_ids';
   static const String _keyFavouriteSyncOperations = 'favourite_sync_operations';
   static const String _keyCategoryLayout = 'category_layout';
+  static const String _keyInvoiceDiscounts = 'invoice_discounts';
 
   static Future<void> saveAuthData(
       {required String token,
@@ -166,6 +167,57 @@ class StorageService {
   static Future<void> saveCategoryLayout(String layout) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyCategoryLayout, layout);
+  }
+
+  /// Checkout discounts are retained on-device as a compatibility layer for
+  /// older API deployments that do not yet return the new invoice fields.
+  /// This keeps downloaded, shared and printed PDFs accurate on this device.
+  static Future<void> saveInvoiceDiscount(
+    int invoiceId,
+    Map<String, dynamic> discount,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = await getUserId();
+    final key = '${_keyInvoiceDiscounts}_${userId ?? 'guest'}';
+    final saved = prefs.getString(key);
+    final values = saved == null
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(jsonDecode(saved) as Map);
+    values['$invoiceId'] = discount;
+    await prefs.setString(key, jsonEncode(values));
+  }
+
+  static Future<Map<String, dynamic>?> getInvoiceDiscount(int invoiceId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = await getUserId();
+    final saved =
+        prefs.getString('${_keyInvoiceDiscounts}_${userId ?? 'guest'}');
+    if (saved == null) return null;
+    try {
+      final values = Map<String, dynamic>.from(jsonDecode(saved) as Map);
+      final value = values['$invoiceId'];
+      return value is Map ? Map<String, dynamic>.from(value) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<Map<String, Map<String, dynamic>>> getInvoiceDiscounts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = await getUserId();
+    final saved =
+        prefs.getString('${_keyInvoiceDiscounts}_${userId ?? 'guest'}');
+    if (saved == null) return const {};
+    try {
+      final values = Map<String, dynamic>.from(jsonDecode(saved) as Map);
+      return {
+        for (final entry in values.entries)
+          if (entry.value is Map)
+            entry.key: Map<String, dynamic>.from(entry.value as Map),
+      };
+    } catch (_) {
+      return const {};
+    }
   }
 
   static Future<void> clearAuthData() async {

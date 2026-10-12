@@ -112,10 +112,96 @@ class _CustomerCreditInvoicesViewState
           {});
       if (mounted) {
         _message('Credit entry received.');
-        _load();
+        await _load();
+        await _completeIfEveryEntryIsSettled(invoice['id']);
       }
     } catch (e) {
       _message(e.toString());
+    }
+  }
+
+  Future<void> _recordPartialPayment(
+    Map<String, dynamic> invoice,
+    Map<String, dynamic> entry,
+  ) async {
+    final remaining = _remaining(entry);
+    final amount = await _paymentAmountDialog(remaining);
+    if (amount == null) return;
+    try {
+      await ApiService.put(
+        '${ApiConfig.customerCreditInvoices}/${invoice['id']}/transactions/${entry['id']}/received',
+        {'amountReceived': amount, 'receivedAmount': amount},
+      );
+      if (!mounted) return;
+      _message(amount >= remaining
+          ? 'Credit entry received.'
+          : 'Partial payment recorded.');
+      await _load();
+      await _completeIfEveryEntryIsSettled(invoice['id']);
+    } catch (e) {
+      _message(e.toString());
+    }
+  }
+
+  Future<double?> _paymentAmountDialog(double remaining) async {
+    final controller = TextEditingController();
+    final result = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Record payment'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: 'Amount received',
+            prefixText: '₹ ',
+            helperText: 'Remaining: ₹${_money(remaining)}',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final amount = double.tryParse(controller.text.trim());
+              if (amount == null || amount <= 0 || amount > remaining) return;
+              Navigator.pop(dialogContext, amount);
+            },
+            child: const Text('Save payment'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
+  Future<void> _completeIfEveryEntryIsSettled(dynamic invoiceId) async {
+    Map<String, dynamic>? invoice;
+    for (final row in _invoices) {
+      if (row is Map && row['id']?.toString() == invoiceId.toString()) {
+        invoice = Map<String, dynamic>.from(row);
+        break;
+      }
+    }
+    if (invoice == null || _received(invoice)) return;
+    final credits = (invoice['transactions'] as List? ?? const [])
+        .whereType<Map>()
+        .map(Map<String, dynamic>.from)
+        .where((entry) => entry['transactionType'] == 'CREDIT')
+        .toList();
+    if (credits.isEmpty || credits.any((entry) => !_received(entry))) return;
+    try {
+      await ApiService.put(
+        '${ApiConfig.customerCreditInvoices}/${invoice['id']}/received',
+        {},
+      );
+      if (mounted) await _load();
+    } catch (_) {
+      // The server may already auto-complete it; refresh on the next visit.
     }
   }
 
@@ -161,7 +247,8 @@ class _CustomerCreditInvoicesViewState
                             invoice: Map<String, dynamic>.from(item as Map),
                             onAdd: _openForm,
                             onTotalReceived: _receiveAll,
-                            onEntryReceived: _receiveOne)),
+                            onEntryReceived: _receiveOne,
+                            onPartialPayment: _recordPartialPayment)),
                     ],
                   )),
       );
@@ -192,12 +279,15 @@ class _CreditCard extends StatelessWidget {
       {required this.invoice,
       required this.onAdd,
       required this.onTotalReceived,
-      required this.onEntryReceived});
+      required this.onEntryReceived,
+      required this.onPartialPayment});
   final Map<String, dynamic> invoice;
   final ValueChanged<Map<String, dynamic>?> onAdd;
   final ValueChanged<Map<String, dynamic>> onTotalReceived;
   final void Function(Map<String, dynamic>, Map<String, dynamic>)
       onEntryReceived;
+  final void Function(Map<String, dynamic>, Map<String, dynamic>)
+      onPartialPayment;
   @override
   Widget build(BuildContext context) {
     final entries = (invoice['transactions'] as List? ?? const [])
@@ -241,6 +331,10 @@ class _CreditCard extends StatelessWidget {
                   onReceived:
                       entry['transactionType'] == 'CREDIT' && !_received(entry)
                           ? () => onEntryReceived(invoice, entry)
+                          : null,
+                  onPartialPayment:
+                      entry['transactionType'] == 'CREDIT' && !_received(entry)
+                          ? () => onPartialPayment(invoice, entry)
                           : null);
             }),
             if (!completed) const Divider(height: 24),
@@ -268,9 +362,11 @@ class _CreditCard extends StatelessWidget {
 }
 
 class _EntryTile extends StatelessWidget {
-  const _EntryTile({required this.entry, this.onReceived});
+  const _EntryTile(
+      {required this.entry, this.onReceived, this.onPartialPayment});
   final Map<String, dynamic> entry;
   final VoidCallback? onReceived;
+  final VoidCallback? onPartialPayment;
   @override
   Widget build(BuildContext context) {
     final settled = _received(entry);
@@ -311,7 +407,7 @@ class _EntryTile extends StatelessWidget {
                               style:
                                   const TextStyle(fontWeight: FontWeight.w600)),
                           Text(
-                              '${_formatDate(entry['transactionDate'])} • ₹${_money(entry['amount'])}',
+                              '${_formatDate(entry['transactionDate'])} • ₹${_money(entry['amount'])}${settled || !credit ? '' : ' • ₹${_money(_remaining(entry))} due'}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis)
                         ])),
@@ -321,12 +417,28 @@ class _EntryTile extends StatelessWidget {
                           child: Icon(Icons.check, size: 18))
                   ]),
                   if (onReceived != null)
-                    Align(
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Align(
                         alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                            onPressed: onReceived,
-                            icon: const Icon(Icons.check, size: 18),
-                            label: const Text('Received'))),
+                        child: Wrap(
+                          spacing: 4,
+                          children: [
+                            TextButton.icon(
+                              onPressed: onPartialPayment,
+                              icon:
+                                  const Icon(Icons.payments_outlined, size: 18),
+                              label: Text('Pay ₹${_money(_remaining(entry))}'),
+                            ),
+                            TextButton.icon(
+                              onPressed: onReceived,
+                              icon: const Icon(Icons.check, size: 18),
+                              label: const Text('Received'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ]))));
   }
 
@@ -612,7 +724,33 @@ class _Item {
 }
 
 bool _received(Map<String, dynamic> entry) =>
-    entry['isReceived'] == true || entry['isReceived']?.toString() == 'true';
+    entry['isReceived'] == true ||
+    entry['isReceived']?.toString() == 'true' ||
+    _remaining(entry) <= 0;
+
+double _remaining(Map<String, dynamic> entry) {
+  final explicit = entry['remainingAmount'] ??
+      entry['outstandingBalance'] ??
+      entry['balanceDue'];
+  if (explicit != null) {
+    return ((explicit as num?)?.toDouble() ??
+            double.tryParse(explicit.toString()) ??
+            0)
+        .clamp(0.0, double.infinity)
+        .toDouble();
+  }
+  final amount = (entry['amount'] as num?)?.toDouble() ??
+      double.tryParse(entry['amount']?.toString() ?? '') ??
+      0;
+  final paid = (entry['paidAmount'] ??
+      entry['receivedAmount'] ??
+      entry['amountReceived']) as dynamic;
+  final paidValue = (paid as num?)?.toDouble() ??
+      double.tryParse(paid?.toString() ?? '') ??
+      0;
+  return (amount - paidValue).clamp(0.0, double.infinity).toDouble();
+}
+
 String _money(dynamic value) => ((value as num?)?.toDouble() ??
         double.tryParse(value?.toString() ?? '') ??
         0)

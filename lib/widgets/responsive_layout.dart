@@ -213,6 +213,25 @@ class ResponsiveLayout extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: Icon(
+                        provider.themeOption == AppThemeOption.nightOwl
+                            ? Icons.dark_mode_rounded
+                            : Icons.light_mode_rounded,
+                        color: scheme.primary,
+                      ),
+                      title: const Text('Dark mode'),
+                      subtitle:
+                          const Text('Use the softer low-light workspace'),
+                      value: provider.themeOption == AppThemeOption.nightOwl,
+                      onChanged: (enabled) => provider.setThemeOption(
+                        enabled
+                            ? AppThemeOption.nightOwl
+                            : AppThemeOption.light,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(

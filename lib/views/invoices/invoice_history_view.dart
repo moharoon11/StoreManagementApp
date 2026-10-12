@@ -7,6 +7,7 @@ import '../../providers/app_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/invoice_pdf_service.dart';
 import '../../services/platform_capabilities.dart';
+import '../../services/storage_service.dart';
 import '../../utils/quantity_utils.dart';
 import '../../utils/amount_range_input_formatter.dart';
 import '../../widgets/workspace_ui.dart';
@@ -57,6 +58,17 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     await Future.wait([_fetchInvoices(), _fetchSummary()]);
+    final localDiscountTotal = _invoices.whereType<Map>().fold<double>(
+          0,
+          (total, row) => total + _asAmount(row['discountAmount']),
+        );
+    if (localDiscountTotal > 0) {
+      _summary = {
+        ..._summary,
+        'totalSale': (_asAmount(_summary['totalSale']) - localDiscountTotal)
+            .clamp(0.0, double.infinity),
+      };
+    }
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -80,7 +92,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
       if (!mounted) return;
 
       if (res is List) {
-        _invoices = List<dynamic>.from(res);
+        _invoices = await _applyLocalDiscounts(List<dynamic>.from(res));
         return;
       }
 
@@ -90,10 +102,38 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
 
       if (res is Map) {
         final rows = _extractInvoiceRows(res);
-        _invoices = rows;
+        _invoices = await _applyLocalDiscounts(rows);
       }
     } catch (_) {}
   }
+
+  Future<List<dynamic>> _applyLocalDiscounts(List<dynamic> rows) async {
+    final discounts = await StorageService.getInvoiceDiscounts();
+    return rows.map((row) {
+      if (row is! Map) return row;
+      final invoice = Map<String, dynamic>.from(row);
+      final saved = discounts[invoice['id']?.toString()];
+      if (saved == null) return invoice;
+
+      final discount = _asAmount(saved['discountAmount']);
+      final subtotal = _asAmount(saved['subtotal']);
+      final received = _asAmount(invoice['amountReceived']);
+      final originalDue = _asAmount(invoice['balanceDue']);
+      final settled = invoice['isReceived'] == true ||
+          invoice['isReceived']?.toString() == 'true' ||
+          (subtotal > 0 && received + discount >= subtotal - .005);
+      return {
+        ...invoice,
+        ...saved,
+        'balanceDue': (originalDue - discount).clamp(0.0, double.infinity),
+        if (settled) 'isReceived': true,
+      };
+    }).toList();
+  }
+
+  double _asAmount(dynamic value) => value is num
+      ? value.toDouble()
+      : double.tryParse(value?.toString() ?? '') ?? 0;
 
   Future<void> _fetchSummary() async {
     try {

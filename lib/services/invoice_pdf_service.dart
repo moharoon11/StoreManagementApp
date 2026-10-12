@@ -8,6 +8,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import 'api_service.dart';
+import 'storage_service.dart';
 
 class InvoicePdfService {
   /// Gets invoice data as JSON and renders the PDF on the device. This keeps
@@ -20,7 +21,10 @@ class InvoicePdfService {
       throw Exception('Could not load invoice details for the PDF.');
     }
 
-    return _generate(Map<String, dynamic>.from(response['data'] as Map));
+    final invoice = Map<String, dynamic>.from(response['data'] as Map);
+    final localDiscount = await StorageService.getInvoiceDiscount(invoiceId);
+    if (localDiscount != null) invoice.addAll(localDiscount);
+    return _generate(invoice);
   }
 
   static Future<Uint8List> _generate(Map<String, dynamic> invoice) async {
@@ -47,7 +51,7 @@ class InvoicePdfService {
         footer: (_) => _footer(store),
         build: (_) => [
           pw.SizedBox(height: 20),
-          _itemsTable(items, isManualInvoice),
+          _itemsTable(items, isManualInvoice, invoice),
           pw.SizedBox(height: 16),
           pw.Align(
             alignment: pw.Alignment.centerRight,
@@ -56,6 +60,13 @@ class InvoicePdfService {
               child: pw.Column(
                 children: [
                   _totalRow('Subtotal', _money(invoice['subtotal'])),
+                  if (_discountAmount(invoice) > 0) ...[
+                    pw.SizedBox(height: 5),
+                    _totalRow(
+                      _discountLabel(invoice),
+                      '-${_money(_discountAmount(invoice))}',
+                    ),
+                  ],
                   pw.SizedBox(height: 5),
                   _totalRow(
                     'Grand Total',
@@ -146,12 +157,18 @@ class InvoicePdfService {
   static pw.Widget _itemsTable(
     List<Map<String, dynamic>> items,
     bool isManualInvoice,
+    Map<String, dynamic> invoice,
   ) {
     final showProductColumn = !isManualInvoice ||
         items.any((item) => _text(item['productName']).isNotEmpty);
     final headers = <String>['#'];
     if (showProductColumn) headers.add('Product');
-    headers.addAll(['Price', 'Qty', 'Total']);
+    headers.addAll(['Product price', 'Sold price', 'Qty', 'After discount']);
+
+    final subtotal = _numberValue(invoice['subtotal']);
+    final discountFactor = subtotal > 0
+        ? (_discountAmount(invoice) / subtotal).clamp(0.0, 1.0)
+        : 0.0;
 
     final data = <List<String>>[];
     for (var index = 0; index < items.length; index++) {
@@ -161,9 +178,12 @@ class InvoicePdfService {
         row.add(_text(item['productName'], fallback: 'Item'));
       }
       row.addAll([
+        _money(item['productPrice'] ??
+            item['originalPrice'] ??
+            item['sellingPrice']),
         _money(item['sellingPrice']),
         '${_number(item['quantity'])} ${_text(item['unit'], fallback: 'Piece')}',
-        _money(item['total']),
+        _money(_numberValue(item['total']) * (1 - discountFactor)),
       ]);
       data.add(row);
     }
@@ -241,6 +261,20 @@ class InvoicePdfService {
     final amount =
         value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
     return 'Rs. ${amount.toStringAsFixed(2)}';
+  }
+
+  static double _discountAmount(Map<String, dynamic> invoice) =>
+      _numberValue(invoice['discountAmount']);
+
+  static double _numberValue(dynamic value) =>
+      value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
+
+  static String _discountLabel(Map<String, dynamic> invoice) {
+    final type = _text(invoice['discountType']).toUpperCase();
+    final value = _numberValue(invoice['discountValue']);
+    return type == 'PERCENTAGE' || type == 'PERCENT'
+        ? 'Discount (${value.toStringAsFixed(2)}%)'
+        : 'Discount';
   }
 
   static String _formatDate(dynamic value) {

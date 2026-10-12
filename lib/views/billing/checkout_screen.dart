@@ -8,6 +8,7 @@ import '../../providers/app_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/invoice_pdf_service.dart';
 import '../../services/platform_capabilities.dart';
+import '../../services/storage_service.dart';
 import '../../utils/quantity_utils.dart';
 import '../../utils/amount_range_input_formatter.dart';
 import '../../widgets/ui_breakpoints.dart';
@@ -34,10 +35,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _nameController = TextEditingController();
   final _mobileController = TextEditingController();
   late final TextEditingController _amountReceivedController;
+  final _discountController = TextEditingController();
 
   DateTime _invoiceDate = DateTime.now();
   bool _isReceived = true;
   bool _isProcessing = false;
+  _DiscountType _discountType = _DiscountType.amount;
 
   static const _paidColor = Color(0xFF2E7D32);
 
@@ -64,6 +67,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _nameController.dispose();
     _mobileController.dispose();
     _amountReceivedController.dispose();
+    _discountController.dispose();
     super.dispose();
   }
 
@@ -77,8 +81,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return double.tryParse(rawAmount) ?? 0.0;
   }
 
+  double get _discountInput =>
+      double.tryParse(_discountController.text.trim()) ?? 0;
+
+  double _discountAmountFor(double subtotal) {
+    final value = _discountInput;
+    if (_discountType == _DiscountType.percentage) {
+      return (subtotal * (value / 100)).clamp(0.0, subtotal).toDouble();
+    }
+    return value.clamp(0.0, subtotal).toDouble();
+  }
+
+  double get _payableTotal =>
+      (_grandTotalValue - _discountAmountFor(_grandTotalValue))
+          .clamp(0.0, double.infinity)
+          .toDouble();
+
   void _syncReceivedStateFromAmount() {
-    final grandTotal = _grandTotalValue;
+    final grandTotal = _payableTotal;
     final enteredAmount = _enteredAmountFor(grandTotal);
     final shouldMarkReceived = enteredAmount >= grandTotal && grandTotal > 0;
     if (_isReceived != shouldMarkReceived) {
@@ -133,7 +153,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _onToggleReceived(bool value) {
-    final grandTotal = _grandTotalValue;
+    final grandTotal = _payableTotal;
     setState(() {
       _isReceived = value;
       _amountReceivedController.text =
@@ -160,7 +180,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           customerName.isEmpty ? 'Walk-in customer' : customerName;
       final customerMobile = _mobileController.text.trim();
       final invoiceDate = DateFormat('yyyy-MM-dd').format(_invoiceDate);
-      final grandTotal = _grandTotalValue;
+      final subtotal = _grandTotalValue;
+      final discountAmount = _discountAmountFor(subtotal);
+      final grandTotal =
+          (subtotal - discountAmount).clamp(0.0, double.infinity).toDouble();
       final enteredAmount = _enteredAmountFor(grandTotal);
       // The server treats a fully-received invoice as exactly paid. Sending a
       // stale or manually edited amount while this switch is on can cause its
@@ -190,6 +213,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           'customerMobileNumber': customerMobile,
           'isReceived': _isReceived,
           'amountReceived': amountReceived,
+          'discountType': _discountType.apiValue,
+          'discountValue': _discountInput,
           'invoiceDate': invoiceDate,
           'items': manualItems,
         });
@@ -206,6 +231,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           'customerMobileNumber': customerMobile,
           'isReceived': _isReceived,
           'amountReceived': amountReceived,
+          'discountType': _discountType.apiValue,
+          'discountValue': _discountInput,
           'invoiceDate': invoiceDate,
           'items': items,
         });
@@ -213,17 +240,39 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (response['success'] == true) {
         final invoice = response['data'];
+        if (invoice is Map && invoice['id'] is num) {
+          await StorageService.saveInvoiceDiscount(
+            (invoice['id'] as num).toInt(),
+            {
+              'subtotal': subtotal,
+              'grandTotal': grandTotal,
+              'discountType': _discountType.apiValue,
+              'discountValue': _discountInput,
+              'discountAmount': discountAmount,
+            },
+          );
+        }
         if (!widget.isManual) {
           provider.clearCart();
         }
         if (!mounted) return;
         final navigator = Navigator.of(context);
+        final responseInvoice = invoice is Map
+            ? {
+                ...Map<String, dynamic>.from(invoice),
+                'subtotal': subtotal,
+                'grandTotal': grandTotal,
+                'discountType': _discountType.apiValue,
+                'discountValue': _discountInput,
+                'discountAmount': discountAmount,
+              }
+            : invoice;
         await _showInvoiceSuccessDialog(
           context,
-          invoice is Map
+          responseInvoice is Map
               ? _decorateManualInvoiceResponse(
-                  Map<String, dynamic>.from(invoice))
-              : invoice,
+                  Map<String, dynamic>.from(responseInvoice))
+              : responseInvoice,
           _invoiceDate,
         );
         if (!mounted) return;
@@ -339,6 +388,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       value: '₹${invoice['grandTotal']}',
                       accent: scheme.primary,
                     ),
+                    if (((invoice['discountAmount'] as num?)?.toDouble() ?? 0) >
+                        0) ...[
+                      const SizedBox(height: 8),
+                      _InvoiceMetaRow(
+                        label: invoice['discountType'] == 'PERCENTAGE'
+                            ? 'Discount (${invoice['discountValue']}%)'
+                            : 'Discount',
+                        value: '-₹${invoice['discountAmount']}',
+                        accent: scheme.secondary,
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     _InvoiceMetaRow(
                       label: 'Balance due',
@@ -459,7 +519,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final lines = _previewLines(provider);
-    final grandTotal = _grandTotalValue;
+    final subtotal = _grandTotalValue;
+    final discountAmount = _discountAmountFor(subtotal);
+    final grandTotal =
+        (subtotal - discountAmount).clamp(0.0, double.infinity).toDouble();
     final amountReceived = _enteredAmountFor(grandTotal);
     final balanceDue = (grandTotal - amountReceived).clamp(
       0.0,
@@ -495,9 +558,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         isReceived: _isReceived,
                         paidColor: _paidColor,
                         grandTotal: grandTotal,
+                        subtotal: subtotal,
+                        discountAmount: discountAmount,
+                        discountController: _discountController,
+                        discountType: _discountType,
                         balanceDue: balanceDue,
                         onToggleReceived: _onToggleReceived,
                         onAmountChanged: _syncReceivedStateFromAmount,
+                        onDiscountChanged: () {
+                          setState(() {
+                            final payable = _payableTotal;
+                            if (_isReceived ||
+                                _enteredAmountFor(payable) > payable) {
+                              _amountReceivedController.text =
+                                  payable.toStringAsFixed(2);
+                            }
+                          });
+                        },
+                        onDiscountTypeChanged: (type) => setState(() {
+                          _discountType = type;
+                          _discountController.clear();
+                          if (_isReceived) {
+                            _amountReceivedController.text =
+                                _payableTotal.toStringAsFixed(2);
+                          }
+                        }),
                       );
 
                       final review = _CheckoutReviewPanel(
@@ -546,7 +631,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   value: '₹${grandTotal.toStringAsFixed(2)}',
                                   icon: Icons.payments_outlined,
                                   color: scheme.secondary,
-                                  note: 'Current bill amount',
+                                  note: discountAmount > 0
+                                      ? '₹${discountAmount.toStringAsFixed(2)} discount applied'
+                                      : 'Current bill amount',
                                 ),
                                 StatTile(
                                   label: 'Balance due',
@@ -674,6 +761,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 }
 
+enum _DiscountType {
+  amount('AMOUNT'),
+  percentage('PERCENTAGE');
+
+  const _DiscountType(this.apiValue);
+  final String apiValue;
+}
+
 class _PreviewLine {
   const _PreviewLine({
     required this.title,
@@ -699,9 +794,15 @@ class _CheckoutDetailsPanel extends StatelessWidget {
     required this.isReceived,
     required this.paidColor,
     required this.grandTotal,
+    required this.subtotal,
+    required this.discountAmount,
+    required this.discountController,
+    required this.discountType,
     required this.balanceDue,
     required this.onToggleReceived,
     required this.onAmountChanged,
+    required this.onDiscountChanged,
+    required this.onDiscountTypeChanged,
   });
 
   final TextEditingController nameController;
@@ -711,9 +812,15 @@ class _CheckoutDetailsPanel extends StatelessWidget {
   final bool isReceived;
   final Color paidColor;
   final double grandTotal;
+  final double subtotal;
+  final double discountAmount;
+  final TextEditingController discountController;
+  final _DiscountType discountType;
   final double balanceDue;
   final ValueChanged<bool> onToggleReceived;
   final VoidCallback onAmountChanged;
+  final VoidCallback onDiscountChanged;
+  final ValueChanged<_DiscountType> onDiscountTypeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -809,6 +916,50 @@ class _CheckoutDetailsPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
+              SegmentedButton<_DiscountType>(
+                segments: const [
+                  ButtonSegment(
+                    value: _DiscountType.amount,
+                    icon: Icon(Icons.currency_rupee_rounded),
+                    label: Text('Amount'),
+                  ),
+                  ButtonSegment(
+                    value: _DiscountType.percentage,
+                    icon: Icon(Icons.percent_rounded),
+                    label: Text('Percent'),
+                  ),
+                ],
+                selected: {discountType},
+                onSelectionChanged: (value) =>
+                    onDiscountTypeChanged(value.first),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: discountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  AmountRangeInputFormatter(
+                    maxAmount: discountType == _DiscountType.percentage
+                        ? 100
+                        : subtotal,
+                  ),
+                ],
+                onChanged: (_) => onDiscountChanged(),
+                decoration: InputDecoration(
+                  labelText: discountType == _DiscountType.percentage
+                      ? 'Discount percentage'
+                      : 'Discount amount',
+                  prefixText:
+                      discountType == _DiscountType.amount ? '₹ ' : null,
+                  suffixText:
+                      discountType == _DiscountType.percentage ? '%' : null,
+                  helperText: discountAmount > 0
+                      ? 'You save ₹${discountAmount.toStringAsFixed(2)}'
+                      : 'Optional discount for this bill',
+                ),
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: amountReceivedController,
                 keyboardType: const TextInputType.numberWithOptions(
@@ -828,7 +979,7 @@ class _CheckoutDetailsPanel extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _MiniSummaryCard(
-                      label: 'Total',
+                      label: discountAmount > 0 ? 'Payable total' : 'Total',
                       value: '₹${grandTotal.toStringAsFixed(2)}',
                       color: scheme.primary,
                     ),

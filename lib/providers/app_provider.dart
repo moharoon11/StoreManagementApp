@@ -140,7 +140,12 @@ class AppProvider extends ChangeNotifier {
       if (response is Map && response['success'] == true && data is Map) {
         final storeName = data['storeName']?.toString().trim() ?? '';
         final ownerName = data['ownerName']?.toString().trim() ?? '';
-        _hasCompletedStoreSetup = storeName.isNotEmpty && ownerName.isNotEmpty;
+        final email = data['email']?.toString().trim() ?? '';
+        final phone = data['phone']?.toString().trim() ?? '';
+        _hasCompletedStoreSetup = storeName.isNotEmpty &&
+            ownerName.isNotEmpty &&
+            email.isNotEmpty &&
+            phone.isNotEmpty;
       }
     } catch (_) {
       // A missing profile and an unavailable lookup both keep the account in
@@ -437,5 +442,4 @@ class AppProvider extends ChangeNotifier {
       _isSyncingFavourites = false;
     }
   }
-
 }

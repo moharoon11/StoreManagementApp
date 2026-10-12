@@ -119,12 +119,26 @@ class _StoreProfileViewState extends State<StoreProfileView> {
   }
 
   Future<void> _saveProfile() async {
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final validEmail = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email);
+    final validPhone = RegExp(r'^[0-9+()\-\s]{7,20}$').hasMatch(phone);
     if (_storeNameController.text.trim().isEmpty ||
-        _ownerNameController.text.trim().isEmpty) {
+        _ownerNameController.text.trim().isEmpty ||
+        (widget.setupRequired && (email.isEmpty || phone.isEmpty))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(widget.setupRequired
+              ? 'Store name, owner name, email, and phone are required.'
+              : 'Store name and owner name are required.'),
+        ),
+      );
+      return;
+    }
+    if (widget.setupRequired && (!validEmail || !validPhone)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Store name and owner name are required.'),
-        ),
+            content: Text('Enter a valid email address and phone number.')),
       );
       return;
     }
@@ -362,10 +376,18 @@ class _StoreProfileViewState extends State<StoreProfileView> {
               const SizedBox(height: 12),
               _FormPair(
                 first: _textField('GSTIN number', _gstController),
-                second: _textField('Phone number', _phoneController),
+                second: _textField(
+                  widget.setupRequired ? 'Phone number *' : 'Phone number',
+                  _phoneController,
+                  keyboardType: TextInputType.phone,
+                ),
               ),
               const SizedBox(height: 12),
-              _textField('Email address', _emailController),
+              _textField(
+                widget.setupRequired ? 'Email address *' : 'Email address',
+                _emailController,
+                keyboardType: TextInputType.emailAddress,
+              ),
               const SizedBox(height: 12),
               _textField('Address', _addressController, maxLines: 2),
               const SizedBox(height: 12),
@@ -401,10 +423,12 @@ class _StoreProfileViewState extends State<StoreProfileView> {
     String label,
     TextEditingController controller, {
     int maxLines = 1,
+    TextInputType? keyboardType,
   }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
+      keyboardType: keyboardType,
       decoration: InputDecoration(labelText: label),
     );
   }
