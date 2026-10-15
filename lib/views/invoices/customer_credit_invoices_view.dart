@@ -128,9 +128,9 @@ class _CustomerCreditInvoicesViewState
     final amount = await _paymentAmountDialog(remaining);
     if (amount == null) return;
     try {
-      await ApiService.put(
-        '${ApiConfig.customerCreditInvoices}/${invoice['id']}/transactions/${entry['id']}/received',
-        {'amountReceived': amount, 'receivedAmount': amount},
+      await ApiService.post(
+        '${ApiConfig.customerCreditInvoices}/${invoice['id']}/transactions/${entry['id']}/payments',
+        {'amount': amount},
       );
       if (!mounted) return;
       _message(amount >= remaining
@@ -144,39 +144,53 @@ class _CustomerCreditInvoicesViewState
   }
 
   Future<double?> _paymentAmountDialog(double remaining) async {
-    final controller = TextEditingController();
-    final result = await showDialog<double>(
+    var enteredAmount = '';
+    var showValidationError = false;
+    return showDialog<double>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Record payment'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: InputDecoration(
-            labelText: 'Amount received',
-            prefixText: '₹ ',
-            helperText: 'Remaining: ₹${_money(remaining)}',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final amount = double.tryParse(controller.text.trim());
-              if (amount == null || amount <= 0 || amount > remaining) return;
-              Navigator.pop(dialogContext, amount);
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Record payment'),
+          content: TextField(
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: (value) {
+              enteredAmount = value;
+              if (showValidationError) {
+                setDialogState(() => showValidationError = false);
+              }
             },
-            child: const Text('Save payment'),
+            decoration: InputDecoration(
+              labelText: 'Amount received',
+              prefixText: '₹ ',
+              helperText: showValidationError
+                  ? 'Enter an amount from ₹0.01 to ₹${_money(remaining)}.'
+                  : 'Remaining: ₹${_money(remaining)}',
+              helperStyle: showValidationError
+                  ? TextStyle(color: Theme.of(context).colorScheme.error)
+                  : null,
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final amount = double.tryParse(enteredAmount.trim());
+                if (amount == null || amount <= 0 || amount > remaining) {
+                  setDialogState(() => showValidationError = true);
+                  return;
+                }
+                Navigator.of(dialogContext).pop(amount);
+              },
+              child: const Text('Save payment'),
+            ),
+          ],
+        ),
       ),
     );
-    controller.dispose();
-    return result;
   }
 
   Future<void> _completeIfEveryEntryIsSettled(dynamic invoiceId) async {
