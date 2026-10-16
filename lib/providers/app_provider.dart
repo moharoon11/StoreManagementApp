@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../services/api_service.dart';
 import '../services/favourite_service.dart';
@@ -278,6 +279,71 @@ class AppProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
     return false;
+  }
+
+  Future<bool> requestPasswordReset(String email,
+      {required bool shareLocation}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final deviceId = await StorageService.getOrCreateDeviceId();
+      Position? position;
+      // Location is entirely opt-in. Permission failures are intentionally ignored.
+      if (shareLocation) {
+        try {
+          final permission = await Geolocator.requestPermission();
+          if (permission == LocationPermission.always ||
+              permission == LocationPermission.whileInUse) {
+            position = await Geolocator.getCurrentPosition(
+              locationSettings:
+                  const LocationSettings(accuracy: LocationAccuracy.low),
+            );
+          }
+        } catch (_) {}
+      }
+      await ApiService.post(
+          ApiConfig.forgotPassword,
+          {
+            'email': email.trim(),
+            'deviceType': kIsWeb ? 'Web' : 'Mobile app',
+            'operatingSystem': kIsWeb ? 'Web' : defaultTargetPlatform.name,
+            'browser': kIsWeb ? 'Web browser' : null,
+            'deviceId': deviceId,
+            if (position != null) 'gpsLatitude': position.latitude,
+            if (position != null) 'gpsLongitude': position.longitude,
+          },
+          includeAuthorization: false);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> resetPassword(String token, String newPassword) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await ApiService.post(
+          ApiConfig.resetPassword,
+          {
+            'token': token,
+            'newPassword': newPassword,
+          },
+          includeAuthorization: false);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   static String? validateRegistrationUsername(String username) {

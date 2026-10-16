@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />  
+    <!-- Requested only after the user opts in while requesting a reset. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
     android:label="store_management_app"
     android:name="${applicationName}"

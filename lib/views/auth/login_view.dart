@@ -97,6 +97,63 @@ class _LoginViewState extends State<LoginView>
     });
   }
 
+  Future<void> _showForgotPasswordDialog() async {
+    final emailController = TextEditingController();
+    final provider = context.read<AppProvider>();
+    var shareLocation = false;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Reset password'),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text(
+                'Enter the email saved in your store profile. We will send a reset link if it is registered.'),
+            const SizedBox(height: 16),
+            TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                decoration: const InputDecoration(labelText: 'Store email')),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: shareLocation,
+              onChanged: (value) =>
+                  setDialogState(() => shareLocation = value ?? false),
+              title: const Text('Include my approximate GPS location'),
+              subtitle: const Text(
+                  'Optional. Permission is requested only if selected.'),
+            ),
+          ]),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () async {
+                  final email = emailController.text.trim();
+                  if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
+                    return;
+                  }
+                  final ok = await provider.requestPasswordReset(email,
+                      shareLocation: shareLocation);
+                  if (dialogContext.mounted) Navigator.pop(dialogContext);
+                  if (mounted) {
+                    ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(
+                        content: Text(ok
+                            ? 'If that email is registered, a reset link will be sent shortly.'
+                            : provider.errorMessage ??
+                                'Unable to submit the request.')));
+                  }
+                },
+                child: const Text('Send link')),
+          ],
+        ),
+      ),
+    );
+    emailController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
@@ -144,6 +201,7 @@ class _LoginViewState extends State<LoginView>
                                     ),
                                     onSubmit: _submit,
                                     onSwitchMode: _toggleMode,
+                                    onForgotPassword: _showForgotPasswordDialog,
                                   ),
                                 ),
                               ),
@@ -170,6 +228,7 @@ class _LoginViewState extends State<LoginView>
                                   ),
                                   onSubmit: _submit,
                                   onSwitchMode: _toggleMode,
+                                  onForgotPassword: _showForgotPasswordDialog,
                                 ),
                               ),
                             ],
@@ -288,6 +347,7 @@ class _AuthForm extends StatelessWidget {
     required this.onTogglePassword,
     required this.onSubmit,
     required this.onSwitchMode,
+    required this.onForgotPassword,
   });
 
   final bool register;
@@ -299,6 +359,7 @@ class _AuthForm extends StatelessWidget {
   final VoidCallback onTogglePassword;
   final VoidCallback onSubmit;
   final VoidCallback onSwitchMode;
+  final VoidCallback onForgotPassword;
 
   @override
   Widget build(BuildContext context) {
@@ -392,6 +453,14 @@ class _AuthForm extends StatelessWidget {
             ),
           ),
         ),
+        if (!register)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: loading ? null : onForgotPassword,
+              child: const Text('Forgot password?'),
+            ),
+          ),
         const SizedBox(height: 12),
         Center(
           child: TextButton(
