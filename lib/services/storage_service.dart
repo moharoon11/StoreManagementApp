@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,6 +17,7 @@ class StorageService {
   static const String _keyFavouriteProductIds = 'favourite_product_ids';
   static const String _keyFavouriteSyncOperations = 'favourite_sync_operations';
   static const String _keyCategoryLayout = 'category_layout';
+  static const String _keyDeviceId = 'device_id';
   static const String _keyInvoiceDiscounts = 'invoice_discounts';
 
   static Future<void> saveAuthData(
@@ -86,6 +89,25 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_keyUserId);
   }
+
+  /// A stable, random installation identifier. It is intentionally not a
+  /// hardware identifier, so it respects platform privacy restrictions while
+  /// letting the API distinguish separate signed-in devices.
+  static Future<String> getOrCreateDeviceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getString(_keyDeviceId);
+    if (existing != null && existing.isNotEmpty) return existing;
+    final random = Random.secure();
+    final identifier = base64UrlEncode(
+      List<int>.generate(32, (_) => random.nextInt(256)),
+    ).replaceAll('=', '');
+    await prefs.setString(_keyDeviceId, identifier);
+    return identifier;
+  }
+
+  static String get deviceName => kIsWeb
+      ? 'Web browser'
+      : '${defaultTargetPlatform.name[0].toUpperCase()}${defaultTargetPlatform.name.substring(1)} device';
 
   static Future<String?> getTheme() async {
     final prefs = await SharedPreferences.getInstance();

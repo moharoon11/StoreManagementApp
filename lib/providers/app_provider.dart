@@ -179,11 +179,14 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final deviceId = await StorageService.getOrCreateDeviceId();
       final response = await ApiService.post(
           ApiConfig.login,
           {
             'username': username,
             'password': password,
+            'deviceId': deviceId,
+            'deviceName': StorageService.deviceName,
           },
           includeAuthorization: false);
 
@@ -233,11 +236,14 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final deviceId = await StorageService.getOrCreateDeviceId();
       final response = await ApiService.post(
           ApiConfig.register,
           {
             'username': username,
             'password': password,
+            'deviceId': deviceId,
+            'deviceName': StorageService.deviceName,
           },
           includeAuthorization: false);
 
