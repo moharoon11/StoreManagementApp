@@ -28,6 +28,12 @@ class AppProvider extends ChangeNotifier {
   String _username = '';
   String get username => _username;
 
+  String _storeName = '';
+  String get storeName => _storeName;
+
+  String _storeLogoUrl = '';
+  String get storeLogoUrl => _storeLogoUrl;
+
   int _selectedNavIndex = 0;
   int get selectedNavIndex => _selectedNavIndex;
 
@@ -134,11 +140,15 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> _refreshStoreSetupStatus() async {
     _hasCompletedStoreSetup = false;
+    _storeName = '';
+    _storeLogoUrl = '';
     try {
       final response = await ApiService.get(ApiConfig.storeProfile);
       final data = response is Map ? response['data'] : null;
       if (response is Map && response['success'] == true && data is Map) {
         final storeName = data['storeName']?.toString().trim() ?? '';
+        _storeName = storeName;
+        _storeLogoUrl = data['logoUrl']?.toString().trim() ?? '';
         final ownerName = data['ownerName']?.toString().trim() ?? '';
         final email = data['email']?.toString().trim() ?? '';
         final phone = data['phone']?.toString().trim() ?? '';
@@ -156,6 +166,13 @@ class AppProvider extends ChangeNotifier {
   void completeStoreSetup() {
     if (_hasCompletedStoreSetup) return;
     _hasCompletedStoreSetup = true;
+    notifyListeners();
+  }
+
+  void updateStoreIdentity(
+      {required String storeName, required String logoUrl}) {
+    _storeName = storeName.trim();
+    _storeLogoUrl = logoUrl.trim();
     notifyListeners();
   }
 
@@ -308,8 +325,7 @@ class AppProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      final response = await ApiService.post(
-          ApiConfig.verifyPasswordResetOtp,
+      final response = await ApiService.post(ApiConfig.verifyPasswordResetOtp,
           {'username': username.trim(), 'email': email.trim(), 'otp': otp},
           includeAuthorization: false);
       final data = response is Map ? response['data'] : null;
@@ -378,6 +394,8 @@ class AppProvider extends ChangeNotifier {
     _isAuthenticated = false;
     _hasCompletedStoreSetup = false;
     _username = '';
+    _storeName = '';
+    _storeLogoUrl = '';
     _favouriteProductIds.clear();
     _pendingFavouriteOperations.clear();
     _cartItems.clear();

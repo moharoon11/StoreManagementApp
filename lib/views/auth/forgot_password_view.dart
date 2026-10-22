@@ -15,17 +15,30 @@ class ForgotPasswordView extends StatefulWidget {
 class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _otpController = TextEditingController();
+  late final List<TextEditingController> _otpControllers;
+  late final List<FocusNode> _otpFocusNodes;
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   int _step = 0;
   String? _resetToken;
 
   @override
+  void initState() {
+    super.initState();
+    _otpControllers = List.generate(6, (_) => TextEditingController());
+    _otpFocusNodes = List.generate(6, (_) => FocusNode());
+  }
+
+  @override
   void dispose() {
     _usernameController.dispose();
     _emailController.dispose();
-    _otpController.dispose();
+    for (final controller in _otpControllers) {
+      controller.dispose();
+    }
+    for (final node in _otpFocusNodes) {
+      node.dispose();
+    }
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -45,12 +58,13 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
     if (submitted) {
       setState(() => _step = 1);
     } else {
-      _show(context.read<AppProvider>().errorMessage ?? 'Unable to submit the request.');
+      _show(context.read<AppProvider>().errorMessage ??
+          'Unable to submit the request.');
     }
   }
 
   Future<void> _verifyOtp() async {
-    final otp = _otpController.text.trim();
+    final otp = _otpValue;
     if (!RegExp(r'^\d{6}$').hasMatch(otp)) {
       _show('Enter the 6-digit code from your email.');
       return;
@@ -96,6 +110,45 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         SnackBar(content: Text(message)),
       );
 
+  String get _otpValue =>
+      _otpControllers.map((controller) => controller.text).join();
+
+  void _handleOtpChanged(int index, String value) {
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (digits.length > 1) {
+      for (var offset = 0;
+          offset < digits.length && index + offset < 6;
+          offset++) {
+        _otpControllers[index + offset].text = digits[offset];
+      }
+      final nextIndex = (index + digits.length).clamp(0, 5);
+      _otpFocusNodes[nextIndex].requestFocus();
+      return;
+    }
+    if (value.isNotEmpty && index < 5) {
+      _otpFocusNodes[index + 1].requestFocus();
+    }
+  }
+
+  KeyEventResult _handleOtpKey(int index, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.backspace &&
+        _otpControllers[index].text.isEmpty &&
+        index > 0) {
+      _otpControllers[index - 1].clear();
+      _otpFocusNodes[index - 1].requestFocus();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _clearOtp() {
+    for (final controller in _otpControllers) {
+      controller.clear();
+    }
+    _otpFocusNodes.first.requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     final loading = context.watch<AppProvider>().isLoading;
@@ -131,9 +184,11 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Reset password', style: Theme.of(context).textTheme.headlineSmall),
+          Text('Reset password',
+              style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          const Text('Enter the username and email saved in your store profile.'),
+          const Text(
+              'Enter the username and email saved in your store profile.'),
           const SizedBox(height: 20),
           TextField(
             controller: _usernameController,
@@ -151,7 +206,8 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
             enableSuggestions: false,
             onSubmitted: (_) => _requestOtp(),
             decoration: const InputDecoration(
-                labelText: 'Store email', prefixIcon: Icon(Icons.email_outlined)),
+                labelText: 'Store email',
+                prefixIcon: Icon(Icons.email_outlined)),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -183,14 +239,25 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
           const Text(
               'If the details match an account, a 6-digit code was sent. It expires in 5 minutes.'),
           const SizedBox(height: 20),
-          TextField(
-            controller: _otpController,
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            maxLength: 6,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            onSubmitted: (_) => _verifyOtp(),
-            decoration: const InputDecoration(labelText: '6-digit code'),
+          Row(
+            children: List.generate(
+              6,
+              (index) => Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: index == 5 ? 0 : 8),
+                  child: Focus(
+                    onKeyEvent: (_, event) => _handleOtpKey(index, event),
+                    child: _OtpDigitField(
+                      controller: _otpControllers[index],
+                      focusNode: _otpFocusNodes[index],
+                      autofocus: index == 0,
+                      onChanged: (value) => _handleOtpChanged(index, value),
+                      onSubmitted: index == 5 ? (_) => _verifyOtp() : null,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -203,7 +270,12 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
           const SizedBox(height: 8),
           Center(
             child: TextButton(
-              onPressed: loading ? null : _requestOtp,
+              onPressed: loading
+                  ? null
+                  : () {
+                      _clearOtp();
+                      _requestOtp();
+                    },
               child: const Text('Resend code'),
             ),
           ),
@@ -230,7 +302,8 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
             controller: _confirmPasswordController,
             obscureText: true,
             onSubmitted: (_) => _resetPassword(),
-            decoration: const InputDecoration(labelText: 'Confirm new password'),
+            decoration:
+                const InputDecoration(labelText: 'Confirm new password'),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -242,4 +315,67 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
           ),
         ],
       );
+}
+
+class _OtpDigitField extends StatelessWidget {
+  const _OtpDigitField({
+    required this.controller,
+    required this.focusNode,
+    required this.autofocus,
+    required this.onChanged,
+    this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool autofocus;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return AnimatedBuilder(
+      animation: focusNode,
+      builder: (context, _) => Container(
+        height: 58,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(
+            alpha: focusNode.hasFocus ? .34 : .16,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border(
+            bottom: BorderSide(
+              color:
+                  focusNode.hasFocus ? scheme.primary : scheme.outlineVariant,
+              width: focusNode.hasFocus ? 2.5 : 1.5,
+            ),
+          ),
+        ),
+        child: TextField(
+          controller: controller,
+          focusNode: focusNode,
+          autofocus: autofocus,
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.center,
+          textInputAction: TextInputAction.next,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1,
+              ),
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          onChanged: onChanged,
+          onSubmitted: onSubmitted,
+          decoration: const InputDecoration(
+            counterText: '',
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+      ),
+    );
+  }
 }

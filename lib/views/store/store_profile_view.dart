@@ -159,6 +159,10 @@ class _StoreProfileViewState extends State<StoreProfileView> {
       });
 
       if (res['success'] == true && mounted) {
+        context.read<AppProvider>().updateStoreIdentity(
+              storeName: _storeNameController.text,
+              logoUrl: _logoUrl,
+            );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.setupRequired
@@ -216,93 +220,72 @@ class _StoreProfileViewState extends State<StoreProfileView> {
       children: [
         PageIntro(
           eyebrow: 'Business',
-          title: 'Store identity',
-          description:
-              'Keep the details that appear on invoice PDFs clean, compact, and easy to update.',
-          action: FilledButton.icon(
-            onPressed: () => setState(() => _showEditor = true),
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            label: const Text('Edit details'),
-          ),
+          title: 'Business profile',
+          description: 'Your store, contact, and registration details in one place.',
         ),
         const SizedBox(height: 16),
-        SurfacePanel(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final compact = constraints.maxWidth < 720;
-              final identity = compact
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _LogoBadge(
-                          logoUrl: _logoUrl,
-                          pickedLogoFile: _pickedLogoFile,
-                        ),
-                        const SizedBox(height: 14),
-                        _IdentityText(
-                          storeName: _storeNameController.text,
-                          ownerName: _ownerNameController.text,
-                        ),
-                      ],
-                    )
-                  : Row(
-                      children: [
-                        _LogoBadge(
-                          logoUrl: _logoUrl,
-                          pickedLogoFile: _pickedLogoFile,
-                        ),
-                        const SizedBox(width: 18),
-                        Expanded(
-                          child: _IdentityText(
-                            storeName: _storeNameController.text,
-                            ownerName: _ownerNameController.text,
-                          ),
-                        ),
-                      ],
-                    );
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  identity,
-                  const SizedBox(height: 18),
-                  AdaptiveWrapGrid(
-                    minItemWidth: compact ? 200 : 200,
-                    children: [
-                      _DetailCard(
-                        icon: Icons.location_on_outlined,
-                        label: 'Address',
-                        value: location.isEmpty
-                            ? 'Add your business address'
-                            : location,
-                      ),
-                      _DetailCard(
-                        icon: Icons.phone_outlined,
-                        label: 'Contact',
-                        value: _phoneController.text.isEmpty
-                            ? 'Add a contact number'
-                            : _phoneController.text,
-                      ),
-                      _DetailCard(
-                        icon: Icons.mail_outline_rounded,
-                        label: 'Email',
-                        value: _emailController.text.isEmpty
-                            ? 'Add an email address'
-                            : _emailController.text,
-                      ),
-                      _DetailCard(
-                        icon: Icons.verified_outlined,
-                        label: 'Tax registration',
-                        value: _gstController.text.isEmpty
-                            ? 'GSTIN not added'
-                            : _gstController.text,
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
+        _BusinessProfileHero(
+          storeName: _storeNameController.text,
+          ownerName: _ownerNameController.text,
+          username: context.read<AppProvider>().username,
+          logoUrl: _logoUrl,
+          pickedLogoFile: _pickedLogoFile,
+          onEdit: () => setState(() => _showEditor = true),
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 720;
+            final contact = _ProfileSection(
+              title: 'Contact details',
+              icon: Icons.contact_phone_outlined,
+              children: [
+                _ProfileInfoRow(
+                  icon: Icons.phone_outlined,
+                  label: 'Phone',
+                  value: _phoneController.text.isEmpty
+                      ? 'Not added'
+                      : _phoneController.text,
+                ),
+                _ProfileInfoRow(
+                  icon: Icons.mail_outline_rounded,
+                  label: 'Email',
+                  value: _emailController.text.isEmpty
+                      ? 'Not added'
+                      : _emailController.text,
+                ),
+              ],
+            );
+            final business = _ProfileSection(
+              title: 'Business details',
+              icon: Icons.business_outlined,
+              children: [
+                _ProfileInfoRow(
+                  icon: Icons.location_on_outlined,
+                  label: 'Business address',
+                  value: location.isEmpty ? 'Not added' : location,
+                ),
+                _ProfileInfoRow(
+                  icon: Icons.verified_outlined,
+                  label: 'GSTIN',
+                  value: _gstController.text.isEmpty
+                      ? 'Not added'
+                      : _gstController.text,
+                ),
+              ],
+            );
+            if (compact) {
+              return Column(children: [contact, const SizedBox(height: 16), business]);
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: contact),
+                const SizedBox(width: 16),
+                Expanded(child: business),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -318,7 +301,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
               widget.setupRequired ? 'Set up your store' : 'Edit store profile',
           description: widget.setupRequired
               ? 'Add your store name and owner details to unlock your workspace.'
-              : 'Update the details used on customer invoices and store records.',
+              : 'Update your business details.',
           action: widget.setupRequired
               ? null
               : OutlinedButton.icon(
@@ -330,7 +313,7 @@ class _StoreProfileViewState extends State<StoreProfileView> {
         const SizedBox(height: 16),
         SectionPanel(
           title: 'Business details',
-          subtitle: 'This information appears on generated invoice PDFs.',
+          subtitle: 'Keep your store details up to date.',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -479,44 +462,143 @@ class _LogoBadge extends StatelessWidget {
   }
 }
 
-class _IdentityText extends StatelessWidget {
-  const _IdentityText({
+class _BusinessProfileHero extends StatelessWidget {
+  const _BusinessProfileHero({
     required this.storeName,
     required this.ownerName,
+    required this.username,
+    required this.logoUrl,
+    required this.pickedLogoFile,
+    required this.onEdit,
   });
 
   final String storeName;
   final String ownerName;
+  final String username;
+  final String logoUrl;
+  final XFile? pickedLogoFile;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final compact = MediaQuery.sizeOf(context).width < 760;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        StatusPill(label: 'Business profile', color: scheme.primary),
-        const SizedBox(height: 12),
-        Text(
-          storeName.isEmpty ? 'Your business' : storeName,
-          style: compact
-              ? Theme.of(context).textTheme.headlineSmall
-              : Theme.of(context).textTheme.headlineMedium,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            scheme.primary.withValues(alpha: .14),
+            scheme.secondary.withValues(alpha: .08),
+          ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          ownerName.isEmpty ? 'Independent business' : 'Managed by $ownerName',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: scheme.onSurface.withValues(alpha: .62),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: scheme.primary.withValues(alpha: .16)),
+      ),
+      child: Column(
+        children: [
+          _LogoBadge(
+            logoUrl: logoUrl,
+            pickedLogoFile: pickedLogoFile,
+            large: true,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            storeName.trim().isEmpty ? 'Your business' : storeName.trim(),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -.4,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            ownerName.trim().isEmpty
+                ? 'Business owner details not added'
+                : 'Owned by ${ownerName.trim()}',
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: .68),
+                ),
+          ),
+          if (username.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: scheme.surface.withValues(alpha: .62),
+                borderRadius: BorderRadius.circular(20),
               ),
-        ),
-      ],
+              child: Text(
+                '@${username.trim()}',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 18),
+          OutlinedButton.icon(
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('Edit profile'),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _DetailCard extends StatelessWidget {
-  const _DetailCard({
+class _ProfileSection extends StatelessWidget {
+  const _ProfileSection({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SurfacePanel(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: scheme.primary.withValues(alpha: .10),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 19, color: scheme.primary),
+              ),
+              const SizedBox(width: 10),
+              Text(title, style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileInfoRow extends StatelessWidget {
+  const _ProfileInfoRow({
     required this.icon,
     required this.label,
     required this.value,
@@ -529,32 +611,29 @@ class _DetailCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: .18),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: scheme.primary, size: 20),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurface.withValues(alpha: .58),
-                ),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, size: 18, color: scheme.onSurface.withValues(alpha: .55)),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface,
-                ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: .58),
+                )),
+                const SizedBox(height: 3),
+                Text(value, style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                )),
+              ],
+            ),
           ),
         ],
       ),

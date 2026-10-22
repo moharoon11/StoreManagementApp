@@ -120,7 +120,7 @@ class ResponsiveLayout extends StatelessWidget {
                         active: active,
                         child: content,
                         onOpenCart: () => openCart(context),
-                        onShowMore: () => _showMore(context),
+                        onOpenBusiness: () => provider.setNavIndex(9),
                       )
                     : _DesktopWorkspace(
                         active: active,
@@ -130,7 +130,6 @@ class ResponsiveLayout extends StatelessWidget {
                         onQuickSale: () => provider.setNavIndex(1),
                         onOpenCart: () => openCart(context),
                         onOpenBusiness: () => provider.setNavIndex(9),
-                        onShowMore: () => _showMore(context),
                       ),
               ),
             ),
@@ -266,7 +265,6 @@ class _DesktopWorkspace extends StatelessWidget {
     required this.onQuickSale,
     required this.onOpenCart,
     required this.onOpenBusiness,
-    required this.onShowMore,
   });
 
   final _Destination active;
@@ -276,7 +274,6 @@ class _DesktopWorkspace extends StatelessWidget {
   final VoidCallback onQuickSale;
   final VoidCallback onOpenCart;
   final VoidCallback onOpenBusiness;
-  final VoidCallback onShowMore;
 
   @override
   Widget build(BuildContext context) {
@@ -291,7 +288,6 @@ class _DesktopWorkspace extends StatelessWidget {
             onQuickSale: onQuickSale,
             onOpenCart: onOpenCart,
             onOpenBusiness: onOpenBusiness,
-            onShowMore: onShowMore,
           ),
           const SizedBox(height: 18),
           Expanded(child: _ContentViewport(child: child)),
@@ -309,7 +305,6 @@ class _WorkspaceCommandBar extends StatelessWidget {
     required this.onQuickSale,
     required this.onOpenCart,
     required this.onOpenBusiness,
-    required this.onShowMore,
   });
 
   final _Destination active;
@@ -318,7 +313,6 @@ class _WorkspaceCommandBar extends StatelessWidget {
   final VoidCallback onQuickSale;
   final VoidCallback onOpenCart;
   final VoidCallback onOpenBusiness;
-  final VoidCallback onShowMore;
 
   @override
   Widget build(BuildContext context) {
@@ -331,12 +325,11 @@ class _WorkspaceCommandBar extends StatelessWidget {
           alignment: WrapAlignment.end,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            if (provider.username.trim().isNotEmpty)
-              _UserBadge(username: provider.username.trim()),
-            OutlinedButton.icon(
+            _StoreIdentityButton(
+              username: provider.username,
+              storeName: provider.storeName,
+              logoUrl: provider.storeLogoUrl,
               onPressed: onOpenBusiness,
-              icon: const Icon(Icons.storefront_outlined, size: 18),
-              label: const Text('Business'),
             ),
             FilledButton.icon(
               onPressed: onQuickSale,
@@ -356,11 +349,6 @@ class _WorkspaceCommandBar extends StatelessWidget {
                   color: scheme.onSurface.withValues(alpha: .82),
                 ),
               ),
-            ),
-            _HeaderActionIcon(
-              onPressed: onShowMore,
-              tooltip: 'Menu',
-              child: const Icon(Icons.tune_rounded),
             ),
           ],
         );
@@ -425,13 +413,13 @@ class _CompactWorkspace extends StatelessWidget {
     required this.active,
     required this.child,
     required this.onOpenCart,
-    required this.onShowMore,
+    required this.onOpenBusiness,
   });
 
   final _Destination active;
   final Widget child;
   final VoidCallback onOpenCart;
-  final VoidCallback onShowMore;
+  final VoidCallback onOpenBusiness;
 
   @override
   Widget build(BuildContext context) {
@@ -442,7 +430,7 @@ class _CompactWorkspace extends StatelessWidget {
           _CompactHeader(
             active: active,
             onOpenCart: onOpenCart,
-            onShowMore: onShowMore,
+            onOpenBusiness: onOpenBusiness,
           ),
           const SizedBox(height: 12),
           Expanded(
@@ -461,12 +449,12 @@ class _CompactHeader extends StatelessWidget {
   const _CompactHeader({
     required this.active,
     required this.onOpenCart,
-    required this.onShowMore,
+    required this.onOpenBusiness,
   });
 
   final _Destination active;
   final VoidCallback onOpenCart;
-  final VoidCallback onShowMore;
+  final VoidCallback onOpenBusiness;
 
   @override
   Widget build(BuildContext context) {
@@ -516,6 +504,14 @@ class _CompactHeader extends StatelessWidget {
               ],
             ),
           ),
+          _StoreIdentityButton(
+            username: provider.username,
+            storeName: provider.storeName,
+            logoUrl: provider.storeLogoUrl,
+            onPressed: onOpenBusiness,
+            compact: true,
+          ),
+          const SizedBox(width: 4),
           _HeaderActionIcon(
             onPressed: onOpenCart,
             tooltip: 'Current sale',
@@ -530,12 +526,6 @@ class _CompactHeader extends StatelessWidget {
                 size: phone ? 18 : 20,
               ),
             ),
-          ),
-          const SizedBox(width: 6),
-          _HeaderActionIcon(
-            onPressed: onShowMore,
-            tooltip: 'Menu',
-            child: Icon(Icons.tune_rounded, size: phone ? 18 : 20),
           ),
         ],
       ),
@@ -877,34 +867,143 @@ class _MenuTile extends StatelessWidget {
   }
 }
 
-class _UserBadge extends StatelessWidget {
-  const _UserBadge({required this.username});
+class _StoreIdentityButton extends StatelessWidget {
+  const _StoreIdentityButton({
+    required this.username,
+    required this.storeName,
+    required this.logoUrl,
+    required this.onPressed,
+    this.compact = false,
+  });
 
   final String username;
+  final String storeName;
+  final String logoUrl;
+  final VoidCallback onPressed;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: scheme.secondary.withValues(alpha: .08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.person_outline_rounded, size: 18, color: scheme.secondary),
-          const SizedBox(width: 8),
-          Text(
-            username,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: scheme.onSurface,
-                ),
+    final accountName = username.trim().isEmpty ? 'Business' : username.trim();
+    final displayName =
+        storeName.trim().isEmpty ? accountName : storeName.trim();
+    final avatar = _StoreIdentityAvatar(
+      logoUrl: logoUrl,
+      fallback: displayName,
+      compact: compact,
+    );
+
+    return Tooltip(
+      message: 'Open business profile',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(compact ? 14 : 16),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 4 : 10,
+              vertical: compact ? 4 : 7,
+            ),
+            decoration: BoxDecoration(
+              color: scheme.secondary.withValues(alpha: .08),
+              borderRadius: BorderRadius.circular(compact ? 14 : 16),
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+            child: compact
+                ? avatar
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      avatar,
+                      const SizedBox(width: 9),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 150),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelLarge,
+                            ),
+                            if (displayName != accountName)
+                              Text(
+                                accountName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: scheme.onSurface
+                                          .withValues(alpha: .62),
+                                    ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StoreIdentityAvatar extends StatelessWidget {
+  const _StoreIdentityAvatar({
+    required this.logoUrl,
+    required this.fallback,
+    required this.compact,
+  });
+
+  final String logoUrl;
+  final String fallback;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = compact ? 32.0 : 38.0;
+    final scheme = Theme.of(context).colorScheme;
+    final initial =
+        fallback.trim().isEmpty ? 'B' : fallback.trim()[0].toUpperCase();
+    return ClipOval(
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: logoUrl.trim().isEmpty
+            ? ColoredBox(
+                color: scheme.primary,
+                child: Center(
+                  child: Text(
+                    initial,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: scheme.onPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              )
+            : Image.network(
+                logoUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => ColoredBox(
+                  color: scheme.primary,
+                  child: Center(
+                    child: Text(initial,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              color: scheme.onPrimary,
+                              fontWeight: FontWeight.w700,
+                            )),
+                  ),
+                ),
+              ),
       ),
     );
   }
