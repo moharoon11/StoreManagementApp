@@ -9,22 +9,21 @@ class ApiConfig {
   /// relative to that API root. Leaving it blank retains local development
   /// addresses, so no code needs changing between environments.
   ///
-  static const API_URL = "https://easybilling.runasp.net/api";
-  //static const API_URL = "http://localhost:5009/api";
+  static const apiUrl = "https://easybilling.runasp.net/api";
   static const String _configuredBaseUrl =
-      String.fromEnvironment('API_BASE_URL', defaultValue: API_URL);
+      String.fromEnvironment('API_BASE_URL', defaultValue: apiUrl);
 
   static String get baseUrl {
     if (_configuredBaseUrl.isNotEmpty) {
       return _configuredBaseUrl.replaceFirst(RegExp(r'/+$'), '');
     }
     if (kIsWeb) {
-      return API_URL;
+      return apiUrl;
     } else if (defaultTargetPlatform == TargetPlatform.android) {
       // 127.0.0.1 works seamlessly with `adb reverse tcp:5009 tcp:5009` over USB
-      return API_URL;
+      return apiUrl;
     } else {
-      return API_URL;
+      return apiUrl;
     }
   }
 
@@ -34,8 +33,14 @@ class ApiConfig {
   static const String refresh = '/auth/refresh';
   static const String logout = '/auth/logout';
   static const String forgotPassword = '/auth/forgot-password';
-  static const String verifyPasswordResetOtp = '/auth/verify-password-reset-otp';
+  static const String verifyPasswordResetOtp =
+      '/auth/verify-password-reset-otp';
   static const String resetPassword = '/auth/reset-password';
+  static const String subscriptionOptions = '/subscription/options';
+  static const String subscriptionStatus = '/subscription/status';
+  static const String subscriptionStart = '/subscription/start';
+  static const String subscriptionVerify = '/subscription/verify';
+  static const String subscriptionFailure = '/subscription/failure';
   static const String storeProfile = '/store/profile';
   static const String categories = '/categories';
   static const String products = '/products';

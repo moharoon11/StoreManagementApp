@@ -9,6 +9,7 @@ import 'storage_service.dart';
 
 class ApiService {
   static void Function()? onUnauthorized;
+  static void Function()? onSubscriptionRequired;
   static Future<bool>? _refreshInProgress;
 
   static dynamic _safeJsonDecode(String body) {
@@ -65,7 +66,9 @@ class ApiService {
     if (token == null ||
         token.isEmpty ||
         replacement == null ||
-        replacement.isEmpty) return false;
+        replacement.isEmpty) {
+      return false;
+    }
     await StorageService.updateTokens(token: token, refreshToken: replacement);
     return true;
   }
@@ -233,6 +236,10 @@ class ApiService {
   }
 
   static dynamic _processResponse(http.Response response) {
+    if (response.statusCode == 402) {
+      onSubscriptionRequired?.call();
+      throw Exception('An active subscription or free trial is required.');
+    }
     if (response.statusCode == 401) {
       onUnauthorized?.call();
       throw Exception('Session expired. Please log in again.');

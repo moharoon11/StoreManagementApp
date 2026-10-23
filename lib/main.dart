@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'providers/app_provider.dart';
 import 'views/auth/login_view.dart';
 import 'views/auth/welcome_view.dart';
+import 'views/subscription/subscription_view.dart';
 import 'views/store/store_profile_view.dart';
 import 'widgets/responsive_layout.dart';
 import 'widgets/app_splash.dart';
@@ -34,11 +35,17 @@ class StoreManagementApp extends StatelessWidget {
                   ? const AppSplash(key: ValueKey('splash'))
                   : provider.isAuthenticated
                       ? provider.hasCompletedStoreSetup
-                          ? const ResponsiveLayout(key: ValueKey('app'))
-                          : const StoreProfileView(
-                              key: ValueKey('store-setup'),
-                              setupRequired: true,
-                            )
+                          ? provider.hasSubscriptionAccess
+                              ? const ResponsiveLayout(key: ValueKey('app'))
+                              : const SubscriptionView(
+                                  key: ValueKey('subscription'))
+                          : provider.hasSubscriptionAccess
+                              ? const StoreProfileView(
+                                  key: ValueKey('store-setup'),
+                                  setupRequired: true,
+                                )
+                              : const SubscriptionView(
+                                  key: ValueKey('subscription'))
                       : provider.hasSeenWelcome
                           ? const LoginView(key: ValueKey('auth'))
                           : const WelcomeView(key: ValueKey('welcome')),

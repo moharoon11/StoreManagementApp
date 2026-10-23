@@ -22,6 +22,9 @@ class AppProvider extends ChangeNotifier {
   bool _hasCompletedStoreSetup = false;
   bool get hasCompletedStoreSetup => _hasCompletedStoreSetup;
 
+  bool _hasSubscriptionAccess = false;
+  bool get hasSubscriptionAccess => _hasSubscriptionAccess;
+
   bool _hasSeenWelcome = false;
   bool get hasSeenWelcome => _hasSeenWelcome;
 
@@ -80,6 +83,10 @@ class AppProvider extends ChangeNotifier {
     ApiService.onUnauthorized = () {
       logout(revokeRemote: false);
     };
+    ApiService.onSubscriptionRequired = () {
+      _hasSubscriptionAccess = false;
+      notifyListeners();
+    };
   }
 
   Future<void> checkAuth() async {
@@ -109,6 +116,7 @@ class AppProvider extends ChangeNotifier {
           !(await StorageService.isTokenExpired());
       if (hasValidToken) {
         await _refreshStoreSetupStatus();
+        await refreshSubscriptionStatus();
         _isAuthenticated = true;
         _username = (await StorageService.getUsername()) ?? '';
         _favouriteProductIds
@@ -131,6 +139,18 @@ class AppProvider extends ChangeNotifier {
       _isBootstrapping = false;
       notifyListeners();
     }
+  }
+
+  Future<void> refreshSubscriptionStatus() async {
+    try {
+      final response = await ApiService.get(ApiConfig.subscriptionStatus);
+      final data = response is Map ? response['data'] : null;
+      final access = data is Map ? data['has_access'] : null;
+      _hasSubscriptionAccess = access == true || access == 1;
+    } catch (_) {
+      _hasSubscriptionAccess = false;
+    }
+    notifyListeners();
   }
 
   void setNavIndex(int index) {
@@ -216,6 +236,7 @@ class AppProvider extends ChangeNotifier {
           userId: data['userId'],
         );
         await _refreshStoreSetupStatus();
+        await refreshSubscriptionStatus();
         _isAuthenticated = true;
         _username = data['username'];
         _favouriteProductIds
@@ -273,6 +294,7 @@ class AppProvider extends ChangeNotifier {
           userId: data['userId'],
         );
         await _refreshStoreSetupStatus();
+        await refreshSubscriptionStatus();
         _isAuthenticated = true;
         _username = data['username'];
         _favouriteProductIds
@@ -392,6 +414,7 @@ class AppProvider extends ChangeNotifier {
     }
     await StorageService.clearAuthData();
     _isAuthenticated = false;
+    _hasSubscriptionAccess = false;
     _hasCompletedStoreSetup = false;
     _username = '';
     _storeName = '';
