@@ -26,7 +26,7 @@ class StoreManagementApp extends StatelessWidget {
           return MaterialApp(
             title: 'BillMate',
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.forOption(provider.themeOption),
+            theme: AppTheme.light,
             home: AnimatedSwitcher(
               duration: const Duration(milliseconds: 520),
               switchInCurve: Curves.easeOutCubic,

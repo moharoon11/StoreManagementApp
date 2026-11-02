@@ -12,7 +12,6 @@ class StorageService {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   static const String _keyUsername = 'username';
   static const String _keyUserId = 'user_id';
-  static const String _keyTheme = 'app_theme';
   static const String _keyHasSeenWelcome = 'has_seen_welcome';
   static const String _keyFavouriteProductIds = 'favourite_product_ids';
   static const String _keyFavouriteSyncOperations = 'favourite_sync_operations';
@@ -108,16 +107,6 @@ class StorageService {
   static String get deviceName => kIsWeb
       ? 'Web browser'
       : '${defaultTargetPlatform.name[0].toUpperCase()}${defaultTargetPlatform.name.substring(1)} device';
-
-  static Future<String?> getTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyTheme);
-  }
-
-  static Future<void> saveTheme(String theme) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyTheme, theme);
-  }
 
   static Future<bool> hasSeenWelcome() async {
     final prefs = await SharedPreferences.getInstance();

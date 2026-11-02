@@ -8,8 +8,6 @@ import '../services/storage_service.dart';
 import '../config/api_config.dart';
 import '../utils/quantity_utils.dart';
 
-enum AppThemeOption { light, nightOwl }
-
 class AppProvider extends ChangeNotifier {
   static final RegExp _validUsernamePattern = RegExp(r'^[A-Za-z0-9._]+$');
 
@@ -45,9 +43,6 @@ class AppProvider extends ChangeNotifier {
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
-
-  AppThemeOption _themeOption = AppThemeOption.light;
-  AppThemeOption get themeOption => _themeOption;
 
   final Set<int> _favouriteProductIds = <int>{};
   final Map<int, bool> _pendingFavouriteOperations = <int, bool>{};
@@ -93,16 +88,7 @@ class AppProvider extends ChangeNotifier {
     final minimumSplash =
         Future<void>.delayed(const Duration(milliseconds: 1300));
     try {
-      final savedTheme = await StorageService.getTheme();
-      final resolvedTheme = AppThemeOption.values.firstWhere(
-        (option) => option.name == savedTheme,
-        orElse: () => AppThemeOption.light,
-      );
-      _themeOption = resolvedTheme;
       _hasSeenWelcome = await StorageService.hasSeenWelcome();
-      if (savedTheme != null && savedTheme != _themeOption.name) {
-        await StorageService.saveTheme(_themeOption.name);
-      }
       var token = await StorageService.getToken();
       if (token != null &&
           token.isNotEmpty &&
@@ -201,13 +187,6 @@ class AppProvider extends ChangeNotifier {
     _hasSeenWelcome = true;
     notifyListeners();
     await StorageService.saveHasSeenWelcome();
-  }
-
-  Future<void> setThemeOption(AppThemeOption option) async {
-    if (_themeOption == option) return;
-    _themeOption = option;
-    notifyListeners();
-    await StorageService.saveTheme(option.name);
   }
 
   Future<bool> login(String username, String password) async {

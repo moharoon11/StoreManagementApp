@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../providers/app_provider.dart';
-
 /// Shared visual tokens for the redesigned workspace.
 abstract final class AppColors {
   static const ink = Color(0xFF0B1728);
@@ -25,32 +23,18 @@ abstract final class AppColors {
 }
 
 abstract final class AppTheme {
-  static ThemeData forOption(AppThemeOption option) => switch (option) {
-        AppThemeOption.light => _build(
-            brightness: Brightness.light,
-            seed: AppColors.brand,
-            primary: AppColors.brand,
-            onPrimary: Colors.white,
-            secondary: AppColors.cobalt,
-            tertiary: AppColors.aqua,
-            canvas: AppColors.canvas,
-            surface: AppColors.surface,
-            onSurface: AppColors.ink,
-            line: AppColors.line,
-          ),
-        AppThemeOption.nightOwl => _build(
-            brightness: Brightness.dark,
-            seed: const Color(0xFF22D3EE),
-            primary: const Color(0xFF67E8F9),
-            onPrimary: const Color(0xFF06222B),
-            secondary: const Color(0xFF93C5FD),
-            tertiary: const Color(0xFF5EEAD4),
-            canvas: const Color(0xFF080D16),
-            surface: const Color(0xFF101925),
-            onSurface: const Color(0xFFF3F7FC),
-            line: const Color(0xFF2A3A4E),
-          ),
-      };
+  static ThemeData get light => _build(
+        brightness: Brightness.light,
+        seed: AppColors.brand,
+        primary: AppColors.brand,
+        onPrimary: Colors.white,
+        secondary: AppColors.cobalt,
+        tertiary: AppColors.aqua,
+        canvas: AppColors.canvas,
+        surface: AppColors.surface,
+        onSurface: AppColors.ink,
+        line: AppColors.line,
+      );
 
   static ThemeData _build({
     required Brightness brightness,

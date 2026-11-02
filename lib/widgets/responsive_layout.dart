@@ -23,60 +23,70 @@ const _navItems = <_Destination>[
     subtitle: 'Overview, activity, and quick actions',
     icon: Icons.home_outlined,
     selectedIcon: Icons.home_rounded,
+    accent: Color(0xFF0F766E),
   ),
   _Destination(
     title: 'Sell',
     subtitle: 'Fast billing and checkout',
     icon: Icons.point_of_sale_outlined,
     selectedIcon: Icons.point_of_sale_rounded,
+    accent: Color(0xFFEA580C),
   ),
   _Destination(
     title: 'Products',
     subtitle: 'Catalogue and item management',
     icon: Icons.inventory_2_outlined,
     selectedIcon: Icons.inventory_2_rounded,
+    accent: Color(0xFF2563EB),
   ),
   _Destination(
     title: 'Categories',
     subtitle: 'Organise products by collection',
     icon: Icons.account_tree_outlined,
     selectedIcon: Icons.account_tree_rounded,
+    accent: Color(0xFF9333EA),
   ),
   _Destination(
     title: 'Invoices',
     subtitle: 'History, balance, and PDFs',
     icon: Icons.receipt_long_outlined,
     selectedIcon: Icons.receipt_long_rounded,
+    accent: Color(0xFF0891B2),
   ),
   _Destination(
     title: 'Credit',
     subtitle: 'Pending customer balances',
     icon: Icons.account_balance_wallet_outlined,
     selectedIcon: Icons.account_balance_wallet_rounded,
+    accent: Color(0xFFB45309),
   ),
   _Destination(
     title: 'Payments',
     subtitle: 'Read-only payment activity',
     icon: Icons.payments_outlined,
     selectedIcon: Icons.payments_rounded,
+    accent: Color(0xFF16A34A),
   ),
   _Destination(
     title: 'Stock',
     subtitle: 'Inventory movement and updates',
     icon: Icons.warehouse_outlined,
     selectedIcon: Icons.warehouse_rounded,
+    accent: Color(0xFF4F46E5),
   ),
   _Destination(
     title: 'Insights',
     subtitle: 'Sales reports and performance',
     icon: Icons.auto_graph_outlined,
     selectedIcon: Icons.auto_graph_rounded,
+    accent: Color(0xFFDB2777),
   ),
   _Destination(
     title: 'Business',
     subtitle: 'Store profile and invoice identity',
     icon: Icons.storefront_outlined,
     selectedIcon: Icons.storefront_rounded,
+    accent: Color(0xFF0D9488),
   ),
 ];
 
@@ -212,25 +222,6 @@ class ResponsiveLayout extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      secondary: Icon(
-                        provider.themeOption == AppThemeOption.nightOwl
-                            ? Icons.dark_mode_rounded
-                            : Icons.light_mode_rounded,
-                        color: scheme.primary,
-                      ),
-                      title: const Text('Dark mode'),
-                      subtitle:
-                          const Text('Use the softer low-light workspace'),
-                      value: provider.themeOption == AppThemeOption.nightOwl,
-                      onChanged: (enabled) => provider.setThemeOption(
-                        enabled
-                            ? AppThemeOption.nightOwl
-                            : AppThemeOption.light,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
@@ -818,11 +809,12 @@ class _MenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final accent = item.accent;
 
     return Material(
       color: selected
-          ? scheme.primary.withValues(alpha: .14)
-          : scheme.surfaceContainerHighest.withValues(alpha: .34),
+          ? accent.withValues(alpha: .12)
+          : accent.withValues(alpha: .045),
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         onTap: onTap,
@@ -835,16 +827,12 @@ class _MenuTile extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: selected
-                      ? scheme.primary
-                      : scheme.surface.withValues(alpha: .84),
+                  color: accent.withValues(alpha: selected ? .18 : .11),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   selected ? item.selectedIcon : item.icon,
-                  color: selected
-                      ? scheme.onPrimary
-                      : scheme.onSurface.withValues(alpha: .72),
+                  color: accent,
                   size: 20,
                 ),
               ),
@@ -855,7 +843,7 @@ class _MenuTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: selected ? scheme.primary : scheme.onSurface,
+                        color: selected ? accent : scheme.onSurface,
                       ),
                 ),
               ),
@@ -1063,12 +1051,14 @@ class _Destination {
     required this.subtitle,
     required this.icon,
     required this.selectedIcon,
+    required this.accent,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
   final IconData selectedIcon;
+  final Color accent;
 }
 
 Color _blend(Color a, Color b, double amount) => Color.lerp(a, b, amount) ?? a;
