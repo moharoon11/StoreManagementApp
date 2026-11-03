@@ -44,6 +44,8 @@ class AppProvider extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
+  Timer? _subscriptionMonitor;
+
   final Set<int> _favouriteProductIds = <int>{};
   final Map<int, bool> _pendingFavouriteOperations = <int, bool>{};
   bool _isSyncingFavourites = false;
@@ -82,6 +84,17 @@ class AppProvider extends ChangeNotifier {
       _hasSubscriptionAccess = false;
       notifyListeners();
     };
+    _subscriptionMonitor = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_isAuthenticated && _hasSubscriptionAccess) {
+        unawaited(refreshSubscriptionStatus());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscriptionMonitor?.cancel();
+    super.dispose();
   }
 
   Future<void> checkAuth() async {

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../config/api_config.dart';
@@ -57,7 +58,7 @@ class _SubscriptionViewState extends State<SubscriptionView> {
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _begin(String period, {bool trial = false}) async {
+  Future<void> _begin(String period, {bool trial = false, int? optionId}) async {
     if (_working) return;
     final appProvider = context.read<AppProvider>();
     setState(() {
@@ -67,6 +68,7 @@ class _SubscriptionViewState extends State<SubscriptionView> {
     try {
       final response = await ApiService.post(ApiConfig.subscriptionStart, {
         'billingPeriod': trial ? 'trial' : period,
+        'planOptionId': optionId,
         'startTrial': trial,
         'idempotencyKey': _newIdempotencyKey(),
       });
@@ -185,15 +187,17 @@ class _SubscriptionViewState extends State<SubscriptionView> {
   }
 
   Widget _planCard({
+    required int optionId,
     required String period,
     required String title,
-    required int months,
+    required int durationSeconds,
     required int minor,
     required String currency,
     String? badge,
   }) {
     final featured = badge == 'Most popular';
     final accent = featured ? const Color(0xFF0F766E) : const Color(0xFF233C5B);
+    final monthlyMinor = (minor * 30 / (durationSeconds / 86400)).round();
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(20),
@@ -264,7 +268,10 @@ class _SubscriptionViewState extends State<SubscriptionView> {
                     fontWeight: FontWeight.w800,
                   )),
           const SizedBox(height: 3),
-          Text('About ${_price((minor / months).round(), currency)} per month',
+          Text(
+              durationSeconds < 86400
+                  ? 'Short test access for $title'
+                  : 'About ${_price(monthlyMinor, currency)} per month',
               style: const TextStyle(color: Color(0xFF55727B), fontSize: 13)),
           const SizedBox(height: 14),
           Row(
@@ -282,7 +289,7 @@ class _SubscriptionViewState extends State<SubscriptionView> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: _working ? null : () => _begin(period),
+              onPressed: _working ? null : () => _begin(period, optionId: optionId),
               style: FilledButton.styleFrom(
                 backgroundColor: accent,
                 foregroundColor: Colors.white,
@@ -302,11 +309,34 @@ class _SubscriptionViewState extends State<SubscriptionView> {
     final plan = _plan ?? const <String, dynamic>{};
     final currency = plan['currency']?.toString() ?? 'INR';
     final trialDays = (plan['trial_days'] as num?)?.toInt() ?? 0;
-    final options = <(String, String, int, String, String?)>[
-      ('three_month', '3 months', 3, 'three_month_amount_minor', null),
-      ('six_month', '6 months', 6, 'six_month_amount_minor', 'Most popular'),
-      ('one_year', '1 year', 12, 'yearly_amount_minor', 'Longest term'),
-    ];
+    final rawPricing = plan['pricing_json'];
+    List<Map<String, dynamic>> options = [];
+    if (rawPricing is String) {
+      try {
+        final decoded = jsonDecode(rawPricing);
+        if (decoded is List) {
+          options = decoded
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList();
+        }
+      } catch (_) {
+        options = [];
+      }
+    } else if (rawPricing is List) {
+      options = rawPricing
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    }
+    options.sort((a, b) =>
+        ((a['sortOrder'] ?? a['sort_order'] ?? 0) as num)
+            .compareTo((b['sortOrder'] ?? b['sort_order'] ?? 0) as num));
+    final activeOptions = options.where((option) {
+      final active = option['active'] != false;
+      final amount = (option['amountMinor'] ?? option['amount_minor'] ?? 0) as num;
+      return active && amount > 0;
+    }).toList();
     return Scaffold(
       backgroundColor: const Color(0xFFF4F8F7),
       body: _loading
@@ -437,21 +467,28 @@ class _SubscriptionViewState extends State<SubscriptionView> {
                         style: TextStyle(color: Color(0xFF55727B), height: 1.4),
                       ),
                       const SizedBox(height: 18),
-                      for (final option in options)
-                        if ((plan[option.$4] as num?) != null &&
-                            (plan[option.$4] as num) > 0)
-                          _planCard(
-                            period: option.$1,
-                            title: option.$2,
-                            months: option.$3,
-                            minor: (plan[option.$4] as num).toInt(),
-                            currency: currency,
-                            badge: option.$5,
-                          ),
-                      if (_plan == null ||
-                          options.every((option) =>
-                              (plan[option.$4] as num?) == null ||
-                              (plan[option.$4] as num) <= 0))
+                      for (final option in activeOptions)
+                        _planCard(
+                          optionId: ((option['id'] ?? 0) as num).toInt(),
+                          period: option['code']?.toString() ?? '',
+                          title: option['displayName']?.toString() ??
+                              option['display_name']?.toString() ??
+                              'Subscription plan',
+                          durationSeconds: ((option['durationSeconds'] ??
+                                      option['duration_seconds'] ??
+                                      ((option['durationDays'] ??
+                                                  option['duration_days'] ??
+                                                  30) as num) *
+                                              86400) as num)
+                                  .toInt(),
+                          minor: ((option['amountMinor'] ??
+                                      option['amount_minor'] ??
+                                      0) as num)
+                                  .toInt(),
+                          currency: option['currency']?.toString() ?? currency,
+                          badge: option['sortOrder'] == 1 ? 'Most popular' : null,
+                        ),
+                      if (_plan == null || activeOptions.isEmpty)
                         OutlinedButton.icon(
                           onPressed: _loadPlan,
                           icon: const Icon(Icons.refresh_rounded),
