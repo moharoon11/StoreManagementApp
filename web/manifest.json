@@ -1,11 +1,11 @@
 {
-    "name": "store_management_app",
-    "short_name": "store_management_app",
+    "name": "SuperBill",
+    "short_name": "SuperBill",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Simple billing and store management for growing businesses.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

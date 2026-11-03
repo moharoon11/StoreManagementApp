@@ -3,9 +3,9 @@
     <!-- Requested only after the user opts in while requesting a reset. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
-    android:label="store_management_app"
+    android:label="SuperBill"
     android:name="${applicationName}"
-    android:icon="@mipmap/ic_launcher"
+    android:icon="@drawable/ic_superbill"
     >
         <activity
             android:name=".MainActivity"

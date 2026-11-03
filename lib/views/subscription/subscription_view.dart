@@ -94,7 +94,7 @@ class _SubscriptionViewState extends State<SubscriptionView> {
         'amount': data['amountMinor'],
         'currency': data['currency'],
         'order_id': orderId,
-        'name': 'BillMate Subscription',
+        'name': 'SuperBill Subscription',
         'description': trial ? 'Free trial' : 'Store management subscription',
         'notes': {'platformPaymentId': paymentId},
         'retry': {'enabled': true, 'max_count': 2},
@@ -374,7 +374,7 @@ class _SubscriptionViewState extends State<SubscriptionView> {
                                   Icon(Icons.storefront_rounded,
                                       color: Colors.white, size: 18),
                                   SizedBox(width: 7),
-                                  Text('BILLMATE',
+                              Text('SUPERBILL',
                                       style: TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.w800,
@@ -431,7 +431,7 @@ class _SubscriptionViewState extends State<SubscriptionView> {
                               const Icon(Icons.card_giftcard_rounded,
                                   color: Color(0xFFC66B12), size: 26),
                               const SizedBox(height: 7),
-                              Text('Try BillMate for $trialDays days',
+                              Text('Try SuperBill for $trialDays days',
                                   style: Theme.of(context)
                                       .textTheme
                                       .titleMedium

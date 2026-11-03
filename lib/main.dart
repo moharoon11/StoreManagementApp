@@ -24,7 +24,7 @@ class StoreManagementApp extends StatelessWidget {
       child: Consumer<AppProvider>(
         builder: (context, provider, _) {
           return MaterialApp(
-            title: 'BillMate',
+            title: 'SuperBill',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light,
             home: AnimatedSwitcher(

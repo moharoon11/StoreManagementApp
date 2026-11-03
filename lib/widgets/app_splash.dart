@@ -76,7 +76,7 @@ class _AppSplashState extends State<AppSplash>
                             ),
                             const SizedBox(height: 22),
                             Text(
-                              'BillMate',
+                              'SuperBill',
                               style: Theme.of(context)
                                   .textTheme
                                   .headlineMedium

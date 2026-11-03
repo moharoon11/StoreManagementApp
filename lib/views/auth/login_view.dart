@@ -219,7 +219,7 @@ class _BrandStrip extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'BILLMATE',
+                'SUPERBILL',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 6),
@@ -447,7 +447,7 @@ class _CompactAuthHeader extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Text(
-            'BillMate',
+            'SuperBill',
             style: Theme.of(context).textTheme.titleLarge,
           ),
         ),

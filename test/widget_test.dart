@@ -18,12 +18,12 @@ void main() {
 
     await tester.pumpWidget(const StoreManagementApp());
 
-    expect(find.text('BillMate'), findsOneWidget);
+    expect(find.text('SuperBill'), findsOneWidget);
     expect(find.text('Simple billing. Smarter business.'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 1400));
     await tester.pump();
-    expect(find.text('BillMate'), findsWidgets);
+    expect(find.text('SuperBill'), findsWidgets);
     expect(find.text('Get started'), findsOneWidget);
     await tester.tap(find.text('Get started'));
     await tester.pumpAndSettle();
@@ -297,7 +297,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('BillMate'), findsWidgets);
+    expect(find.text('SuperBill'), findsWidgets);
     expect(find.text('Store login'), findsNothing);
     expect(find.text('Sign in'), findsWidgets);
     expect(find.text('What changed'), findsNothing);

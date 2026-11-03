@@ -26,10 +26,10 @@ class WelcomeView extends StatelessWidget {
                 child: Column(
                   children: [
                     const Spacer(),
-                    _BillMateMark(color: scheme.primary),
+                    _SuperBillMark(color: scheme.primary),
                     const SizedBox(height: 28),
                     Text(
-                      'BillMate',
+                      'SuperBill',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
                             color: scheme.primary,
@@ -97,8 +97,8 @@ class WelcomeView extends StatelessWidget {
   }
 }
 
-class _BillMateMark extends StatelessWidget {
-  const _BillMateMark({required this.color});
+class _SuperBillMark extends StatelessWidget {
+  const _SuperBillMark({required this.color});
 
   final Color color;
 
